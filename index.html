@@ -35,7 +35,6 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
 .entry-shadow { font-size: 11px; color: #c07050; margin-top: 3px; }
 .empty { padding: 3rem 1.5rem; text-align: center; font-size: 13px; color: #b0a090; line-height: 2; }
 
-/* 右下角同居人按鈕 */
 .panel-btn {
   position: fixed;
   bottom: 1.5rem;
@@ -57,7 +56,6 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
 .panel-btn i { font-size: 22px; color: #f5f0e8; }
 .panel-btn.has-input { background: #8a6a3a; }
 
-/* 側面板 */
 .side-panel {
   position: fixed;
   top: 0;
@@ -107,36 +105,39 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
   color: #9a8a7a;
   letter-spacing: 0.08em;
   margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
-/* 清潔度 */
 .clean-bar-wrap { background: #e8e0d4; border-radius: 4px; height: 5px; margin: 6px 0 4px; overflow: hidden; }
 .clean-bar-fill { height: 100%; border-radius: 4px; transition: width 0.3s; }
 .clean-desc { font-size: 11px; color: #9a8a7a; }
 
-/* icon 開關 grid */
 .icon-toggles {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 8px;
 }
 .icon-toggle {
-  aspect-ratio: 1;
   background: #f0ece4;
   border: 1px solid #e0d8cc;
   border-radius: 10px;
+  padding: 10px 8px 8px;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
+  gap: 4px;
   cursor: pointer;
   transition: all 0.15s;
 }
-.icon-toggle i { font-size: 22px; color: #b0a090; transition: color 0.15s; }
+.icon-toggle i { font-size: 20px; color: #b0a090; transition: color 0.15s; }
+.icon-toggle span { font-size: 10px; color: #9a8a7a; font-family: 'Noto Serif TC', serif; }
 .icon-toggle.on { background: #fff8e8; border-color: #e8c84a; }
 .icon-toggle.on i { color: #e8a020; }
+.icon-toggle.on span { color: #8a6a2a; }
 .icon-toggle:active { transform: scale(0.95); }
 
-/* 狀態輸入 */
 .owner-textarea {
   width: 100%;
   background: #fff;
@@ -168,9 +169,25 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
   letter-spacing: 0.05em;
 }
 .owner-submit:active { background: #4a3a2a; }
-.owner-pending { font-size: 10px; color: #8a6a3a; margin-top: 4px; }
 
-/* 對房間的行為 */
+.status-display {
+  font-size: 12px;
+  color: #4a3a2a;
+  line-height: 1.7;
+  padding: 6px 0;
+  display: none;
+}
+.status-icons { display: none; gap: 8px; align-items: center; }
+.status-icons i { font-size: 14px; color: #b0a090; cursor: pointer; transition: color 0.15s; }
+.status-icons i:hover { color: #7a6a5a; }
+.clear-confirm {
+  display: none;
+  font-size: 10px;
+  color: #c07050;
+  padding: 3px 0;
+  cursor: pointer;
+}
+
 .room-action-wrap { display: none; }
 .room-action-wrap.visible { display: block; }
 .room-action-title { font-size: 11px; color: #c07050; letter-spacing: 0.08em; margin-bottom: 8px; }
@@ -187,7 +204,6 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
   height: 56px;
   line-height: 1.7;
   outline: none;
-  max-length: 50;
 }
 .room-action-textarea:focus { border-color: #e8a070; }
 .room-action-textarea::placeholder { color: #c0b0a0; font-size: 11px; }
@@ -241,12 +257,10 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
   </div>
 </div>
 
-<!-- 右下角同居人按鈕 -->
 <button class="panel-btn" id="panel-btn" onclick="openPanel()" aria-label="同居人面板">
   <i class="ti ti-user-circle"></i>
 </button>
 
-<!-- 側面板 -->
 <div class="overlay" id="overlay" onclick="closePanel()"></div>
 <div class="side-panel" id="side-panel">
 
@@ -262,51 +276,63 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
     <div class="clean-desc" id="clean-desc">—</div>
   </div>
 
- <div>
+  <div>
     <div class="panel-section-title">開關</div>
     <div class="icon-toggles">
-      <div class="icon-toggle" id="it-light" onclick="toggle('light_on')" title="燈">
-        <i class="ti ti-bulb" id="icon-light"></i>
+      <div class="icon-toggle" id="it-light" onclick="toggle('light_on')">
+        <i class="ti ti-bulb"></i>
+        <span>燈</span>
       </div>
-      <div class="icon-toggle" id="it-toilet" onclick="toggle('toilet_open')" title="廁所門">
-        <i class="ti ti-door" id="icon-toilet"></i>
+      <div class="icon-toggle" id="it-toilet" onclick="toggle('toilet_open')">
+        <i class="ti ti-door"></i>
+        <span>廁所門</span>
       </div>
-      <div class="icon-toggle" id="it-window" onclick="toggle('window_open')" title="窗戶">
-        <i class="ti ti-window" id="icon-window"></i>
+      <div class="icon-toggle" id="it-window" onclick="toggle('window_open')">
+        <i class="ti ti-window"></i>
+        <span>窗戶</span>
       </div>
-      <div class="icon-toggle" id="it-ac" onclick="toggle('ac_on')" title="冷氣">
-        <i class="ti ti-snowflake" id="icon-ac"></i>
+      <div class="icon-toggle" id="it-ac" onclick="toggle('ac_on')">
+        <i class="ti ti-snowflake"></i>
+        <span>冷氣</span>
       </div>
     </div>
   </div>
 
   <div>
-    <div class="panel-section-title">我的狀態</div>
+    <div class="panel-section-title">
+      我的狀態
+      <span class="status-icons" id="status-icons">
+        <i class="ti ti-pencil" onclick="editStatus()" title="編輯"></i>
+        <i class="ti ti-x" onclick="clearStatus()" title="清除"></i>
+      </span>
+    </div>
+    <div class="status-display" id="status-display"></div>
+    <div class="clear-confirm" id="clear-confirm" onclick="confirmClear()">再按一次確認清除</div>
     <textarea class="owner-textarea" id="owner-input" maxlength="30" placeholder="在做什麼、有什麼變化..."></textarea>
-    <button class="owner-submit" onclick="submitOwner()">送出・等待世界回應</button>
-    <div class="owner-pending" id="owner-pending"></div>
+    <button class="owner-submit" id="owner-submit-btn" onclick="submitStatus()">記錄</button>
   </div>
 
   <div class="room-action-wrap" id="room-action-wrap">
     <div class="room-action-title">對房間的行為</div>
     <textarea class="room-action-textarea" id="room-action-input" maxlength="50" placeholder=""></textarea>
-    <button class="room-action-submit" onclick="submitRoomAction()">送出</button>
+    <button class="room-action-submit" onclick="submitRoomAction()">記錄・等待世界回應</button>
   </div>
 
 </div>
 
 <script>
 let roomState = { window_open: false, ac_on: false, light_on: true, toilet_open: false, cleanliness: 78 };
+let clearPending = false;
 
 const ROOM_PLACEHOLDERS = [
-  '把桌上的東西整理了一下...',
-  '順手把垃圾帶出去...',
-  '地板掃了掃...',
-  '開冰箱拿東西，忘了關...',
-  '把髒衣服堆到角落...',
-  '擦了一下窗台...',
-  '把書堆疊好了...',
-  '廚房水槽洗了一下...',
+  '也許該把桌上的東西整理一下...',
+  '也許該順手把垃圾帶出去...',
+  '也許該掃一下地板...',
+  '開了冰箱拿東西，忘了關...',
+  '也許該把髒衣服收一收...',
+  '也許該擦一下窗台...',
+  '也許該把書堆整理好...',
+  '也許該洗一下廚房水槽...',
 ];
 
 function randomPlaceholder() {
@@ -341,25 +367,16 @@ function updateCleanUI() {
   bar.style.width = v + '%';
   bar.style.background = getCleanColor(v);
   document.getElementById('clean-desc').textContent = getCleanDesc(v);
-  const actionWrap = document.getElementById('room-action-wrap');
-  if (v < 100) {
-    actionWrap.classList.add('visible');
-  } else {
-    actionWrap.classList.remove('visible');
-  }
+  document.getElementById('room-action-wrap').classList.toggle('visible', v < 100);
 }
 
 function updateAllToggles() {
-  const map = {
-    light_on: 'it-light',
-    toilet_open: 'it-toilet',
-    window_open: 'it-window',
-    ac_on: 'it-ac'
-  };
+  const map = { light_on:'it-light', toilet_open:'it-toilet', window_open:'it-window', ac_on:'it-ac' };
   for (const [key, id] of Object.entries(map)) {
     document.getElementById(id).classList.toggle('on', !!roomState[key]);
   }
 }
+
 async function toggle(key) {
   roomState[key] = !roomState[key];
   updateAllToggles();
@@ -370,31 +387,74 @@ async function toggle(key) {
   });
 }
 
-async function submitOwner() {
+function showStatusDisplay(text) {
+  document.getElementById('status-display').textContent = text;
+  document.getElementById('status-display').style.display = 'block';
+  document.getElementById('status-icons').style.display = 'flex';
+  document.getElementById('owner-input').style.display = 'none';
+  document.getElementById('owner-submit-btn').style.display = 'none';
+  document.getElementById('clear-confirm').style.display = 'none';
+}
+
+function showStatusInput() {
+  document.getElementById('status-display').style.display = 'none';
+  document.getElementById('status-icons').style.display = 'none';
+  document.getElementById('owner-input').style.display = 'block';
+  document.getElementById('owner-submit-btn').style.display = 'block';
+  document.getElementById('clear-confirm').style.display = 'none';
+  clearPending = false;
+}
+
+async function submitStatus() {
   const input = document.getElementById('owner-input').value.trim();
   if (!input) return;
   await fetch('/api/owner', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ input })
+    body: JSON.stringify({ type: 'status', input })
   });
-  document.getElementById('owner-pending').textContent = '等待白糰糰的世界回應後清空';
+  showStatusDisplay(input);
   document.getElementById('panel-btn').classList.add('has-input');
+}
+
+function editStatus() {
+  const current = document.getElementById('status-display').textContent;
+  document.getElementById('owner-input').value = current;
+  showStatusInput();
+}
+
+function clearStatus() {
+  if (!clearPending) {
+    clearPending = true;
+    document.getElementById('clear-confirm').style.display = 'block';
+    setTimeout(() => {
+      clearPending = false;
+      document.getElementById('clear-confirm').style.display = 'none';
+    }, 3000);
+  }
+}
+
+async function confirmClear() {
+  await fetch('/api/owner', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ type: 'status', input: '' })
+  });
+  document.getElementById('owner-input').value = '';
+  showStatusInput();
+  document.getElementById('panel-btn').classList.remove('has-input');
 }
 
 async function submitRoomAction() {
   const input = document.getElementById('room-action-input').value.trim();
   if (!input) return;
-  const current = document.getElementById('owner-input').value.trim();
-  const combined = current ? current + '。' + input : input;
   await fetch('/api/owner', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ input: combined })
+    body: JSON.stringify({ type: 'action', input })
   });
   document.getElementById('room-action-input').value = '';
   document.getElementById('room-action-input').placeholder = randomPlaceholder();
-  document.getElementById('owner-pending').textContent = '等待白糰糰的世界回應後清空';
   document.getElementById('panel-btn').classList.add('has-input');
 }
 
@@ -448,20 +508,12 @@ async function load() {
     updateAllToggles();
     updateCleanUI();
 
-    const ownerInput = world.owner_input || '';
-    if (ownerInput) {
-      if (!document.getElementById('owner-input').dataset.editing) {
-        document.getElementById('owner-input').value = ownerInput;
-      }
-      document.getElementById('owner-pending').textContent = '等待白糰糰的世界回應後清空';
-      document.getElementById('panel-btn').classList.add('has-input');
-    } else {
-      document.getElementById('owner-pending').textContent = '';
-      document.getElementById('panel-btn').classList.remove('has-input');
-      if (!document.getElementById('owner-input').dataset.editing) {
-        document.getElementById('owner-input').value = '';
-      }
+    const ownerStatus = world.owner_status || '';
+    if (ownerStatus && document.getElementById('status-display').style.display === 'none') {
+      showStatusDisplay(ownerStatus);
     }
+    const ownerAction = world.owner_action || '';
+    document.getElementById('panel-btn').classList.toggle('has-input', !!(ownerStatus || ownerAction));
 
     const entries = parseLog(data.log);
     const container = document.getElementById('entries');
@@ -482,13 +534,6 @@ async function load() {
     document.getElementById('entries').innerHTML = '<div class="empty">暫時無法連線。</div>';
   }
 }
-
-document.getElementById('owner-input').addEventListener('focus', () => {
-  document.getElementById('owner-input').dataset.editing = 'true';
-});
-document.getElementById('owner-input').addEventListener('blur', () => {
-  delete document.getElementById('owner-input').dataset.editing;
-});
 
 load();
 setInterval(load, 3 * 60 * 1000);
