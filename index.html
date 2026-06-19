@@ -51,7 +51,6 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
 
 .panel-btn {
   position: fixed;
-  bottom: 1.5rem;
   right: 1.5rem;
   width: 48px;
   height: 48px;
@@ -69,6 +68,8 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
 .panel-btn:hover { background: #4a3a2a; }
 .panel-btn i { font-size: 22px; color: #f5f0e8; }
 .panel-btn.has-input { background: #8a6a3a; }
+#panel-btn { bottom: 5.75rem; }
+#note-btn { bottom: 1.5rem; }
 
 .side-panel {
   position: fixed;
@@ -152,46 +153,55 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
 .switch-rows {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
 }
 .switch-row {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  gap: 10px;
 }
-.switch-label {
+.switch-group {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 12px;
+  flex: 1;
+  min-width: 0;
+}
+.switch-group-label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  font-size: 10px;
   color: #6a5a4a;
   font-family: 'Noto Serif TC', serif;
+  line-height: 1.2;
 }
-.switch-label i { font-size: 16px; color: #b0a090; transition: color 0.15s; }
+.switch-group-label i { font-size: 15px; color: #b0a090; transition: color 0.15s; }
 .switch {
-  width: 42px;
-  height: 24px;
-  border-radius: 12px;
+  width: 36px;
+  height: 21px;
+  border-radius: 11px;
   background: #e0d8cc;
   position: relative;
   cursor: pointer;
   flex-shrink: 0;
   transition: background 0.2s;
+  margin-left: auto;
 }
 .switch-knob {
   position: absolute;
-  top: 3px;
-  left: 3px;
-  width: 18px;
-  height: 18px;
+  top: 2.5px;
+  left: 2.5px;
+  width: 16px;
+  height: 16px;
   border-radius: 50%;
   background: #fff;
   box-shadow: 0 1px 3px rgba(0,0,0,0.25);
   transition: left 0.2s;
 }
 .switch.on { background: #e8c84a; }
-.switch.on .switch-knob { left: 21px; }
-.switch-row:has(.switch.on) .switch-label i { color: #e8a020; }
+.switch.on .switch-knob { left: 17.5px; }
+.switch-group:has(.switch.on) .switch-group-label i { color: #e8a020; }
 
 .owner-textarea {
   width: 100%;
@@ -243,9 +253,6 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
   cursor: pointer;
 }
 
-.room-action-wrap { display: none; }
-.room-action-wrap.visible { display: block; }
-.room-action-title { font-size: 11px; color: #c07050; letter-spacing: 0.08em; margin-bottom: 8px; }
 .room-action-textarea {
   width: 100%;
   background: #fff;
@@ -276,37 +283,109 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
 }
 .room-action-submit:active { background: #7a4a2a; }
 
-.visitor-message-textarea {
-  width: 100%;
+.profile-card { padding-bottom: 4px; }
+.profile-top {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+.profile-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: #ede4d4;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.profile-avatar i { font-size: 22px; color: #9a8a7a; }
+.profile-main { flex: 1; min-width: 0; }
+.profile-name { font-size: 13px; color: #5a4a3a; font-weight: 500; margin-bottom: 2px; }
+.profile-meta { font-size: 10px; color: #b0a090; margin-top: 4px; }
+
+.feed-entry { font-size: 12px; color: #4a3a2a; line-height: 1.7; }
+.feed-time { font-size: 10px; color: #b0a090; margin-bottom: 3px; }
+.feed-text { white-space: pre-line; }
+
+.sticky-note {
+  position: fixed;
+  right: 1.5rem;
+  bottom: 1.5rem;
+  width: 220px;
+  min-height: 180px;
+  background: #fff3a0;
+  border-radius: 4px;
+  box-shadow: 0 4px 18px rgba(0,0,0,0.25);
+  z-index: 500;
+  padding: 0.6rem 0.75rem 0.75rem;
+  display: none;
+  flex-direction: column;
+  transform: translateY(16px);
+  opacity: 0;
+  pointer-events: none;
+  transition: transform 0.2s, opacity 0.2s;
+}
+.sticky-note.open { display: flex; transform: translateY(0); opacity: 1; pointer-events: all; }
+.sticky-note[data-color="yellow"] { background: #fff3a0; }
+.sticky-note[data-color="blue"] { background: #aee0f5; }
+.sticky-note[data-color="green"] { background: #c5ecb0; }
+.sticky-note[data-color="pink"] { background: #f7c5dd; }
+
+.sticky-note-menu { position: relative; display: flex; justify-content: flex-end; }
+.sticky-note-menu i { cursor: pointer; font-size: 16px; color: rgba(0,0,0,0.4); padding: 2px; }
+.sticky-note-menu-dropdown {
+  display: none;
+  position: absolute;
+  top: 20px;
+  right: 0;
   background: #fff;
-  border: 1px solid #e0d8cc;
-  border-radius: 8px;
-  padding: 8px 10px;
-  font-size: 12px;
-  font-family: 'Noto Serif TC', serif;
-  color: #4a3a2a;
-  resize: none;
-  height: 56px;
-  line-height: 1.7;
-  outline: none;
-}
-.visitor-message-textarea:focus { border-color: #c8a87a; }
-.visitor-message-textarea::placeholder { color: #c0b0a0; font-size: 11px; }
-.visitor-submit {
-  width: 100%;
-  margin-top: 6px;
-  background: #5a4a3a;
-  color: #f5f0e8;
-  border: none;
-  border-radius: 8px;
-  padding: 8px;
+  border-radius: 6px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.18);
+  padding: 6px;
   font-size: 11px;
-  font-family: 'Noto Serif TC', serif;
-  cursor: pointer;
-  letter-spacing: 0.05em;
+  z-index: 10;
+  min-width: 110px;
 }
-.visitor-submit:active { background: #4a3a2a; }
-.visitor-pending { font-size: 11px; color: #c07050; margin-top: 6px; }
+.sticky-note-menu-dropdown.open { display: block; }
+.sticky-note-menu-dropdown > div { padding: 5px 6px; cursor: pointer; color: #4a3a2a; border-radius: 4px; }
+.sticky-note-menu-dropdown > div:hover { background: #f0ece4; }
+.note-color-picker { display: flex; gap: 6px; padding: 6px 6px 2px; }
+.note-color-dot { width: 16px; height: 16px; border-radius: 50%; cursor: pointer; border: 1px solid rgba(0,0,0,0.15); }
+.note-color-dot[data-color="yellow"] { background: #fff3a0; }
+.note-color-dot[data-color="blue"] { background: #aee0f5; }
+.note-color-dot[data-color="green"] { background: #c5ecb0; }
+.note-color-dot[data-color="pink"] { background: #f7c5dd; }
+
+.sticky-note-textarea {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  resize: none;
+  font-family: 'Noto Serif TC', serif;
+  font-size: 13px;
+  color: #4a3a2a;
+  line-height: 1.6;
+  margin-top: 4px;
+}
+.sticky-note-textarea::placeholder { color: rgba(0,0,0,0.3); }
+.sticky-note-saved {
+  flex: 1;
+  font-size: 13px;
+  color: #4a3a2a;
+  line-height: 1.6;
+  white-space: pre-line;
+  overflow-y: auto;
+  margin-top: 4px;
+}
+.sticky-note-actions { display: flex; justify-content: flex-end; margin-top: 6px; }
+.sticky-note-actions i { font-size: 20px; color: rgba(0,0,0,0.5); cursor: pointer; }
+.sticky-note-actions i:hover { color: rgba(0,0,0,0.75); }
+
+@media (max-width: 600px) {
+  .sticky-note { left: 1rem; right: 1rem; width: auto; bottom: 1.25rem; }
+}
 
 @media (max-width: 400px) {
   .side-panel { width: 85vw; }
@@ -352,6 +431,9 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
 <button class="panel-btn" id="panel-btn" onclick="openPanel()" aria-label="同居人面板">
   <i class="ti ti-user-circle"></i>
 </button>
+<button class="panel-btn" id="note-btn" onclick="toggleNote()" aria-label="便利貼">
+  <i class="ti ti-note"></i>
+</button>
 
 <div class="overlay" id="overlay" onclick="closePanel()"></div>
 <div class="side-panel" id="side-panel">
@@ -363,28 +445,54 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
   <div class="panel-tabs">
     <div class="panel-tab active" data-tab="personal" onclick="switchTab('personal')">個人</div>
     <div class="panel-tab" data-tab="room" onclick="switchTab('room')">房間</div>
-    <div class="panel-tab" data-tab="note" onclick="switchTab('note')">便利貼</div>
   </div>
 
   <div class="panel-pane active" data-pane="personal">
-    <div>
-      <div class="panel-section-title">
-        我的狀態
+    <div class="profile-card">
+      <div class="profile-top">
+        <div class="profile-avatar"><i class="ti ti-paw"></i></div>
+        <div class="profile-main">
+          <div class="profile-name">同居人</div>
+          <div class="status-display" id="status-display"></div>
+          <textarea class="owner-textarea" id="owner-input" maxlength="30" placeholder="在做什麼、有什麼變化..." style="display:none;"></textarea>
+          <div class="profile-meta" id="status-time"></div>
+        </div>
         <span class="status-icons" id="status-icons">
           <i class="ti ti-pencil" onclick="editStatus()" title="編輯"></i>
           <i class="ti ti-x" onclick="clearStatus()" title="清除"></i>
         </span>
       </div>
-      <div class="status-display" id="status-display"></div>
       <div class="clear-confirm" id="clear-confirm" onclick="confirmClear()">再按一次確認清除</div>
-      <textarea class="owner-textarea" id="owner-input" maxlength="30" placeholder="在做什麼、有什麼變化..."></textarea>
-      <button class="owner-submit" id="owner-submit-btn" onclick="submitStatus()">記錄</button>
+      <button class="owner-submit" id="owner-submit-btn" onclick="submitStatus()" style="display:none;">記錄</button>
+    </div>
+
+    <div>
+      <div class="panel-section-title">自己的動態</div>
+      <div class="activity-feed" id="activity-feed">
+        <div class="empty">還沒有動態。</div>
+      </div>
+      <textarea class="room-action-textarea" id="room-action-input" maxlength="50" placeholder=""></textarea>
+      <button class="room-action-submit" onclick="submitRoomAction()">記錄・等待世界回應</button>
     </div>
   </div>
 
   <div class="panel-pane" data-pane="room">
     <div>
-      <div class="panel-section-title">房間清潔度</div>
+      <div class="panel-section-title">
+        環境狀態
+        <span class="status-icons" id="env-icons">
+          <i class="ti ti-pencil" onclick="editEnv()" title="編輯"></i>
+          <i class="ti ti-x" onclick="clearEnv()" title="清除"></i>
+        </span>
+      </div>
+      <div class="status-display" id="env-display"></div>
+      <div class="clear-confirm" id="env-clear-confirm" onclick="confirmClearEnv()">再按一次確認清除</div>
+      <textarea class="owner-textarea" id="env-input" maxlength="60" placeholder="房間現在的樣子..." style="display:none;"></textarea>
+      <button class="owner-submit" id="env-submit-btn" onclick="submitEnv()" style="display:none;">記錄</button>
+    </div>
+
+    <div>
+      <div class="panel-section-title">清潔度</div>
       <div class="clean-bar-wrap">
         <div class="clean-bar-fill" id="clean-bar" style="width:78%"></div>
       </div>
@@ -392,50 +500,54 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
     </div>
 
     <div>
-      <div class="panel-section-title">開關</div>
       <div class="switch-rows">
         <div class="switch-row">
-          <span class="switch-label"><i class="ti ti-bulb"></i> 燈</span>
-          <div class="switch" id="it-light" onclick="toggle('light_on')"><div class="switch-knob"></div></div>
-        </div>
-        <div class="switch-row">
-          <span class="switch-label"><i class="ti ti-door"></i> 廁所門</span>
-          <div class="switch" id="it-toilet" onclick="toggle('toilet_open')"><div class="switch-knob"></div></div>
-        </div>
-        <div class="switch-row">
-          <span class="switch-label"><i class="ti ti-window"></i> 窗戶</span>
-          <div class="switch" id="it-window" onclick="toggle('window_open')"><div class="switch-knob"></div></div>
-        </div>
-        <div class="switch-row">
-          <span class="switch-label"><i class="ti ti-snowflake"></i> 冷氣</span>
-          <div class="switch" id="it-ac" onclick="toggle('ac_on')"><div class="switch-knob"></div></div>
+          <div class="switch-group">
+            <div class="switch-group-label"><i class="ti ti-bulb"></i><span>燈</span></div>
+            <div class="switch" id="it-light" onclick="toggle('light_on')"><div class="switch-knob"></div></div>
+          </div>
+          <div class="switch-group">
+            <div class="switch-group-label"><i class="ti ti-door"></i><span>廁所門</span></div>
+            <div class="switch" id="it-toilet" onclick="toggle('toilet_open')"><div class="switch-knob"></div></div>
+          </div>
+          <div class="switch-group">
+            <div class="switch-group-label"><i class="ti ti-window"></i><span>窗戶</span></div>
+            <div class="switch" id="it-window" onclick="toggle('window_open')"><div class="switch-knob"></div></div>
+          </div>
+          <div class="switch-group">
+            <div class="switch-group-label"><i class="ti ti-snowflake"></i><span>冷氣</span></div>
+            <div class="switch" id="it-ac" onclick="toggle('ac_on')"><div class="switch-knob"></div></div>
+          </div>
         </div>
       </div>
-    </div>
-
-    <div class="room-action-wrap" id="room-action-wrap">
-      <div class="room-action-title">對房間的行為</div>
-      <textarea class="room-action-textarea" id="room-action-input" maxlength="50" placeholder=""></textarea>
-      <button class="room-action-submit" onclick="submitRoomAction()">記錄・等待世界回應</button>
-    </div>
-  </div>
-
-  <div class="panel-pane" data-pane="note">
-    <div>
-      <textarea class="visitor-message-textarea" id="visitor-message" maxlength="100" placeholder="想跟他說的話，他聽不懂，但可能會有反應..."></textarea>
-      <button class="visitor-submit" onclick="submitVisitorMessage()">貼上便利貼</button>
-      <div class="visitor-pending" id="visitor-pending" style="display:none;">便利貼已送出，等白糰糰下次有動靜時可能會注意到</div>
-    </div>
-    <div class="entries" id="visitor-entries">
-      <div class="empty">還沒有便利貼。</div>
     </div>
   </div>
 
 </div>
 
+<div class="sticky-note" id="sticky-note" data-color="yellow">
+  <div class="sticky-note-menu">
+    <i class="ti ti-dots" onclick="toggleNoteMenu()"></i>
+    <div class="sticky-note-menu-dropdown" id="note-menu-dropdown">
+      <div onclick="clearNoteDraft()">清除</div>
+      <div class="note-color-picker">
+        <span class="note-color-dot" data-color="yellow" onclick="setNoteColor('yellow')"></span>
+        <span class="note-color-dot" data-color="blue" onclick="setNoteColor('blue')"></span>
+        <span class="note-color-dot" data-color="green" onclick="setNoteColor('green')"></span>
+        <span class="note-color-dot" data-color="pink" onclick="setNoteColor('pink')"></span>
+      </div>
+    </div>
+  </div>
+  <textarea class="sticky-note-textarea" id="sticky-note-textarea" maxlength="100" placeholder="想跟他說的話，他聽不懂，但可能會有反應..."></textarea>
+  <div class="sticky-note-saved" id="sticky-note-saved" style="display:none;"></div>
+  <div class="sticky-note-actions">
+    <i class="ti ti-check" id="note-confirm-btn" onclick="confirmNote()"></i>
+    <i class="ti ti-trash" id="note-delete-btn" onclick="deleteNote()" style="display:none;"></i>
+  </div>
+</div>
+
 <script>
 let roomState = { window_open: false, ac_on: false, light_on: true, toilet_open: false, cleanliness: 78 };
-let clearPending = false;
 
 const ROOM_PLACEHOLDERS = [
   '也許該把桌上的東西整理一下...',
@@ -485,7 +597,6 @@ function updateCleanUI() {
   bar.style.width = v + '%';
   bar.style.background = getCleanColor(v);
   document.getElementById('clean-desc').textContent = getCleanDesc(v);
-  document.getElementById('room-action-wrap').classList.toggle('visible', v < 100);
 }
 
 function updateAllToggles() {
@@ -505,63 +616,100 @@ async function toggle(key) {
   });
 }
 
-function showStatusDisplay(text) {
-  document.getElementById('status-display').textContent = text;
-  document.getElementById('status-display').style.display = 'block';
-  document.getElementById('status-icons').style.display = 'flex';
-  document.getElementById('owner-input').style.display = 'none';
-  document.getElementById('owner-submit-btn').style.display = 'none';
-  document.getElementById('clear-confirm').style.display = 'none';
-}
+function createEditableField({ display, icons, input, submitBtn, clearConfirm, emptyText, onSave, onClear }) {
+  let value = '';
+  let pending = false;
 
-function showStatusInput() {
-  document.getElementById('status-display').style.display = 'none';
-  document.getElementById('status-icons').style.display = 'none';
-  document.getElementById('owner-input').style.display = 'block';
-  document.getElementById('owner-submit-btn').style.display = 'block';
-  document.getElementById('clear-confirm').style.display = 'none';
-  clearPending = false;
-}
-
-async function submitStatus() {
-  const input = document.getElementById('owner-input').value.trim();
-  if (!input) return;
-  await fetch('/api/owner', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ type: 'status', input })
-  });
-  showStatusDisplay(input);
-  document.getElementById('panel-btn').classList.add('has-input');
-}
-
-function editStatus() {
-  const current = document.getElementById('status-display').textContent;
-  document.getElementById('owner-input').value = current;
-  showStatusInput();
-}
-
-function clearStatus() {
-  if (!clearPending) {
-    clearPending = true;
-    document.getElementById('clear-confirm').style.display = 'block';
-    setTimeout(() => {
-      clearPending = false;
-      document.getElementById('clear-confirm').style.display = 'none';
-    }, 3000);
+  function render(text) {
+    value = text || '';
+    display.textContent = value || emptyText;
   }
+
+  function showDisplay() {
+    display.style.display = 'block';
+    icons.style.display = 'flex';
+    input.style.display = 'none';
+    submitBtn.style.display = 'none';
+    clearConfirm.style.display = 'none';
+  }
+
+  function showInput() {
+    display.style.display = 'none';
+    icons.style.display = 'none';
+    input.style.display = 'block';
+    submitBtn.style.display = 'block';
+    clearConfirm.style.display = 'none';
+    pending = false;
+  }
+
+  function edit() {
+    input.value = value;
+    showInput();
+  }
+
+  function clear() {
+    if (!pending) {
+      pending = true;
+      clearConfirm.style.display = 'block';
+      setTimeout(() => { pending = false; clearConfirm.style.display = 'none'; }, 3000);
+    }
+  }
+
+  async function confirmClearFn() {
+    await onClear();
+    render('');
+    input.value = '';
+    showInput();
+  }
+
+  async function submit() {
+    const v = input.value.trim();
+    if (!v) return;
+    await onSave(v);
+    render(v);
+    showDisplay();
+  }
+
+  function setFromServer(text) {
+    if (input.style.display === 'none' && (text || '') !== value) {
+      render(text);
+    }
+  }
+
+  render('');
+  showDisplay();
+  return { edit, clear, confirmClear: confirmClearFn, submit, setFromServer };
 }
 
-async function confirmClear() {
-  await fetch('/api/owner', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ type: 'status', input: '' })
-  });
-  document.getElementById('owner-input').value = '';
-  showStatusInput();
-  document.getElementById('panel-btn').classList.remove('has-input');
-}
+const statusField = createEditableField({
+  display: document.getElementById('status-display'),
+  icons: document.getElementById('status-icons'),
+  input: document.getElementById('owner-input'),
+  submitBtn: document.getElementById('owner-submit-btn'),
+  clearConfirm: document.getElementById('clear-confirm'),
+  emptyText: '尚無狀態',
+  onSave: (v) => fetch('/api/owner', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'status', input: v }) }),
+  onClear: () => fetch('/api/owner', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'status', input: '' }) }),
+});
+function editStatus() { statusField.edit(); }
+function clearStatus() { statusField.clear(); }
+function confirmClear() { statusField.confirmClear(); document.getElementById('panel-btn').classList.remove('has-input'); }
+function submitStatus() { statusField.submit(); document.getElementById('panel-btn').classList.add('has-input'); }
+
+const envField = createEditableField({
+  display: document.getElementById('env-display'),
+  icons: document.getElementById('env-icons'),
+  input: document.getElementById('env-input'),
+  submitBtn: document.getElementById('env-submit-btn'),
+  clearConfirm: document.getElementById('env-clear-confirm'),
+  emptyText: '尚無描述',
+  onSave: (v) => fetch('/api/room', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ env_desc: v }) }),
+  onClear: () => fetch('/api/room', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ env_desc: '' }) }),
+});
+function editEnv() { envField.edit(); }
+function clearEnv() { envField.clear(); }
+function confirmClearEnv() { envField.confirmClear(); }
+function submitEnv() { envField.submit(); }
 
 async function submitRoomAction() {
   const input = document.getElementById('room-action-input').value.trim();
@@ -582,41 +730,78 @@ function escapeHtml(str) {
   return div.innerHTML;
 }
 
-async function submitVisitorMessage() {
-  const message = document.getElementById('visitor-message').value.trim();
-  if (!message) return;
-  try {
-    await fetch('/api/visitor', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message })
-    });
-    document.getElementById('visitor-message').value = '';
-    document.getElementById('visitor-pending').style.display = 'block';
-    load();
-  } catch (e) {}
+let noteState = { mode: 'draft', color: 'yellow', savedId: null };
+
+function toggleNote() {
+  document.getElementById('sticky-note').classList.toggle('open');
+  document.getElementById('note-menu-dropdown').classList.remove('open');
+}
+function toggleNoteMenu() {
+  document.getElementById('note-menu-dropdown').classList.toggle('open');
+}
+function setNoteColor(color) {
+  noteState.color = color;
+  document.getElementById('sticky-note').dataset.color = color;
+  document.getElementById('note-menu-dropdown').classList.remove('open');
+}
+function clearNoteDraft() {
+  document.getElementById('sticky-note-textarea').value = '';
+  document.getElementById('note-menu-dropdown').classList.remove('open');
 }
 
-function renderVisitorEntries(pending, log) {
-  const container = document.getElementById('visitor-entries');
-  if (pending.length === 0 && log.length === 0) {
-    container.innerHTML = '<div class="empty">還沒有便利貼。</div>';
-    return;
+function renderNoteSaved(note) {
+  noteState.mode = 'saved';
+  noteState.savedId = note.id;
+  document.getElementById('sticky-note').dataset.color = note.color || 'yellow';
+  document.getElementById('sticky-note-textarea').style.display = 'none';
+  const saved = document.getElementById('sticky-note-saved');
+  saved.style.display = 'block';
+  saved.textContent = note.message;
+  document.getElementById('note-confirm-btn').style.display = 'none';
+  document.getElementById('note-delete-btn').style.display = 'inline';
+}
+
+function renderNoteDraft() {
+  noteState.mode = 'draft';
+  noteState.savedId = null;
+  document.getElementById('sticky-note-textarea').style.display = 'block';
+  document.getElementById('sticky-note-saved').style.display = 'none';
+  document.getElementById('note-confirm-btn').style.display = 'inline';
+  document.getElementById('note-delete-btn').style.display = 'none';
+}
+
+function refreshNoteWidget(pending) {
+  const latest = pending.length > 0 ? pending[pending.length - 1] : null;
+  if (latest) {
+    if (noteState.mode !== 'saved' || noteState.savedId !== latest.id) {
+      renderNoteSaved(latest);
+    }
+  } else if (noteState.mode === 'saved') {
+    renderNoteDraft();
   }
-  const pendingHtml = pending.slice().reverse().map(m => `
-    <div class="entry">
-      <div class="entry-time">${escapeHtml(m.time)}</div>
-      <div class="entry-text">${escapeHtml(m.message)}</div>
-      <div class="entry-stats">等待白糰糰反應中...</div>
-    </div>
-  `).join('');
-  const logHtml = log.slice().reverse().map(m => `
-    <div class="entry">
-      <div class="entry-time">${escapeHtml(m.time)}</div>
-      <div class="entry-text">${escapeHtml(m.message)}</div>
-    </div>
-  `).join('');
-  container.innerHTML = pendingHtml + logHtml;
+}
+
+async function confirmNote() {
+  const message = document.getElementById('sticky-note-textarea').value.trim();
+  if (!message) return;
+  const res = await fetch('/api/visitor', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message, color: noteState.color })
+  });
+  const data = await res.json();
+  document.getElementById('sticky-note-textarea').value = '';
+  renderNoteSaved({ id: data.id, message, color: noteState.color });
+}
+
+async function deleteNote() {
+  if (!noteState.savedId) return;
+  await fetch('/api/visitor/delete', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id: noteState.savedId })
+  });
+  renderNoteDraft();
 }
 
 function renderDiaryEntries(diary) {
@@ -687,11 +872,29 @@ function goNextDay() {
   }
 }
 
-async function refreshGuestbook(world) {
+function renderActivityFeed(pendingAction, ownerLog) {
+  const container = document.getElementById('activity-feed');
+  let html;
+  if (pendingAction) {
+    html = `<div class="feed-entry"><div class="feed-time">等待白糰糰回應...</div><div class="feed-text">${escapeHtml(pendingAction)}</div></div>`;
+  } else if (ownerLog && ownerLog.length > 0) {
+    const latest = ownerLog[ownerLog.length - 1];
+    html = `<div class="feed-entry"><div class="feed-time">${escapeHtml(latest.time)}</div><div class="feed-text">${escapeHtml(latest.action)}</div></div>`;
+  } else {
+    html = '<div class="empty">還沒有動態。</div>';
+  }
+  if (container.dataset.rendered !== html) {
+    container.dataset.rendered = html;
+    container.innerHTML = html;
+  }
+}
+
+async function refreshTodayPanels(world) {
   try {
     const res = await fetch('/api/day?t=' + Date.now());
     const today = await res.json();
-    renderVisitorEntries(world.visitor_messages || [], today.visitorLog || []);
+    renderActivityFeed(world.owner_action || '', today.ownerLog || []);
+    refreshNoteWidget(world.visitor_messages || []);
   } catch (e) {}
 }
 
@@ -722,16 +925,15 @@ async function load() {
     updateCleanUI();
 
     const ownerStatus = world.owner_status || '';
-    if (ownerStatus && document.getElementById('status-display').style.display === 'none') {
-      showStatusDisplay(ownerStatus);
-    }
+    statusField.setFromServer(ownerStatus);
+    document.getElementById('status-time').textContent = world.owner_status_time ? '最後更新 ' + world.owner_status_time : '';
+
+    envField.setFromServer(world.room.env_desc || '');
+
     const ownerAction = world.owner_action || '';
     document.getElementById('panel-btn').classList.toggle('has-input', !!(ownerStatus || ownerAction));
 
-    if ((world.visitor_messages || []).length === 0) {
-      document.getElementById('visitor-pending').style.display = 'none';
-    }
-    await refreshGuestbook(world);
+    await refreshTodayPanels(world);
     await refreshDatesAndDay();
 
   } catch(e) {

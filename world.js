@@ -313,8 +313,28 @@ const server = http.createServer((req, res) => {
       req.on('end', () => {
         const data = JSON.parse(Buffer.concat(body).toString());
         const world = JSON.parse(fs.readFileSync(WORLD_FILE, 'utf8'));
-        if (data.type === 'status') world.owner_status = data.input || '';
+        if (data.type === 'status') {
+          world.owner_status = data.input || '';
+          world.owner_status_time = data.input ? getRealTime().display : '';
+        }
         if (data.type === 'action') world.owner_action = data.input || '';
+        fs.writeFileSync(WORLD_FILE, JSON.stringify(world, null, 2));
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ ok: true }));
+      });
+    } catch (e) {
+      res.writeHead(500);
+      res.end('error');
+    }
+
+  } else if (req.url.startsWith('/api/visitor/delete')) {
+    try {
+      const body = [];
+      req.on('data', chunk => body.push(chunk));
+      req.on('end', () => {
+        const data = JSON.parse(Buffer.concat(body).toString());
+        const world = JSON.parse(fs.readFileSync(WORLD_FILE, 'utf8'));
+        world.visitor_messages = (world.visitor_messages || []).filter(m => m.id !== data.id);
         fs.writeFileSync(WORLD_FILE, JSON.stringify(world, null, 2));
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ ok: true }));
@@ -332,6 +352,7 @@ const server = http.createServer((req, res) => {
         const data = JSON.parse(Buffer.concat(body).toString());
         const name = (data.name || '').trim().slice(0, 20);
         const message = (data.message || '').trim().slice(0, 100);
+        const color = (data.color || 'yellow').trim().slice(0, 20);
         if (!message) {
           res.writeHead(400, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ ok: false, error: 'empty message' }));
@@ -339,10 +360,11 @@ const server = http.createServer((req, res) => {
         }
         const world = JSON.parse(fs.readFileSync(WORLD_FILE, 'utf8'));
         const { display } = getRealTime();
-        world.visitor_messages = [...(world.visitor_messages || []), { name: name || '匿名訪客', message, time: display }];
+        const id = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+        world.visitor_messages = [...(world.visitor_messages || []), { id, name: name || '匿名訪客', message, time: display, color }];
         fs.writeFileSync(WORLD_FILE, JSON.stringify(world, null, 2));
         res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ ok: true }));
+        res.end(JSON.stringify({ ok: true, id }));
       });
     } catch (e) {
       res.writeHead(500);
@@ -389,6 +411,7 @@ async function tick() {
 小黑影：${world.characters.shadow.active ? '活躍' : '潛伏'} 位置:${world.characters.shadow.location} 灰塵:${world.characters.shadow.dust_count}
 房間清潔度：${world.room.cleanliness}
 窗戶：${world.room.window_open ? '開' : '關'} 冷氣：${world.room.ac_on ? '開' : '關'} 燈：${world.room.light_on ? '開' : '關'} 廁所門：${world.room.toilet_open ? '開' : '關'}
+同居人對房間環境的描述：${world.room.env_desc || '無'}
 今天已發生：${world.room.events_today.join('，') || '無'}
 近期記憶：${(bt.memory || []).slice(-3).join(' / ') || '無'}${ownerInput}${visitorInput}
 
