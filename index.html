@@ -250,8 +250,7 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
 }
 .owner-submit:active { background: #4a3a2a; }
 
-.edit-actions { display: flex; gap: 8px; margin-top: 8px; align-items: center; justify-content: space-between; }
-.edit-actions-right { display: flex; align-items: center; gap: 4px; }
+.edit-actions { display: flex; gap: 4px; margin-top: 8px; align-items: center; justify-content: flex-end; }
 .edit-cancel {
   font-size: 11px;
   color: #9a8a7a;
@@ -259,14 +258,6 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
   padding: 8px 12px;
 }
 .edit-cancel:hover { color: #6a5a4a; }
-.edit-clear-icon {
-  font-size: 16px;
-  color: #b0a090;
-  cursor: pointer;
-  padding: 6px;
-  transition: color 0.15s;
-}
-.edit-clear-icon:hover { color: #c07050; }
 
 .status-display {
   font-size: 12px;
@@ -278,17 +269,6 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
 .status-icons { display: none; gap: 8px; align-items: center; }
 .status-icons i { font-size: 14px; color: #b0a090; cursor: pointer; transition: color 0.15s; }
 .status-icons i:hover { color: #7a6a5a; }
-.clear-confirm {
-  display: none;
-  font-size: 11px;
-  color: #fff;
-  background: #c07050;
-  border-radius: 7px;
-  padding: 7px 12px;
-  cursor: pointer;
-  font-family: 'Noto Serif TC', serif;
-}
-.clear-confirm:hover { background: #b05f40; }
 
 .room-action-textarea {
   width: 100%;
@@ -532,12 +512,8 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
           <textarea class="owner-textarea" id="owner-input" maxlength="30" placeholder="在做什麼、有什麼變化..." style="display:none;"></textarea>
           <div class="profile-meta" id="status-time"></div>
           <div class="edit-actions" id="owner-edit-actions" style="display:none;">
-            <i class="ti ti-x edit-clear-icon" id="status-clear-x" onclick="clearStatus()" title="清除"></i>
-            <span class="clear-confirm" id="clear-confirm" onclick="confirmClear()">清除</span>
-            <div class="edit-actions-right">
-              <span class="edit-cancel" onclick="cancelStatus()">取消</span>
-              <button class="owner-submit" id="owner-submit-btn" onclick="submitStatus()">記錄</button>
-            </div>
+            <span class="edit-cancel" onclick="cancelStatus()">取消</span>
+            <button class="owner-submit" id="owner-submit-btn" onclick="submitStatus()">記錄</button>
           </div>
         </div>
       </div>
@@ -580,12 +556,8 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
             <textarea class="owner-textarea" id="env-input" maxlength="60" placeholder="房間現在的樣子..." style="display:none;"></textarea>
             <div class="profile-meta" id="env-time"></div>
             <div class="edit-actions" id="env-edit-actions" style="display:none;">
-              <i class="ti ti-x edit-clear-icon" id="env-clear-x" onclick="clearEnv()" title="清除"></i>
-              <span class="clear-confirm" id="env-clear-confirm" onclick="confirmClearEnv()">清除</span>
-              <div class="edit-actions-right">
-                <span class="edit-cancel" onclick="cancelEnv()">取消</span>
-                <button class="owner-submit" id="env-submit-btn" onclick="submitEnv()">記錄</button>
-              </div>
+              <span class="edit-cancel" onclick="cancelEnv()">取消</span>
+              <button class="owner-submit" id="env-submit-btn" onclick="submitEnv()">記錄</button>
             </div>
           </div>
         </div>
@@ -714,25 +686,15 @@ async function toggle(key) {
   });
 }
 
-function createEditableField({ display, icons, input, editActions, clearIcon, clearConfirm, emptyText, onSave, onClear }) {
+function createEditableField({ display, icons, input, editActions, emptyText, onSave }) {
   let value = '';
-  let clearTimer = null;
-  let outsideHandler = null;
 
   function render(text) {
     value = text || '';
     display.textContent = value || emptyText;
   }
 
-  function resetClear() {
-    if (clearTimer) { clearTimeout(clearTimer); clearTimer = null; }
-    if (outsideHandler) { document.removeEventListener('click', outsideHandler); outsideHandler = null; }
-    clearConfirm.style.display = 'none';
-    clearIcon.style.display = 'inline';
-  }
-
   function showDisplay() {
-    resetClear();
     display.style.display = 'block';
     icons.style.display = 'flex';
     input.style.display = 'none';
@@ -740,7 +702,6 @@ function createEditableField({ display, icons, input, editActions, clearIcon, cl
   }
 
   function showInput() {
-    resetClear();
     display.style.display = 'none';
     icons.style.display = 'none';
     input.style.display = 'block';
@@ -756,27 +717,9 @@ function createEditableField({ display, icons, input, editActions, clearIcon, cl
     showDisplay();
   }
 
-  // 點 X：藏起 X、露出「清除」確認鈕；2 秒後或點別處則變回 X
-  function clear() {
-    if (clearTimer) return;
-    clearIcon.style.display = 'none';
-    clearConfirm.style.display = 'inline';
-    clearTimer = setTimeout(resetClear, 2000);
-    outsideHandler = (e) => { if (e.target !== clearConfirm) resetClear(); };
-    setTimeout(() => document.addEventListener('click', outsideHandler), 0);
-  }
-
-  async function confirmClearFn() {
-    resetClear();
-    await onClear();
-    render('');
-    input.value = '';
-    showDisplay();
-  }
-
+  // 清空後按「記錄」即視為清除，不需另外的清除按鈕
   async function submit() {
     const v = input.value.trim();
-    if (!v) return;
     await onSave(v);
     render(v);
     showDisplay();
@@ -790,7 +733,7 @@ function createEditableField({ display, icons, input, editActions, clearIcon, cl
 
   render('');
   showDisplay();
-  return { edit, cancel, clear, confirmClear: confirmClearFn, submit, setFromServer };
+  return { edit, cancel, submit, setFromServer };
 }
 
 const statusField = createEditableField({
@@ -798,33 +741,27 @@ const statusField = createEditableField({
   icons: document.getElementById('status-icons'),
   input: document.getElementById('owner-input'),
   editActions: document.getElementById('owner-edit-actions'),
-  clearIcon: document.getElementById('status-clear-x'),
-  clearConfirm: document.getElementById('clear-confirm'),
   emptyText: '尚無狀態',
   onSave: (v) => fetch('/api/owner', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'status', input: v }) }),
-  onClear: () => fetch('/api/owner', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'status', input: '' }) }),
 });
 function editStatus() { statusField.edit(); }
 function cancelStatus() { statusField.cancel(); }
-function clearStatus() { statusField.clear(); }
-function confirmClear() { statusField.confirmClear(); document.getElementById('panel-btn').classList.remove('has-input'); }
-function submitStatus() { statusField.submit(); document.getElementById('panel-btn').classList.add('has-input'); }
+function submitStatus() {
+  const v = document.getElementById('owner-input').value.trim();
+  statusField.submit();
+  document.getElementById('panel-btn').classList.toggle('has-input', v !== '');
+}
 
 const envField = createEditableField({
   display: document.getElementById('env-display'),
   icons: document.getElementById('env-icons'),
   input: document.getElementById('env-input'),
   editActions: document.getElementById('env-edit-actions'),
-  clearIcon: document.getElementById('env-clear-x'),
-  clearConfirm: document.getElementById('env-clear-confirm'),
   emptyText: '尚無描述',
   onSave: (v) => fetch('/api/room', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ env_desc: v }) }),
-  onClear: () => fetch('/api/room', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ env_desc: '' }) }),
 });
 function editEnv() { envField.edit(); }
 function cancelEnv() { envField.cancel(); }
-function clearEnv() { envField.clear(); }
-function confirmClearEnv() { envField.confirmClear(); }
 function submitEnv() { envField.submit(); }
 
 function openCompose() {
