@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>白糰糰觀察日記</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-family: 'Noto Serif TC', serif; }
@@ -34,13 +35,13 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
 .entry-shadow { font-size: 11px; color: #c07050; margin-top: 3px; }
 .empty { padding: 3rem 1.5rem; text-align: center; font-size: 13px; color: #b0a090; line-height: 2; }
 
-/* 右下角抽屜按鈕 */
-.drawer-btn {
+/* 右下角同居人按鈕 */
+.panel-btn {
   position: fixed;
   bottom: 1.5rem;
   right: 1.5rem;
-  width: 44px;
-  height: 44px;
+  width: 48px;
+  height: 48px;
   border-radius: 50%;
   background: #5a4a3a;
   border: none;
@@ -48,120 +49,191 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  box-shadow: 0 2px 10px rgba(0,0,0,0.25);
   z-index: 100;
   transition: background 0.2s;
 }
-.drawer-btn:hover { background: #4a3a2a; }
-.drawer-btn svg { width: 20px; height: 20px; stroke: #f5f0e8; fill: none; stroke-width: 1.5; }
-.drawer-btn.has-input { background: #8a6a3a; }
+.panel-btn:hover { background: #4a3a2a; }
+.panel-btn i { font-size: 22px; color: #f5f0e8; }
+.panel-btn.has-input { background: #8a6a3a; }
 
-/* 抽屜 */
-.drawer-overlay {
+/* 側面板 */
+.side-panel {
+  position: fixed;
+  top: 0;
+  right: -320px;
+  width: 300px;
+  height: 100vh;
+  background: #faf8f4;
+  box-shadow: -2px 0 16px rgba(0,0,0,0.12);
+  z-index: 400;
+  transition: right 0.3s ease;
+  overflow-y: auto;
+  padding: 1.5rem 1.25rem 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+.side-panel.open { right: 0; }
+
+.overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.3);
-  z-index: 200;
+  background: rgba(0,0,0,0.25);
+  z-index: 300;
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.2s;
 }
-.drawer-overlay.open { opacity: 1; pointer-events: all; }
+.overlay.open { opacity: 1; pointer-events: all; }
 
-.drawer {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  background: #faf8f4;
-  border-radius: 16px 16px 0 0;
-  padding: 1.25rem 1.5rem 2rem;
-  z-index: 300;
-  transform: translateY(100%);
-  transition: transform 0.3s ease;
-  max-width: 480px;
-  margin: 0 auto;
-}
-.drawer.open { transform: translateY(0); }
-
-.drawer-handle { width: 36px; height: 3px; background: #d0c8bc; border-radius: 2px; margin: 0 auto 1.25rem; }
-.drawer-section { margin-bottom: 1.25rem; }
-.drawer-section:last-child { margin-bottom: 0; }
-.drawer-section-title { font-size: 11px; color: #9a8a7a; letter-spacing: 0.08em; margin-bottom: 10px; }
-
-/* 你的狀態輸入 */
-.owner-textarea {
-  width: 100%;
-  background: #fff;
-  border: 1px solid #e0d8cc;
-  border-radius: 8px;
-  padding: 10px 12px;
-  font-size: 13px;
-  font-family: 'Noto Serif TC', serif;
-  color: #4a3a2a;
-  resize: none;
-  height: 72px;
-  line-height: 1.7;
-  outline: none;
-}
-.owner-textarea:focus { border-color: #c8a87a; }
-.owner-textarea::placeholder { color: #c0b0a0; }
-.owner-submit {
-  width: 100%;
-  margin-top: 8px;
-  background: #5a4a3a;
-  color: #f5f0e8;
+.panel-close {
+  background: none;
   border: none;
-  border-radius: 8px;
-  padding: 9px;
-  font-size: 12px;
-  font-family: 'Noto Serif TC', serif;
   cursor: pointer;
-  letter-spacing: 0.05em;
-}
-.owner-submit:active { background: #4a3a2a; }
-.owner-pending { font-size: 11px; color: #8a6a3a; margin-top: 6px; }
-
-/* 開關 */
-.toggles { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.toggle-btn {
-  background: #f0ece4;
-  border: 1px solid #e0d8cc;
-  border-radius: 8px;
-  padding: 8px 12px;
-  font-size: 12px;
-  font-family: 'Noto Serif TC', serif;
-  color: #7a6a5a;
-  cursor: pointer;
+  padding: 0;
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  transition: all 0.15s;
+  gap: 6px;
+  font-size: 11px;
+  font-family: 'Noto Serif TC', serif;
+  color: #9a8a7a;
+  margin-bottom: 0.25rem;
 }
-.toggle-btn.on { background: #fff8e8; border-color: #e8c84a; color: #5a4a2a; }
-.toggle-dot { width: 8px; height: 8px; border-radius: 50%; background: #c0b0a0; flex-shrink: 0; }
-.toggle-btn.on .toggle-dot { background: #e8a020; }
+.panel-close i { font-size: 16px; }
+
+.panel-section-title {
+  font-size: 11px;
+  color: #9a8a7a;
+  letter-spacing: 0.08em;
+  margin-bottom: 8px;
+}
 
 /* 清潔度 */
 .clean-bar-wrap { background: #e8e0d4; border-radius: 4px; height: 5px; margin: 6px 0 4px; overflow: hidden; }
 .clean-bar-fill { height: 100%; border-radius: 4px; transition: width 0.3s; }
 .clean-desc { font-size: 11px; color: #9a8a7a; }
-.clean-controls { display: flex; gap: 8px; margin-top: 8px; }
-.clean-btn {
-  flex: 1;
-  background: #f0ece4;
+
+/* toggle switch */
+.toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid #ede8e0;
+}
+.toggle-row:last-child { border-bottom: none; }
+.toggle-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #5a4a3a;
+}
+.toggle-label i { font-size: 18px; color: #9a8a7a; }
+.toggle-label i.on { color: #e8a020; }
+
+.switch {
+  position: relative;
+  width: 36px;
+  height: 20px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.switch input { opacity: 0; width: 0; height: 0; }
+.switch-track {
+  position: absolute;
+  inset: 0;
+  background: #d0c8bc;
+  border-radius: 10px;
+  transition: background 0.2s;
+}
+.switch-thumb {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 14px;
+  height: 14px;
+  background: #fff;
+  border-radius: 50%;
+  transition: left 0.2s;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+.switch.on .switch-track { background: #e8a020; }
+.switch.on .switch-thumb { left: 19px; }
+
+/* 狀態輸入 */
+.owner-textarea {
+  width: 100%;
+  background: #fff;
   border: 1px solid #e0d8cc;
   border-radius: 8px;
-  padding: 7px;
+  padding: 8px 10px;
   font-size: 12px;
   font-family: 'Noto Serif TC', serif;
-  color: #7a6a5a;
-  cursor: pointer;
-  text-align: center;
+  color: #4a3a2a;
+  resize: none;
+  height: 60px;
+  line-height: 1.7;
+  outline: none;
 }
-.clean-btn:active { background: #e8e0d4; }
+.owner-textarea:focus { border-color: #c8a87a; }
+.owner-textarea::placeholder { color: #c0b0a0; font-size: 11px; }
 
-.weather-tag { font-size: 11px; color: #9a8a7a; margin-top: 8px; }
+.owner-submit {
+  width: 100%;
+  margin-top: 6px;
+  background: #5a4a3a;
+  color: #f5f0e8;
+  border: none;
+  border-radius: 8px;
+  padding: 8px;
+  font-size: 11px;
+  font-family: 'Noto Serif TC', serif;
+  cursor: pointer;
+  letter-spacing: 0.05em;
+}
+.owner-submit:active { background: #4a3a2a; }
+.owner-pending { font-size: 10px; color: #8a6a3a; margin-top: 4px; }
+
+/* 對房間的行為 */
+.room-action-wrap { display: none; }
+.room-action-wrap.visible { display: block; }
+.room-action-title { font-size: 11px; color: #c07050; letter-spacing: 0.08em; margin-bottom: 8px; }
+.room-action-textarea {
+  width: 100%;
+  background: #fff;
+  border: 1px solid #e8c8b0;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 12px;
+  font-family: 'Noto Serif TC', serif;
+  color: #4a3a2a;
+  resize: none;
+  height: 56px;
+  line-height: 1.7;
+  outline: none;
+  max-length: 50;
+}
+.room-action-textarea:focus { border-color: #e8a070; }
+.room-action-textarea::placeholder { color: #c0b0a0; font-size: 11px; }
+.room-action-submit {
+  width: 100%;
+  margin-top: 6px;
+  background: #8a5a3a;
+  color: #f5f0e8;
+  border: none;
+  border-radius: 8px;
+  padding: 8px;
+  font-size: 11px;
+  font-family: 'Noto Serif TC', serif;
+  cursor: pointer;
+}
+.room-action-submit:active { background: #7a4a2a; }
+
+@media (max-width: 400px) {
+  .side-panel { width: 85vw; }
+}
 </style>
 </head>
 <body>
@@ -195,56 +267,107 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
   </div>
 </div>
 
-<!-- 右下角按鈕 -->
-<button class="drawer-btn" id="drawer-btn" onclick="openDrawer()" aria-label="環境設定">
-  <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M2 12h3M19 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12"/></svg>
+<!-- 右下角同居人按鈕 -->
+<button class="panel-btn" id="panel-btn" onclick="openPanel()" aria-label="同居人面板">
+  <i class="ti ti-user-circle"></i>
 </button>
 
-<!-- 抽屜 -->
-<div class="drawer-overlay" id="overlay" onclick="closeDrawer()"></div>
-<div class="drawer" id="drawer">
-  <div class="drawer-handle"></div>
+<!-- 側面板 -->
+<div class="overlay" id="overlay" onclick="closePanel()"></div>
+<div class="side-panel" id="side-panel">
 
-  <div class="drawer-section">
-    <div class="drawer-section-title">同居人狀態</div>
-    <textarea class="owner-textarea" id="owner-input" placeholder="今天做了什麼、房間的變化、有什麼想讓白糰糰知道的..."></textarea>
-    <button class="owner-submit" onclick="submitOwner()">送出・等待世界回應</button>
-    <div class="owner-pending" id="owner-pending"></div>
-  </div>
+  <button class="panel-close" onclick="closePanel()">
+    <i class="ti ti-x"></i> 關閉
+  </button>
 
-  <div class="drawer-section">
-    <div class="drawer-section-title">開關</div>
-    <div class="toggles">
-      <button class="toggle-btn" id="btn-window" onclick="toggle('window_open')">窗戶 <span class="toggle-dot"></span></button>
-      <button class="toggle-btn" id="btn-ac" onclick="toggle('ac_on')">冷氣 <span class="toggle-dot"></span></button>
-      <button class="toggle-btn" id="btn-light" onclick="toggle('light_on')">燈 <span class="toggle-dot"></span></button>
-      <button class="toggle-btn" id="btn-toilet" onclick="toggle('toilet_open')">廁所門 <span class="toggle-dot"></span></button>
-    </div>
-  </div>
-
-  <div class="drawer-section">
-    <div class="drawer-section-title">房間清潔度</div>
+  <div>
+    <div class="panel-section-title">房間清潔度</div>
     <div class="clean-bar-wrap">
       <div class="clean-bar-fill" id="clean-bar" style="width:78%"></div>
     </div>
     <div class="clean-desc" id="clean-desc">—</div>
-    <div class="clean-controls">
-      <button class="clean-btn" onclick="adjustClean(20)">打掃 ＋</button>
-      <button class="clean-btn" onclick="adjustClean(-10)">放著不管 －</button>
-    </div>
-    <div class="weather-tag" id="weather-tag"></div>
   </div>
+
+  <div>
+    <div class="panel-section-title">開關</div>
+    <div class="toggle-row">
+      <div class="toggle-label">
+        <i class="ti ti-bulb" id="icon-light"></i> 燈
+      </div>
+      <div class="switch" id="sw-light" onclick="toggle('light_on')">
+        <div class="switch-track"></div>
+        <div class="switch-thumb"></div>
+      </div>
+    </div>
+    <div class="toggle-row">
+      <div class="toggle-label">
+        <i class="ti ti-door" id="icon-toilet"></i> 廁所門
+      </div>
+      <div class="switch" id="sw-toilet" onclick="toggle('toilet_open')">
+        <div class="switch-track"></div>
+        <div class="switch-thumb"></div>
+      </div>
+    </div>
+    <div class="toggle-row">
+      <div class="toggle-label">
+        <i class="ti ti-window" id="icon-window"></i> 窗戶
+      </div>
+      <div class="switch" id="sw-window" onclick="toggle('window_open')">
+        <div class="switch-track"></div>
+        <div class="switch-thumb"></div>
+      </div>
+    </div>
+    <div class="toggle-row">
+      <div class="toggle-label">
+        <i class="ti ti-snowflake" id="icon-ac"></i> 冷氣
+      </div>
+      <div class="switch" id="sw-ac" onclick="toggle('ac_on')">
+        <div class="switch-track"></div>
+        <div class="switch-thumb"></div>
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <div class="panel-section-title">我的狀態</div>
+    <textarea class="owner-textarea" id="owner-input" maxlength="30" placeholder="在做什麼、有什麼變化..."></textarea>
+    <button class="owner-submit" onclick="submitOwner()">送出・等待世界回應</button>
+    <div class="owner-pending" id="owner-pending"></div>
+  </div>
+
+  <div class="room-action-wrap" id="room-action-wrap">
+    <div class="room-action-title">對房間的行為</div>
+    <textarea class="room-action-textarea" id="room-action-input" maxlength="50" placeholder=""></textarea>
+    <button class="room-action-submit" onclick="submitRoomAction()">送出</button>
+  </div>
+
 </div>
 
 <script>
 let roomState = { window_open: false, ac_on: false, light_on: true, toilet_open: false, cleanliness: 78 };
 
-function openDrawer() {
-  document.getElementById('drawer').classList.add('open');
-  document.getElementById('overlay').classList.add('open');
+const ROOM_PLACEHOLDERS = [
+  '把桌上的東西整理了一下...',
+  '順手把垃圾帶出去...',
+  '地板掃了掃...',
+  '開冰箱拿東西，忘了關...',
+  '把髒衣服堆到角落...',
+  '擦了一下窗台...',
+  '把書堆疊好了...',
+  '廚房水槽洗了一下...',
+];
+
+function randomPlaceholder() {
+  return ROOM_PLACEHOLDERS[Math.floor(Math.random() * ROOM_PLACEHOLDERS.length)];
 }
-function closeDrawer() {
-  document.getElementById('drawer').classList.remove('open');
+
+function openPanel() {
+  document.getElementById('side-panel').classList.add('open');
+  document.getElementById('overlay').classList.add('open');
+  document.getElementById('room-action-input').placeholder = randomPlaceholder();
+}
+function closePanel() {
+  document.getElementById('side-panel').classList.remove('open');
   document.getElementById('overlay').classList.remove('open');
 }
 
@@ -266,31 +389,42 @@ function updateCleanUI() {
   bar.style.width = v + '%';
   bar.style.background = getCleanColor(v);
   document.getElementById('clean-desc').textContent = getCleanDesc(v);
-}
-function updateToggleUI() {
-  const map = { window_open:'btn-window', ac_on:'btn-ac', light_on:'btn-light', toilet_open:'btn-toilet' };
-  for (const [key, id] of Object.entries(map)) {
-    document.getElementById(id).classList.toggle('on', !!roomState[key]);
+  const actionWrap = document.getElementById('room-action-wrap');
+  if (v < 100) {
+    actionWrap.classList.add('visible');
+  } else {
+    actionWrap.classList.remove('visible');
   }
+}
+
+function updateSwitchUI(id, isOn) {
+  const sw = document.getElementById(id);
+  if (isOn) sw.classList.add('on');
+  else sw.classList.remove('on');
+}
+function updateIconUI(id, isOn) {
+  const icon = document.getElementById(id);
+  if (isOn) icon.classList.add('on');
+  else icon.classList.remove('on');
+}
+function updateAllToggles() {
+  updateSwitchUI('sw-light', roomState.light_on);
+  updateSwitchUI('sw-toilet', roomState.toilet_open);
+  updateSwitchUI('sw-window', roomState.window_open);
+  updateSwitchUI('sw-ac', roomState.ac_on);
+  updateIconUI('icon-light', roomState.light_on);
+  updateIconUI('icon-toilet', roomState.toilet_open);
+  updateIconUI('icon-window', roomState.window_open);
+  updateIconUI('icon-ac', roomState.ac_on);
 }
 
 async function toggle(key) {
   roomState[key] = !roomState[key];
-  updateToggleUI();
+  updateAllToggles();
   await fetch('/api/room', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ [key]: roomState[key] })
-  });
-}
-
-async function adjustClean(delta) {
-  roomState.cleanliness = Math.max(0, Math.min(100, roomState.cleanliness + delta));
-  updateCleanUI();
-  await fetch('/api/room', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ cleanliness: roomState.cleanliness })
   });
 }
 
@@ -302,8 +436,24 @@ async function submitOwner() {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ input })
   });
-  document.getElementById('owner-pending').textContent = '已送出，等待白糰糰的世界回應後清空';
-  document.getElementById('drawer-btn').classList.add('has-input');
+  document.getElementById('owner-pending').textContent = '等待白糰糰的世界回應後清空';
+  document.getElementById('panel-btn').classList.add('has-input');
+}
+
+async function submitRoomAction() {
+  const input = document.getElementById('room-action-input').value.trim();
+  if (!input) return;
+  const current = document.getElementById('owner-input').value.trim();
+  const combined = current ? current + '。' + input : input;
+  await fetch('/api/owner', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ input: combined })
+  });
+  document.getElementById('room-action-input').value = '';
+  document.getElementById('room-action-input').placeholder = randomPlaceholder();
+  document.getElementById('owner-pending').textContent = '等待白糰糰的世界回應後清空';
+  document.getElementById('panel-btn').classList.add('has-input');
 }
 
 function parseLog(log) {
@@ -353,21 +503,19 @@ async function load() {
     roomState.light_on = world.room.light_on !== false;
     roomState.toilet_open = world.room.toilet_open || false;
     roomState.cleanliness = world.room.cleanliness;
-    updateToggleUI();
+    updateAllToggles();
     updateCleanUI();
-
-    if (world.weather) {
-      document.getElementById('weather-tag').textContent = `${world.weather} ${world.temp}℃`;
-    }
 
     const ownerInput = world.owner_input || '';
     if (ownerInput) {
-      document.getElementById('owner-input').value = ownerInput;
+      if (!document.getElementById('owner-input').dataset.editing) {
+        document.getElementById('owner-input').value = ownerInput;
+      }
       document.getElementById('owner-pending').textContent = '等待白糰糰的世界回應後清空';
-      document.getElementById('drawer-btn').classList.add('has-input');
+      document.getElementById('panel-btn').classList.add('has-input');
     } else {
       document.getElementById('owner-pending').textContent = '';
-      document.getElementById('drawer-btn').classList.remove('has-input');
+      document.getElementById('panel-btn').classList.remove('has-input');
       if (!document.getElementById('owner-input').dataset.editing) {
         document.getElementById('owner-input').value = '';
       }
