@@ -7,14 +7,13 @@
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;500&display=swap" rel="stylesheet">
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
-body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 4rem; font-family: 'Noto Serif TC', serif; }
+body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-family: 'Noto Serif TC', serif; }
 
 .cover { max-width: 480px; margin: 0 auto 1.5rem; text-align: center; }
 .cover h1 { font-size: 22px; font-weight: 500; color: #5a4a3a; letter-spacing: 0.15em; margin-bottom: 4px; }
 .cover-date { font-size: 12px; color: #9a8a7a; letter-spacing: 0.1em; }
 
-.notebook { max-width: 480px; margin: 0 auto 1.5rem; background: #fff; border-radius: 4px; box-shadow: 2px 2px 12px rgba(0,0,0,0.08); overflow: hidden; }
-
+.notebook { max-width: 480px; margin: 0 auto; background: #fff; border-radius: 4px; box-shadow: 2px 2px 12px rgba(0,0,0,0.08); overflow: hidden; }
 .notebook-header { padding: 1.25rem 1.5rem 1rem; border-bottom: 2px solid #e8c84a; }
 .header-label { font-size: 11px; color: #9a8a7a; letter-spacing: 0.1em; margin-bottom: 8px; }
 .status-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
@@ -23,42 +22,146 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 4rem; font-fam
 .bar-hp { height: 100%; background: #7ab87a; border-radius: 2px; transition: width 0.5s; }
 .bar-food { height: 100%; background: #e8b45a; border-radius: 2px; transition: width 0.5s; }
 .location-tag { font-size: 11px; color: #9a8a7a; margin-left: auto; }
-.fur-tag { font-size: 11px; color: #c07050; }
-.shadow-active { font-size: 11px; color: #c07050; margin-top: 6px; }
+.fur-tag { font-size: 11px; color: #c07050; margin-top: 4px; }
+.shadow-active { font-size: 11px; color: #c07050; }
 
 .entries { padding: 0 1.5rem; }
 .entry { border-bottom: 1px solid #ede8e0; padding: 1rem 0; }
 .entry:last-child { border-bottom: none; }
-.entry-time { font-size: 11px; color: #b0a090; margin-bottom: 6px; letter-spacing: 0.05em; }
+.entry-time { font-size: 11px; color: #b0a090; margin-bottom: 6px; }
 .entry-text { font-size: 14px; color: #4a3a2a; line-height: 2; white-space: pre-line; }
 .entry-stats { font-size: 11px; color: #b0a090; margin-top: 6px; }
 .entry-shadow { font-size: 11px; color: #c07050; margin-top: 3px; }
-
 .empty { padding: 3rem 1.5rem; text-align: center; font-size: 13px; color: #b0a090; line-height: 2; }
 
-.room-panel { max-width: 480px; margin: 0 auto 1.5rem; background: #fff; border-radius: 4px; box-shadow: 2px 2px 12px rgba(0,0,0,0.08); overflow: hidden; }
-.room-header { padding: 1rem 1.5rem 0.75rem; border-bottom: 1px solid #ede8e0; display: flex; justify-content: space-between; align-items: center; }
-.room-header-label { font-size: 11px; color: #9a8a7a; letter-spacing: 0.1em; }
-.room-body { padding: 1rem 1.5rem; }
+/* 右下角抽屜按鈕 */
+.drawer-btn {
+  position: fixed;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: #5a4a3a;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  z-index: 100;
+  transition: background 0.2s;
+}
+.drawer-btn:hover { background: #4a3a2a; }
+.drawer-btn svg { width: 20px; height: 20px; stroke: #f5f0e8; fill: none; stroke-width: 1.5; }
+.drawer-btn.has-input { background: #8a6a3a; }
 
-.room-section { margin-bottom: 1rem; }
-.room-section:last-child { margin-bottom: 0; }
-.room-section-title { font-size: 11px; color: #9a8a7a; margin-bottom: 8px; letter-spacing: 0.05em; }
+/* 抽屜 */
+.drawer-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.3);
+  z-index: 200;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s;
+}
+.drawer-overlay.open { opacity: 1; pointer-events: all; }
 
+.drawer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: #faf8f4;
+  border-radius: 16px 16px 0 0;
+  padding: 1.25rem 1.5rem 2rem;
+  z-index: 300;
+  transform: translateY(100%);
+  transition: transform 0.3s ease;
+  max-width: 480px;
+  margin: 0 auto;
+}
+.drawer.open { transform: translateY(0); }
+
+.drawer-handle { width: 36px; height: 3px; background: #d0c8bc; border-radius: 2px; margin: 0 auto 1.25rem; }
+.drawer-section { margin-bottom: 1.25rem; }
+.drawer-section:last-child { margin-bottom: 0; }
+.drawer-section-title { font-size: 11px; color: #9a8a7a; letter-spacing: 0.08em; margin-bottom: 10px; }
+
+/* 你的狀態輸入 */
+.owner-textarea {
+  width: 100%;
+  background: #fff;
+  border: 1px solid #e0d8cc;
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 13px;
+  font-family: 'Noto Serif TC', serif;
+  color: #4a3a2a;
+  resize: none;
+  height: 72px;
+  line-height: 1.7;
+  outline: none;
+}
+.owner-textarea:focus { border-color: #c8a87a; }
+.owner-textarea::placeholder { color: #c0b0a0; }
+.owner-submit {
+  width: 100%;
+  margin-top: 8px;
+  background: #5a4a3a;
+  color: #f5f0e8;
+  border: none;
+  border-radius: 8px;
+  padding: 9px;
+  font-size: 12px;
+  font-family: 'Noto Serif TC', serif;
+  cursor: pointer;
+  letter-spacing: 0.05em;
+}
+.owner-submit:active { background: #4a3a2a; }
+.owner-pending { font-size: 11px; color: #8a6a3a; margin-top: 6px; }
+
+/* 開關 */
 .toggles { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.toggle-btn { background: #f5f0e8; border: 1px solid #e0d8cc; border-radius: 6px; padding: 8px 12px; font-size: 12px; font-family: 'Noto Serif TC', serif; color: #7a6a5a; cursor: pointer; text-align: left; transition: all 0.15s; display: flex; justify-content: space-between; align-items: center; }
+.toggle-btn {
+  background: #f0ece4;
+  border: 1px solid #e0d8cc;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 12px;
+  font-family: 'Noto Serif TC', serif;
+  color: #7a6a5a;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: all 0.15s;
+}
 .toggle-btn.on { background: #fff8e8; border-color: #e8c84a; color: #5a4a2a; }
-.toggle-dot { width: 8px; height: 8px; border-radius: 50%; background: #c0b0a0; }
-.toggle-btn.on .toggle-dot { background: #e8c84a; }
+.toggle-dot { width: 8px; height: 8px; border-radius: 50%; background: #c0b0a0; flex-shrink: 0; }
+.toggle-btn.on .toggle-dot { background: #e8a020; }
 
-.clean-bar-wrap { background: #ede8e0; border-radius: 4px; height: 6px; margin: 6px 0; overflow: hidden; cursor: pointer; }
+/* 清潔度 */
+.clean-bar-wrap { background: #e8e0d4; border-radius: 4px; height: 5px; margin: 6px 0 4px; overflow: hidden; }
 .clean-bar-fill { height: 100%; border-radius: 4px; transition: width 0.3s; }
-.clean-desc { font-size: 11px; color: #9a8a7a; margin-top: 4px; }
+.clean-desc { font-size: 11px; color: #9a8a7a; }
 .clean-controls { display: flex; gap: 8px; margin-top: 8px; }
-.clean-btn { flex: 1; background: #f5f0e8; border: 1px solid #e0d8cc; border-radius: 6px; padding: 6px; font-size: 12px; font-family: 'Noto Serif TC', serif; color: #7a6a5a; cursor: pointer; text-align: center; }
-.clean-btn:active { background: #ede8e0; }
+.clean-btn {
+  flex: 1;
+  background: #f0ece4;
+  border: 1px solid #e0d8cc;
+  border-radius: 8px;
+  padding: 7px;
+  font-size: 12px;
+  font-family: 'Noto Serif TC', serif;
+  color: #7a6a5a;
+  cursor: pointer;
+  text-align: center;
+}
+.clean-btn:active { background: #e8e0d4; }
 
-.weather-row { display: flex; gap: 16px; font-size: 12px; color: #7a6a5a; }
+.weather-tag { font-size: 11px; color: #9a8a7a; margin-top: 8px; }
 </style>
 </head>
 <body>
@@ -92,87 +195,82 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 4rem; font-fam
   </div>
 </div>
 
-<div class="room-panel">
-  <div class="room-header">
-    <div class="room-header-label">居住環境</div>
-    <div class="weather-row" id="weather-row">—</div>
+<!-- 右下角按鈕 -->
+<button class="drawer-btn" id="drawer-btn" onclick="openDrawer()" aria-label="環境設定">
+  <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M2 12h3M19 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12"/></svg>
+</button>
+
+<!-- 抽屜 -->
+<div class="drawer-overlay" id="overlay" onclick="closeDrawer()"></div>
+<div class="drawer" id="drawer">
+  <div class="drawer-handle"></div>
+
+  <div class="drawer-section">
+    <div class="drawer-section-title">同居人狀態</div>
+    <textarea class="owner-textarea" id="owner-input" placeholder="今天做了什麼、房間的變化、有什麼想讓白糰糰知道的..."></textarea>
+    <button class="owner-submit" onclick="submitOwner()">送出・等待世界回應</button>
+    <div class="owner-pending" id="owner-pending"></div>
   </div>
-  <div class="room-body">
 
-    <div class="room-section">
-      <div class="room-section-title">開關</div>
-      <div class="toggles">
-        <button class="toggle-btn" id="btn-window" onclick="toggle('window_open')">
-          窗戶 <span class="toggle-dot"></span>
-        </button>
-        <button class="toggle-btn" id="btn-ac" onclick="toggle('ac_on')">
-          冷氣 <span class="toggle-dot"></span>
-        </button>
-        <button class="toggle-btn" id="btn-light" onclick="toggle('light_on')">
-          燈 <span class="toggle-dot"></span>
-        </button>
-        <button class="toggle-btn" id="btn-toilet" onclick="toggle('toilet_open')">
-          廁所門 <span class="toggle-dot"></span>
-        </button>
-      </div>
+  <div class="drawer-section">
+    <div class="drawer-section-title">開關</div>
+    <div class="toggles">
+      <button class="toggle-btn" id="btn-window" onclick="toggle('window_open')">窗戶 <span class="toggle-dot"></span></button>
+      <button class="toggle-btn" id="btn-ac" onclick="toggle('ac_on')">冷氣 <span class="toggle-dot"></span></button>
+      <button class="toggle-btn" id="btn-light" onclick="toggle('light_on')">燈 <span class="toggle-dot"></span></button>
+      <button class="toggle-btn" id="btn-toilet" onclick="toggle('toilet_open')">廁所門 <span class="toggle-dot"></span></button>
     </div>
+  </div>
 
-    <div class="room-section">
-      <div class="room-section-title">房間清潔度</div>
-      <div class="clean-bar-wrap">
-        <div class="clean-bar-fill" id="clean-bar" style="width:78%"></div>
-      </div>
-      <div class="clean-desc" id="clean-desc">—</div>
-      <div class="clean-controls">
-        <button class="clean-btn" onclick="adjustClean(-10)">打掃一下 ＋</button>
-        <button class="clean-btn" onclick="adjustClean(10)">放著不管 －</button>
-      </div>
+  <div class="drawer-section">
+    <div class="drawer-section-title">房間清潔度</div>
+    <div class="clean-bar-wrap">
+      <div class="clean-bar-fill" id="clean-bar" style="width:78%"></div>
     </div>
-
+    <div class="clean-desc" id="clean-desc">—</div>
+    <div class="clean-controls">
+      <button class="clean-btn" onclick="adjustClean(20)">打掃 ＋</button>
+      <button class="clean-btn" onclick="adjustClean(-10)">放著不管 －</button>
+    </div>
+    <div class="weather-tag" id="weather-tag"></div>
   </div>
 </div>
 
 <script>
-let roomState = {
-  window_open: false,
-  ac_on: false,
-  light_on: true,
-  toilet_open: false,
-  cleanliness: 78
-};
+let roomState = { window_open: false, ac_on: false, light_on: true, toilet_open: false, cleanliness: 78 };
+
+function openDrawer() {
+  document.getElementById('drawer').classList.add('open');
+  document.getElementById('overlay').classList.add('open');
+}
+function closeDrawer() {
+  document.getElementById('drawer').classList.remove('open');
+  document.getElementById('overlay').classList.remove('open');
+}
 
 function getCleanDesc(v) {
   if (v >= 80) return '乾淨，小黑影沒什麼動靜';
   if (v >= 50) return '有些灰塵，角落開始積東西';
-  if (v >= 30) return '有點亂，但白糰糰能找到不少寶藏';
+  if (v >= 30) return '有點亂，白糰糰能找到不少寶藏';
   if (v >= 15) return '很髒，白糰糰開始癢癢，小黑影活躍';
   return '非常髒亂，白糰糰拚命蹭，禿塊風險高';
 }
-
 function getCleanColor(v) {
   if (v >= 60) return '#7ab87a';
   if (v >= 30) return '#e8b45a';
   return '#c07050';
 }
-
 function updateCleanUI() {
   const v = roomState.cleanliness;
-  document.getElementById('clean-bar').style.width = v + '%';
-  document.getElementById('clean-bar').style.background = getCleanColor(v);
+  const bar = document.getElementById('clean-bar');
+  bar.style.width = v + '%';
+  bar.style.background = getCleanColor(v);
   document.getElementById('clean-desc').textContent = getCleanDesc(v);
 }
-
 function updateToggleUI() {
-  const map = {
-    window_open: 'btn-window',
-    ac_on: 'btn-ac',
-    light_on: 'btn-light',
-    toilet_open: 'btn-toilet'
-  };
+  const map = { window_open:'btn-window', ac_on:'btn-ac', light_on:'btn-light', toilet_open:'btn-toilet' };
   for (const [key, id] of Object.entries(map)) {
-    const btn = document.getElementById(id);
-    if (roomState[key]) btn.classList.add('on');
-    else btn.classList.remove('on');
+    document.getElementById(id).classList.toggle('on', !!roomState[key]);
   }
 }
 
@@ -187,13 +285,25 @@ async function toggle(key) {
 }
 
 async function adjustClean(delta) {
-  roomState.cleanliness = Math.max(0, Math.min(100, roomState.cleanliness - delta));
+  roomState.cleanliness = Math.max(0, Math.min(100, roomState.cleanliness + delta));
   updateCleanUI();
   await fetch('/api/room', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ cleanliness: roomState.cleanliness })
   });
+}
+
+async function submitOwner() {
+  const input = document.getElementById('owner-input').value.trim();
+  if (!input) return;
+  await fetch('/api/owner', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ input })
+  });
+  document.getElementById('owner-pending').textContent = '已送出，等待白糰糰的世界回應後清空';
+  document.getElementById('drawer-btn').classList.add('has-input');
 }
 
 function parseLog(log) {
@@ -232,15 +342,11 @@ async function load() {
     document.getElementById('val-hp').textContent = bt.hp + '%';
     document.getElementById('val-food').textContent = bt.food + '%';
     document.getElementById('location').textContent = bt.location;
-
-    const fur = bt.fur && bt.fur !== '正常' ? bt.fur : '';
-    document.getElementById('fur-tag').textContent = fur;
-    document.getElementById('shadow-tag').textContent =
-      world.characters.shadow.active ? '⚠ 小黑影出沒中' : '';
+    document.getElementById('fur-tag').textContent = bt.fur && bt.fur !== '正常' ? bt.fur : '';
+    document.getElementById('shadow-tag').textContent = world.characters.shadow.active ? '⚠ 小黑影出沒中' : '';
 
     const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Taipei' }));
-    document.getElementById('cover-date').textContent =
-      (now.getMonth()+1) + ' 月 ' + now.getDate() + ' 日';
+    document.getElementById('cover-date').textContent = (now.getMonth()+1) + ' 月 ' + now.getDate() + ' 日';
 
     roomState.window_open = world.room.window_open;
     roomState.ac_on = world.room.ac_on || false;
@@ -250,8 +356,22 @@ async function load() {
     updateToggleUI();
     updateCleanUI();
 
-    document.getElementById('weather-row').textContent =
-      world.weather ? `${world.weather} ${world.temp}℃` : '—';
+    if (world.weather) {
+      document.getElementById('weather-tag').textContent = `${world.weather} ${world.temp}℃`;
+    }
+
+    const ownerInput = world.owner_input || '';
+    if (ownerInput) {
+      document.getElementById('owner-input').value = ownerInput;
+      document.getElementById('owner-pending').textContent = '等待白糰糰的世界回應後清空';
+      document.getElementById('drawer-btn').classList.add('has-input');
+    } else {
+      document.getElementById('owner-pending').textContent = '';
+      document.getElementById('drawer-btn').classList.remove('has-input');
+      if (!document.getElementById('owner-input').dataset.editing) {
+        document.getElementById('owner-input').value = '';
+      }
+    }
 
     const entries = parseLog(data.log);
     const container = document.getElementById('entries');
@@ -269,10 +389,16 @@ async function load() {
     `).join('');
 
   } catch(e) {
-    document.getElementById('entries').innerHTML =
-      '<div class="empty">暫時無法連線。</div>';
+    document.getElementById('entries').innerHTML = '<div class="empty">暫時無法連線。</div>';
   }
 }
+
+document.getElementById('owner-input').addEventListener('focus', () => {
+  document.getElementById('owner-input').dataset.editing = 'true';
+});
+document.getElementById('owner-input').addEventListener('blur', () => {
+  delete document.getElementById('owner-input').dataset.editing;
+});
 
 load();
 setInterval(load, 3 * 60 * 1000);

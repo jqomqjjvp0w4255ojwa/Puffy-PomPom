@@ -19,8 +19,15 @@ const SYSTEM_PROMPT = `你是白糰糰宇宙的世界引擎。根據當前世界
 - 禿塊：蹭太多某處毛稀疏，他會用竹籤遮住那塊不讓人看
 
 小黑影：
-半物質影子生命，只活動在陰影中，不說話，以荒唐方式騷擾白糰糰。
-清潔度低於60時變活躍。用「他」稱呼。
+半物質影子生命，介於存在與不存在之間，狀似史萊姆，死魚眼，尾巴像電線。
+只活動在陰影中，不說話，能吞噬物質展現其特徵。
+個性孤傲輕慢，反骨，高智商但懶惰，行為荒誕我行我素。
+以荒唐錯誤的方式親近白糰糰，讓白糰糰以為被欺負，白糰糰常拿竹籤戳他。
+喜歡收集灰塵捏成Mr. DUST（風吹即散的小兵）。
+無羞恥無愧疚，但會因自身變化產生好奇而觀測。
+清潔度低於60時變活躍，低於30時可能讓Mr. DUST現身。
+用「它」稱呼。
+
 
 食物來源邏輯：
 - 白糰糰無法自己開冰箱
@@ -132,6 +139,22 @@ const server = http.createServer((req, res) => {
       res.writeHead(500);
       res.end('error');
     }
+} else if (req.url.startsWith('/api/owner')) {
+    try {
+      const body = [];
+      req.on('data', chunk => body.push(chunk));
+      req.on('end', () => {
+        const data = JSON.parse(Buffer.concat(body).toString());
+        const world = JSON.parse(fs.readFileSync('world.json', 'utf8'));
+        world.owner_input = data.input || '';
+        fs.writeFileSync('world.json', JSON.stringify(world, null, 2));
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ ok: true }));
+      });
+    } catch (e) {
+      res.writeHead(500);
+      res.end('error');
+    }
 
   } else if (req.url === '/' || req.url === '/index.html') {
     try {
@@ -159,13 +182,15 @@ async function tick() {
   const { display } = getRealTime();
   const bt = world.characters.baituantuan;
 
+  const ownerInput = world.owner_input ? `\n同居人最近的動態：${world.owner_input}` : '';
+
   const prompt = `當前時間：${display}
 白糰糰：健康${bt.hp} 飽食${bt.food} 毛況:${bt.fur || '正常'} 位置:${bt.location}
 小黑影：${world.characters.shadow.active ? '活躍' : '潛伏'} 位置:${world.characters.shadow.location} 灰塵:${world.characters.shadow.dust_count}
 房間清潔度：${world.room.cleanliness}
 窗戶：${world.room.window_open ? '開' : '關'} 冷氣：${world.room.ac_on ? '開' : '關'} 燈：${world.room.light_on ? '開' : '關'} 廁所門：${world.room.toilet_open ? '開' : '關'}
 今天已發生：${world.room.events_today.join('，') || '無'}
-近期記憶：${(bt.memory || []).slice(-3).join(' / ') || '無'}
+近期記憶：${(bt.memory || []).slice(-3).join(' / ') || '無'}${ownerInput}
 
 生成這段時間白糰糰的動態。`;
 
@@ -197,6 +222,13 @@ async function tick() {
       room: { ...world.room, ...result.room }
     };
 
+    if (world.owner_input) {
+      newWorld.owner_log = [...(world.owner_log || []).slice(-20), {
+        time: display,
+        input: world.owner_input
+      }];
+      newWorld.owner_input = '';
+    }
     fs.writeFileSync('world.json', JSON.stringify(newWorld, null, 2));
 
     const furNote = result.baituantuan.fur && result.baituantuan.fur !== '正常'
