@@ -128,29 +128,49 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
 .clean-bar-fill { height: 100%; border-radius: 4px; transition: width 0.3s; }
 .clean-desc { font-size: 11px; color: #9a8a7a; }
 
-.icon-toggles {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 8px;
-}
-.icon-toggle {
-  background: #f0ece4;
-  border: 1px solid #e0d8cc;
-  border-radius: 10px;
-  padding: 10px 8px 8px;
+.switch-rows {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  cursor: pointer;
-  transition: all 0.15s;
+  gap: 12px;
 }
-.icon-toggle i { font-size: 20px; color: #b0a090; transition: color 0.15s; }
-.icon-toggle span { font-size: 10px; color: #9a8a7a; font-family: 'Noto Serif TC', serif; }
-.icon-toggle.on { background: #fff8e8; border-color: #e8c84a; }
-.icon-toggle.on i { color: #e8a020; }
-.icon-toggle.on span { color: #8a6a2a; }
-.icon-toggle:active { transform: scale(0.95); }
+.switch-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.switch-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #6a5a4a;
+  font-family: 'Noto Serif TC', serif;
+}
+.switch-label i { font-size: 16px; color: #b0a090; transition: color 0.15s; }
+.switch {
+  width: 42px;
+  height: 24px;
+  border-radius: 12px;
+  background: #e0d8cc;
+  position: relative;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.2s;
+}
+.switch-knob {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.25);
+  transition: left 0.2s;
+}
+.switch.on { background: #e8c84a; }
+.switch.on .switch-knob { left: 21px; }
+.switch-row:has(.switch.on) .switch-label i { color: #e8a020; }
 
 .owner-textarea {
   width: 100%;
@@ -327,14 +347,14 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
 
 <div class="guestbook">
   <div class="guestbook-form">
-    <div class="header-label">留言給白糰糰</div>
+    <div class="header-label">給白糰糰的便利貼</div>
     <input type="text" class="visitor-name-input" id="visitor-name" maxlength="20" placeholder="你的名字（可留空）">
     <textarea class="visitor-message-textarea" id="visitor-message" maxlength="100" placeholder="想跟他說的話，他聽不懂，但可能會有反應..."></textarea>
-    <button class="visitor-submit" onclick="submitVisitorMessage()">留言</button>
-    <div class="visitor-pending" id="visitor-pending" style="display:none;">留言已送出，等白糰糰下次有動靜時可能會注意到</div>
+    <button class="visitor-submit" onclick="submitVisitorMessage()">貼上便利貼</button>
+    <div class="visitor-pending" id="visitor-pending" style="display:none;">便利貼已送出，等白糰糰下次有動靜時可能會注意到</div>
   </div>
   <div class="entries" id="visitor-entries">
-    <div class="empty">還沒有人留言。</div>
+    <div class="empty">還沒有便利貼。</div>
   </div>
 </div>
 
@@ -359,22 +379,22 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
 
   <div>
     <div class="panel-section-title">開關</div>
-    <div class="icon-toggles">
-      <div class="icon-toggle" id="it-light" onclick="toggle('light_on')">
-        <i class="ti ti-bulb"></i>
-        <span>燈</span>
+    <div class="switch-rows">
+      <div class="switch-row">
+        <span class="switch-label"><i class="ti ti-bulb"></i> 燈</span>
+        <div class="switch" id="it-light" onclick="toggle('light_on')"><div class="switch-knob"></div></div>
       </div>
-      <div class="icon-toggle" id="it-toilet" onclick="toggle('toilet_open')">
-        <i class="ti ti-door"></i>
-        <span>廁所門</span>
+      <div class="switch-row">
+        <span class="switch-label"><i class="ti ti-door"></i> 廁所門</span>
+        <div class="switch" id="it-toilet" onclick="toggle('toilet_open')"><div class="switch-knob"></div></div>
       </div>
-      <div class="icon-toggle" id="it-window" onclick="toggle('window_open')">
-        <i class="ti ti-window"></i>
-        <span>窗戶</span>
+      <div class="switch-row">
+        <span class="switch-label"><i class="ti ti-window"></i> 窗戶</span>
+        <div class="switch" id="it-window" onclick="toggle('window_open')"><div class="switch-knob"></div></div>
       </div>
-      <div class="icon-toggle" id="it-ac" onclick="toggle('ac_on')">
-        <i class="ti ti-snowflake"></i>
-        <span>冷氣</span>
+      <div class="switch-row">
+        <span class="switch-label"><i class="ti ti-snowflake"></i> 冷氣</span>
+        <div class="switch" id="it-ac" onclick="toggle('ac_on')"><div class="switch-knob"></div></div>
       </div>
     </div>
   </div>
@@ -564,7 +584,7 @@ async function submitVisitorMessage() {
 function renderVisitorEntries(pending, log) {
   const container = document.getElementById('visitor-entries');
   if (pending.length === 0 && log.length === 0) {
-    container.innerHTML = '<div class="empty">還沒有人留言。</div>';
+    container.innerHTML = '<div class="empty">還沒有便利貼。</div>';
     return;
   }
   const pendingHtml = pending.slice().reverse().map(m => `
