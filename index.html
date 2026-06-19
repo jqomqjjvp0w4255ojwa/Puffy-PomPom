@@ -134,55 +134,65 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
 .switch-rows {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
 }
 .switch-row {
   display: flex;
-  gap: 10px;
+  gap: 8px;
 }
-.switch-group {
-  display: flex;
-  align-items: center;
-  gap: 6px;
+.switch-tile {
   flex: 1;
   min-width: 0;
-}
-.switch-group-label {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 2px;
-  font-size: 9px;
-  color: #8a7a6a;
-  font-family: 'Noto Serif TC', serif;
-  line-height: 1.2;
+  gap: 8px;
+  background: #fff;
+  border: 1px solid #ece2d4;
+  border-radius: 12px;
+  padding: 9px 11px;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
 }
-.switch-group-label i { font-size: 22px; color: #b0a090; transition: color 0.15s; }
+.switch-tile > i {
+  font-size: 19px;
+  color: #b0a090;
+  flex-shrink: 0;
+  transition: color 0.2s;
+}
+.switch-label {
+  flex: 1;
+  min-width: 0;
+  font-size: 11px;
+  color: #6a5a4a;
+  font-family: 'Noto Serif TC', serif;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 .switch {
-  width: 36px;
-  height: 21px;
+  width: 34px;
+  height: 20px;
   border-radius: 11px;
   background: #e0d8cc;
   position: relative;
-  cursor: pointer;
   flex-shrink: 0;
   transition: background 0.2s;
-  margin-left: auto;
 }
 .switch-knob {
   position: absolute;
   top: 2.5px;
   left: 2.5px;
-  width: 16px;
-  height: 16px;
+  width: 15px;
+  height: 15px;
   border-radius: 50%;
   background: #fff;
   box-shadow: 0 1px 3px rgba(0,0,0,0.25);
   transition: left 0.2s;
 }
 .switch.on { background: #e8c84a; }
-.switch.on .switch-knob { left: 17.5px; }
-.switch-group:has(.switch.on) .switch-group-label i { color: #e8a020; }
+.switch.on .switch-knob { left: 16.5px; }
+.switch-tile:has(.switch.on) { background: #fdf6e3; border-color: #f0d98a; }
+.switch-tile:has(.switch.on) > i { color: #e8a020; }
 
 .owner-textarea {
   width: 100%;
@@ -244,11 +254,15 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
 .status-icons i:hover { color: #7a6a5a; }
 .clear-confirm {
   display: none;
-  font-size: 10px;
-  color: #c07050;
-  padding: 3px 0;
+  font-size: 11px;
+  color: #fff;
+  background: #c07050;
+  border-radius: 7px;
+  padding: 7px 12px;
   cursor: pointer;
+  font-family: 'Noto Serif TC', serif;
 }
+.clear-confirm:hover { background: #b05f40; }
 
 .room-action-textarea {
   width: 100%;
@@ -279,6 +293,25 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
   cursor: pointer;
 }
 .room-action-submit:active { background: #7a4a2a; }
+
+.compose-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #fff;
+  border: 1px solid #e8c8b0;
+  border-radius: 22px;
+  padding: 10px 15px;
+  font-size: 12px;
+  color: #b89878;
+  font-family: 'Noto Serif TC', serif;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+.compose-pill:hover { border-color: #e8a070; color: #9a7858; }
+.compose-pill i { font-size: 15px; }
+.compose-actions { display: flex; gap: 8px; align-items: center; margin-top: 6px; }
+.compose-actions .room-action-submit { flex: 1; margin-top: 0; }
 
 .profile-card { padding-bottom: 4px; }
 .profile-top {
@@ -329,13 +362,13 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
 .sticky-note[data-color="green"] { background: #c5ecb0; }
 .sticky-note[data-color="pink"] { background: #f7c5dd; }
 
-.sticky-note-menu { position: relative; display: flex; justify-content: flex-end; gap: 10px; }
+.sticky-note-menu { position: relative; display: flex; justify-content: space-between; align-items: center; }
 .sticky-note-menu i { cursor: pointer; font-size: 16px; color: rgba(0,0,0,0.4); padding: 2px; }
 .sticky-note-menu-dropdown {
   display: none;
   position: absolute;
   top: 20px;
-  right: 0;
+  left: 0;
   background: #fff;
   border-radius: 6px;
   box-shadow: 0 2px 10px rgba(0,0,0,0.18);
@@ -476,9 +509,9 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
           <i class="ti ti-pencil" onclick="editStatus()" title="編輯"></i>
         </span>
       </div>
-      <div class="clear-confirm" id="clear-confirm" onclick="confirmClear()">再按一次確認清除</div>
       <div class="edit-actions" id="owner-edit-actions" style="display:none;">
-        <i class="ti ti-x edit-clear-icon" onclick="clearStatus()" title="清除"></i>
+        <i class="ti ti-x edit-clear-icon" id="status-clear-x" onclick="clearStatus()" title="清除"></i>
+        <span class="clear-confirm" id="clear-confirm" onclick="confirmClear()">清除</span>
         <span class="edit-cancel" onclick="cancelStatus()">取消</span>
         <button class="owner-submit" id="owner-submit-btn" onclick="submitStatus()">記錄</button>
       </div>
@@ -489,8 +522,16 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
       <div class="activity-feed" id="activity-feed">
         <div class="empty">還沒有動態。</div>
       </div>
-      <textarea class="room-action-textarea" id="room-action-input" maxlength="50" placeholder=""></textarea>
-      <button class="room-action-submit" onclick="submitRoomAction()">記錄・等待世界回應</button>
+      <div class="compose-pill" id="compose-pill" onclick="openCompose()">
+        <i class="ti ti-plus"></i><span>記錄一則動態…</span>
+      </div>
+      <div class="compose-box" id="compose-box" style="display:none;">
+        <textarea class="room-action-textarea" id="room-action-input" maxlength="50" placeholder=""></textarea>
+        <div class="compose-actions">
+          <span class="edit-cancel" onclick="closeCompose()">取消</span>
+          <button class="room-action-submit" onclick="submitRoomAction()">記錄・等待世界回應</button>
+        </div>
+      </div>
     </div>
 
     <div>
@@ -501,10 +542,10 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
         </span>
       </div>
       <div class="status-display" id="env-display"></div>
-      <div class="clear-confirm" id="env-clear-confirm" onclick="confirmClearEnv()">再按一次確認清除</div>
       <textarea class="owner-textarea" id="env-input" maxlength="60" placeholder="房間現在的樣子..." style="display:none;"></textarea>
       <div class="edit-actions" id="env-edit-actions" style="display:none;">
-        <i class="ti ti-x edit-clear-icon" onclick="clearEnv()" title="清除"></i>
+        <i class="ti ti-x edit-clear-icon" id="env-clear-x" onclick="clearEnv()" title="清除"></i>
+        <span class="clear-confirm" id="env-clear-confirm" onclick="confirmClearEnv()">清除</span>
         <span class="edit-cancel" onclick="cancelEnv()">取消</span>
         <button class="owner-submit" id="env-submit-btn" onclick="submitEnv()">記錄</button>
       </div>
@@ -521,23 +562,27 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
     <div>
       <div class="switch-rows">
         <div class="switch-row">
-          <div class="switch-group">
-            <div class="switch-group-label"><i class="ti ti-bulb"></i><span>燈</span></div>
-            <div class="switch" id="it-light" onclick="toggle('light_on')"><div class="switch-knob"></div></div>
+          <div class="switch-tile" onclick="toggle('light_on')">
+            <i class="ti ti-bulb"></i>
+            <span class="switch-label">燈</span>
+            <div class="switch" id="it-light"><div class="switch-knob"></div></div>
           </div>
-          <div class="switch-group">
-            <div class="switch-group-label"><i class="ti ti-door"></i><span>廁所門</span></div>
-            <div class="switch" id="it-toilet" onclick="toggle('toilet_open')"><div class="switch-knob"></div></div>
+          <div class="switch-tile" onclick="toggle('toilet_open')">
+            <i class="ti ti-door"></i>
+            <span class="switch-label">廁所門</span>
+            <div class="switch" id="it-toilet"><div class="switch-knob"></div></div>
           </div>
         </div>
         <div class="switch-row">
-          <div class="switch-group">
-            <div class="switch-group-label"><i class="ti ti-window"></i><span>窗戶</span></div>
-            <div class="switch" id="it-window" onclick="toggle('window_open')"><div class="switch-knob"></div></div>
+          <div class="switch-tile" onclick="toggle('window_open')">
+            <i class="ti ti-window"></i>
+            <span class="switch-label">窗戶</span>
+            <div class="switch" id="it-window"><div class="switch-knob"></div></div>
           </div>
-          <div class="switch-group">
-            <div class="switch-group-label"><i class="ti ti-snowflake"></i><span>冷氣</span></div>
-            <div class="switch" id="it-ac" onclick="toggle('ac_on')"><div class="switch-knob"></div></div>
+          <div class="switch-tile" onclick="toggle('ac_on')">
+            <i class="ti ti-snowflake"></i>
+            <span class="switch-label">冷氣</span>
+            <div class="switch" id="it-ac"><div class="switch-knob"></div></div>
           </div>
         </div>
       </div>
@@ -552,7 +597,6 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
     <i class="ti ti-dots" onclick="toggleNoteMenu()"></i>
     <i class="ti ti-x" onclick="closeNote()" title="關閉"></i>
     <div class="sticky-note-menu-dropdown" id="note-menu-dropdown">
-      <div onclick="clearNoteDraft()">清除</div>
       <div class="note-color-picker">
         <span class="note-color-dot" data-color="yellow" onclick="setNoteColor('yellow')"></span>
         <span class="note-color-dot" data-color="blue" onclick="setNoteColor('blue')"></span>
@@ -634,31 +678,37 @@ async function toggle(key) {
   });
 }
 
-function createEditableField({ display, icons, input, editActions, clearConfirm, emptyText, onSave, onClear }) {
+function createEditableField({ display, icons, input, editActions, clearIcon, clearConfirm, emptyText, onSave, onClear }) {
   let value = '';
-  let pending = false;
+  let clearTimer = null;
+  let outsideHandler = null;
 
   function render(text) {
     value = text || '';
     display.textContent = value || emptyText;
   }
 
+  function resetClear() {
+    if (clearTimer) { clearTimeout(clearTimer); clearTimer = null; }
+    if (outsideHandler) { document.removeEventListener('click', outsideHandler); outsideHandler = null; }
+    clearConfirm.style.display = 'none';
+    clearIcon.style.display = 'inline';
+  }
+
   function showDisplay() {
+    resetClear();
     display.style.display = 'block';
     icons.style.display = 'flex';
     input.style.display = 'none';
     editActions.style.display = 'none';
-    clearConfirm.style.display = 'none';
-    pending = false;
   }
 
   function showInput() {
+    resetClear();
     display.style.display = 'none';
     icons.style.display = 'none';
     input.style.display = 'block';
     editActions.style.display = 'flex';
-    clearConfirm.style.display = 'none';
-    pending = false;
   }
 
   function edit() {
@@ -670,15 +720,18 @@ function createEditableField({ display, icons, input, editActions, clearConfirm,
     showDisplay();
   }
 
+  // 點 X：藏起 X、露出「清除」確認鈕；2 秒後或點別處則變回 X
   function clear() {
-    if (!pending) {
-      pending = true;
-      clearConfirm.style.display = 'block';
-      setTimeout(() => { pending = false; clearConfirm.style.display = 'none'; }, 3000);
-    }
+    if (clearTimer) return;
+    clearIcon.style.display = 'none';
+    clearConfirm.style.display = 'inline';
+    clearTimer = setTimeout(resetClear, 2000);
+    outsideHandler = (e) => { if (e.target !== clearConfirm) resetClear(); };
+    setTimeout(() => document.addEventListener('click', outsideHandler), 0);
   }
 
   async function confirmClearFn() {
+    resetClear();
     await onClear();
     render('');
     input.value = '';
@@ -709,6 +762,7 @@ const statusField = createEditableField({
   icons: document.getElementById('status-icons'),
   input: document.getElementById('owner-input'),
   editActions: document.getElementById('owner-edit-actions'),
+  clearIcon: document.getElementById('status-clear-x'),
   clearConfirm: document.getElementById('clear-confirm'),
   emptyText: '尚無狀態',
   onSave: (v) => fetch('/api/owner', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'status', input: v }) }),
@@ -725,6 +779,7 @@ const envField = createEditableField({
   icons: document.getElementById('env-icons'),
   input: document.getElementById('env-input'),
   editActions: document.getElementById('env-edit-actions'),
+  clearIcon: document.getElementById('env-clear-x'),
   clearConfirm: document.getElementById('env-clear-confirm'),
   emptyText: '尚無描述',
   onSave: (v) => fetch('/api/room', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ env_desc: v }) }),
@@ -736,6 +791,19 @@ function clearEnv() { envField.clear(); }
 function confirmClearEnv() { envField.confirmClear(); }
 function submitEnv() { envField.submit(); }
 
+function openCompose() {
+  document.getElementById('compose-pill').style.display = 'none';
+  document.getElementById('compose-box').style.display = 'block';
+  const inp = document.getElementById('room-action-input');
+  inp.placeholder = randomPlaceholder();
+  inp.focus();
+}
+function closeCompose() {
+  document.getElementById('compose-box').style.display = 'none';
+  document.getElementById('compose-pill').style.display = 'flex';
+  document.getElementById('room-action-input').value = '';
+}
+
 async function submitRoomAction() {
   const input = document.getElementById('room-action-input').value.trim();
   if (!input) return;
@@ -744,8 +812,7 @@ async function submitRoomAction() {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ type: 'action', input })
   });
-  document.getElementById('room-action-input').value = '';
-  document.getElementById('room-action-input').placeholder = randomPlaceholder();
+  closeCompose();
   document.getElementById('panel-btn').classList.add('has-input');
 }
 
@@ -775,11 +842,6 @@ function setNoteColor(color) {
   document.getElementById('sticky-note').dataset.color = color;
   document.getElementById('note-menu-dropdown').classList.remove('open');
 }
-function clearNoteDraft() {
-  document.getElementById('sticky-note-textarea').value = '';
-  document.getElementById('note-menu-dropdown').classList.remove('open');
-}
-
 function renderNoteSaved(note) {
   noteState.mode = 'saved';
   noteState.savedId = note.id;
