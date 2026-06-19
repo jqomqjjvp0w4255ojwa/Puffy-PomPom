@@ -114,53 +114,27 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
 .clean-bar-fill { height: 100%; border-radius: 4px; transition: width 0.3s; }
 .clean-desc { font-size: 11px; color: #9a8a7a; }
 
-/* toggle switch */
-.toggle-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8px 0;
-  border-bottom: 1px solid #ede8e0;
-}
-.toggle-row:last-child { border-bottom: none; }
-.toggle-label {
-  display: flex;
-  align-items: center;
+/* icon 開關 grid */
+.icon-toggles {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
   gap: 8px;
-  font-size: 13px;
-  color: #5a4a3a;
 }
-.toggle-label i { font-size: 18px; color: #9a8a7a; }
-.toggle-label i.on { color: #e8a020; }
-
-.switch {
-  position: relative;
-  width: 36px;
-  height: 20px;
-  cursor: pointer;
-  flex-shrink: 0;
-}
-.switch input { opacity: 0; width: 0; height: 0; }
-.switch-track {
-  position: absolute;
-  inset: 0;
-  background: #d0c8bc;
+.icon-toggle {
+  aspect-ratio: 1;
+  background: #f0ece4;
+  border: 1px solid #e0d8cc;
   border-radius: 10px;
-  transition: background 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s;
 }
-.switch-thumb {
-  position: absolute;
-  top: 3px;
-  left: 3px;
-  width: 14px;
-  height: 14px;
-  background: #fff;
-  border-radius: 50%;
-  transition: left 0.2s;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
-}
-.switch.on .switch-track { background: #e8a020; }
-.switch.on .switch-thumb { left: 19px; }
+.icon-toggle i { font-size: 22px; color: #b0a090; transition: color 0.15s; }
+.icon-toggle.on { background: #fff8e8; border-color: #e8c84a; }
+.icon-toggle.on i { color: #e8a020; }
+.icon-toggle:active { transform: scale(0.95); }
 
 /* 狀態輸入 */
 .owner-textarea {
@@ -288,42 +262,20 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
     <div class="clean-desc" id="clean-desc">—</div>
   </div>
 
-  <div>
+ <div>
     <div class="panel-section-title">開關</div>
-    <div class="toggle-row">
-      <div class="toggle-label">
-        <i class="ti ti-bulb" id="icon-light"></i> 燈
+    <div class="icon-toggles">
+      <div class="icon-toggle" id="it-light" onclick="toggle('light_on')" title="燈">
+        <i class="ti ti-bulb" id="icon-light"></i>
       </div>
-      <div class="switch" id="sw-light" onclick="toggle('light_on')">
-        <div class="switch-track"></div>
-        <div class="switch-thumb"></div>
+      <div class="icon-toggle" id="it-toilet" onclick="toggle('toilet_open')" title="廁所門">
+        <i class="ti ti-door" id="icon-toilet"></i>
       </div>
-    </div>
-    <div class="toggle-row">
-      <div class="toggle-label">
-        <i class="ti ti-door" id="icon-toilet"></i> 廁所門
+      <div class="icon-toggle" id="it-window" onclick="toggle('window_open')" title="窗戶">
+        <i class="ti ti-window" id="icon-window"></i>
       </div>
-      <div class="switch" id="sw-toilet" onclick="toggle('toilet_open')">
-        <div class="switch-track"></div>
-        <div class="switch-thumb"></div>
-      </div>
-    </div>
-    <div class="toggle-row">
-      <div class="toggle-label">
-        <i class="ti ti-window" id="icon-window"></i> 窗戶
-      </div>
-      <div class="switch" id="sw-window" onclick="toggle('window_open')">
-        <div class="switch-track"></div>
-        <div class="switch-thumb"></div>
-      </div>
-    </div>
-    <div class="toggle-row">
-      <div class="toggle-label">
-        <i class="ti ti-snowflake" id="icon-ac"></i> 冷氣
-      </div>
-      <div class="switch" id="sw-ac" onclick="toggle('ac_on')">
-        <div class="switch-track"></div>
-        <div class="switch-thumb"></div>
+      <div class="icon-toggle" id="it-ac" onclick="toggle('ac_on')" title="冷氣">
+        <i class="ti ti-snowflake" id="icon-ac"></i>
       </div>
     </div>
   </div>
@@ -397,27 +349,17 @@ function updateCleanUI() {
   }
 }
 
-function updateSwitchUI(id, isOn) {
-  const sw = document.getElementById(id);
-  if (isOn) sw.classList.add('on');
-  else sw.classList.remove('on');
-}
-function updateIconUI(id, isOn) {
-  const icon = document.getElementById(id);
-  if (isOn) icon.classList.add('on');
-  else icon.classList.remove('on');
-}
 function updateAllToggles() {
-  updateSwitchUI('sw-light', roomState.light_on);
-  updateSwitchUI('sw-toilet', roomState.toilet_open);
-  updateSwitchUI('sw-window', roomState.window_open);
-  updateSwitchUI('sw-ac', roomState.ac_on);
-  updateIconUI('icon-light', roomState.light_on);
-  updateIconUI('icon-toilet', roomState.toilet_open);
-  updateIconUI('icon-window', roomState.window_open);
-  updateIconUI('icon-ac', roomState.ac_on);
+  const map = {
+    light_on: 'it-light',
+    toilet_open: 'it-toilet',
+    window_open: 'it-window',
+    ac_on: 'it-ac'
+  };
+  for (const [key, id] of Object.entries(map)) {
+    document.getElementById(id).classList.toggle('on', !!roomState[key]);
+  }
 }
-
 async function toggle(key) {
   roomState[key] = !roomState[key];
   updateAllToggles();
