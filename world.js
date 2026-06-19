@@ -146,7 +146,8 @@ const server = http.createServer((req, res) => {
       req.on('end', () => {
         const data = JSON.parse(Buffer.concat(body).toString());
         const world = JSON.parse(fs.readFileSync('world.json', 'utf8'));
-        world.owner_input = data.input || '';
+        if (data.type === 'status') world.owner_status = data.input || '';
+        if (data.type === 'action') world.owner_action = data.input || '';
         fs.writeFileSync('world.json', JSON.stringify(world, null, 2));
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ ok: true }));
@@ -182,7 +183,9 @@ async function tick() {
   const { display } = getRealTime();
   const bt = world.characters.baituantuan;
 
-  const ownerInput = world.owner_input ? `\n同居人最近的動態：${world.owner_input}` : '';
+  const ownerStatus = world.owner_status ? `同居人狀態：${world.owner_status}` : '';
+  const ownerAction = world.owner_action ? `同居人對房間的行為：${world.owner_action}` : '';
+  const ownerInput = (ownerStatus || ownerAction) ? '\n' + [ownerStatus, ownerAction].filter(Boolean).join('\n') : '';
 
   const prompt = `當前時間：${display}
 白糰糰：健康${bt.hp} 飽食${bt.food} 毛況:${bt.fur || '正常'} 位置:${bt.location}
@@ -222,12 +225,13 @@ async function tick() {
       room: { ...world.room, ...result.room }
     };
 
-    if (world.owner_input) {
+    if (world.owner_action) {
       newWorld.owner_log = [...(world.owner_log || []).slice(-20), {
         time: display,
-        input: world.owner_input
+        status: world.owner_status || '',
+        action: world.owner_action
       }];
-      newWorld.owner_input = '';
+      newWorld.owner_action = '';
     }
     fs.writeFileSync('world.json', JSON.stringify(newWorld, null, 2));
 
