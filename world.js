@@ -298,6 +298,9 @@ const server = http.createServer((req, res) => {
         const data = JSON.parse(Buffer.concat(body).toString());
         const world = JSON.parse(fs.readFileSync(WORLD_FILE, 'utf8'));
         world.room = { ...world.room, ...data };
+        if ('env_desc' in data) {
+          world.room.env_desc_time = data.env_desc ? getRealTime().display : '';
+        }
         fs.writeFileSync(WORLD_FILE, JSON.stringify(world, null, 2));
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ ok: true }));

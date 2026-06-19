@@ -115,19 +115,43 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
 }
 .panel-close i { font-size: 16px; }
 
-.panel-content { display: flex; flex-direction: column; gap: 1.25rem; }
+.panel-content { display: flex; flex-direction: column; gap: 0.85rem; }
 
-.panel-section-title {
-  font-size: 11px;
-  color: #9a8a7a;
-  letter-spacing: 0.08em;
-  margin-bottom: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+.section-label {
+  font-size: 10px;
+  color: #b0a090;
+  letter-spacing: 0.1em;
+  margin: 2px 2px 6px;
 }
 
-.clean-bar-wrap { background: #e8e0d4; border-radius: 4px; height: 5px; margin: 6px 0 4px; overflow: hidden; }
+.card {
+  background: #fff;
+  border: 1px solid #f0ebe2;
+  border-radius: 16px;
+  padding: 14px;
+  box-shadow: 0 1px 4px rgba(120,100,80,0.05);
+}
+.card-row { display: flex; align-items: flex-start; gap: 12px; }
+.card-badge {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+.card-badge i { font-size: 21px; }
+.card-main { flex: 1; min-width: 0; }
+.badge-activity { background: #f0ebe2; }
+.badge-activity i { color: #9a8a7a; }
+.badge-env { background: #e3efdd; }
+.badge-env i { color: #7a9a6a; }
+
+.clean-section { margin-top: 12px; }
+.clean-section-label { font-size: 10px; color: #b0a090; letter-spacing: 0.08em; margin-bottom: 5px; }
+.clean-bar-wrap { background: #eee7db; border-radius: 4px; height: 6px; margin: 0 0 5px; overflow: hidden; }
 .clean-bar-fill { height: 100%; border-radius: 4px; transition: width 0.3s; }
 .clean-desc { font-size: 11px; color: #9a8a7a; }
 
@@ -145,29 +169,31 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
   min-width: 0;
   display: flex;
   align-items: center;
-  gap: 8px;
+  justify-content: center;
+  gap: 11px;
   background: #fff;
-  border: 1px solid #ece2d4;
-  border-radius: 12px;
-  padding: 9px 11px;
+  border: 1px solid #f0ebe2;
+  border-radius: 14px;
+  padding: 11px 9px;
   cursor: pointer;
   transition: background 0.2s, border-color 0.2s;
 }
-.switch-tile > i {
-  font-size: 19px;
+.switch-icon-label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+.switch-icon-label i {
+  font-size: 21px;
   color: #b0a090;
-  flex-shrink: 0;
   transition: color 0.2s;
 }
-.switch-label {
-  flex: 1;
-  min-width: 0;
-  font-size: 11px;
+.switch-icon-label span {
+  font-size: 10px;
   color: #6a5a4a;
   font-family: 'Noto Serif TC', serif;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 .switch {
   width: 34px;
@@ -192,7 +218,7 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
 .switch.on { background: #e8c84a; }
 .switch.on .switch-knob { left: 16.5px; }
 .switch-tile:has(.switch.on) { background: #fdf6e3; border-color: #f0d98a; }
-.switch-tile:has(.switch.on) > i { color: #e8a020; }
+.switch-tile:has(.switch.on) .switch-icon-label i { color: #e8a020; }
 
 .owner-textarea {
   width: 100%;
@@ -212,12 +238,11 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
 .owner-textarea::placeholder { color: #c0b0a0; font-size: 11px; }
 
 .owner-submit {
-  flex: 1;
   background: #5a4a3a;
   color: #f5f0e8;
   border: none;
   border-radius: 8px;
-  padding: 8px;
+  padding: 8px 18px;
   font-size: 11px;
   font-family: 'Noto Serif TC', serif;
   cursor: pointer;
@@ -225,22 +250,14 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
 }
 .owner-submit:active { background: #4a3a2a; }
 
-.edit-actions { display: flex; gap: 8px; margin-top: 6px; align-items: center; }
+.edit-actions { display: flex; gap: 4px; margin-top: 8px; align-items: center; justify-content: flex-end; }
 .edit-cancel {
   font-size: 11px;
   color: #9a8a7a;
   cursor: pointer;
-  padding: 8px 10px;
+  padding: 8px 12px;
 }
 .edit-cancel:hover { color: #6a5a4a; }
-.edit-clear-icon {
-  font-size: 15px;
-  color: #b0a090;
-  cursor: pointer;
-  padding: 6px;
-  transition: color 0.15s;
-}
-.edit-clear-icon:hover { color: #c07050; }
 
 .status-display {
   font-size: 12px;
@@ -252,17 +269,6 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
 .status-icons { display: none; gap: 8px; align-items: center; }
 .status-icons i { font-size: 14px; color: #b0a090; cursor: pointer; transition: color 0.15s; }
 .status-icons i:hover { color: #7a6a5a; }
-.clear-confirm {
-  display: none;
-  font-size: 11px;
-  color: #fff;
-  background: #c07050;
-  border-radius: 7px;
-  padding: 7px 12px;
-  cursor: pointer;
-  font-family: 'Noto Serif TC', serif;
-}
-.clear-confirm:hover { background: #b05f40; }
 
 .room-action-textarea {
   width: 100%;
@@ -313,26 +319,22 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
 .compose-actions { display: flex; gap: 8px; align-items: center; margin-top: 6px; }
 .compose-actions .room-action-submit { flex: 1; margin-top: 0; }
 
-.profile-card { padding-bottom: 4px; }
-.profile-top {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-}
-.profile-avatar {
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  background: #ede4d4;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
+.profile-avatar { background: #ede4d4; }
 .profile-avatar i { font-size: 22px; color: #9a8a7a; }
-.profile-main { flex: 1; min-width: 0; }
-.profile-name { font-size: 13px; color: #5a4a3a; font-weight: 500; margin-bottom: 2px; }
-.profile-meta { font-size: 10px; color: #b0a090; margin-top: 4px; }
+.profile-name-row { display: flex; align-items: center; gap: 6px; margin-bottom: 3px; }
+.profile-name-row .status-display { flex: 1; min-width: 0; }
+.profile-name { font-size: 15px; color: #4a3a2a; font-weight: 600; }
+.profile-meta { font-size: 10px; color: #b0a090; margin-top: 5px; }
+.status-display.has-dot::before {
+  content: '';
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #7ab87a;
+  margin-right: 7px;
+  vertical-align: middle;
+}
 
 .feed-entry { font-size: 12px; color: #4a3a2a; line-height: 1.7; }
 .feed-time { font-size: 10px; color: #b0a090; margin-bottom: 3px; }
@@ -496,31 +498,36 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
   </button>
 
   <div class="panel-content">
-    <div class="profile-card">
-      <div class="profile-top">
-        <div class="profile-avatar"><i class="ti ti-paw"></i></div>
-        <div class="profile-main">
-          <div class="profile-name">同居人</div>
-          <div class="status-display" id="status-display"></div>
+    <div class="card profile-card">
+      <div class="card-row">
+        <div class="card-badge profile-avatar"><i class="ti ti-paw"></i></div>
+        <div class="card-main">
+          <div class="profile-name-row">
+            <span class="profile-name">同居人</span>
+            <span class="status-icons" id="status-icons">
+              <i class="ti ti-pencil" onclick="editStatus()" title="編輯"></i>
+            </span>
+          </div>
+          <div class="status-display has-dot" id="status-display"></div>
           <textarea class="owner-textarea" id="owner-input" maxlength="30" placeholder="在做什麼、有什麼變化..." style="display:none;"></textarea>
           <div class="profile-meta" id="status-time"></div>
+          <div class="edit-actions" id="owner-edit-actions" style="display:none;">
+            <span class="edit-cancel" onclick="cancelStatus()">取消</span>
+            <button class="owner-submit" id="owner-submit-btn" onclick="submitStatus()">記錄</button>
+          </div>
         </div>
-        <span class="status-icons" id="status-icons">
-          <i class="ti ti-pencil" onclick="editStatus()" title="編輯"></i>
-        </span>
-      </div>
-      <div class="edit-actions" id="owner-edit-actions" style="display:none;">
-        <i class="ti ti-x edit-clear-icon" id="status-clear-x" onclick="clearStatus()" title="清除"></i>
-        <span class="clear-confirm" id="clear-confirm" onclick="confirmClear()">清除</span>
-        <span class="edit-cancel" onclick="cancelStatus()">取消</span>
-        <button class="owner-submit" id="owner-submit-btn" onclick="submitStatus()">記錄</button>
       </div>
     </div>
 
     <div>
-      <div class="panel-section-title">我的動態</div>
-      <div class="activity-feed" id="activity-feed">
-        <div class="empty">還沒有動態。</div>
+      <div class="section-label">我的動態</div>
+      <div class="card">
+        <div class="card-row">
+          <div class="card-badge badge-activity"><i class="ti ti-activity"></i></div>
+          <div class="card-main activity-feed" id="activity-feed">
+            <div class="empty">還沒有動態。</div>
+          </div>
+        </div>
       </div>
       <div class="compose-pill" id="compose-pill" onclick="openCompose()">
         <i class="ti ti-plus"></i><span>記錄一則動態…</span>
@@ -535,53 +542,54 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
     </div>
 
     <div>
-      <div class="panel-section-title">
-        環境狀態
-        <span class="status-icons" id="env-icons">
-          <i class="ti ti-pencil" onclick="editEnv()" title="編輯"></i>
-        </span>
+      <div class="section-label">房間</div>
+      <div class="card">
+        <div class="card-row">
+          <div class="card-badge badge-env"><i class="ti ti-home"></i></div>
+          <div class="card-main">
+            <div class="profile-name-row">
+              <span class="status-display" id="env-display"></span>
+              <span class="status-icons" id="env-icons">
+                <i class="ti ti-pencil" onclick="editEnv()" title="編輯"></i>
+              </span>
+            </div>
+            <textarea class="owner-textarea" id="env-input" maxlength="60" placeholder="房間現在的樣子..." style="display:none;"></textarea>
+            <div class="profile-meta" id="env-time"></div>
+            <div class="edit-actions" id="env-edit-actions" style="display:none;">
+              <span class="edit-cancel" onclick="cancelEnv()">取消</span>
+              <button class="owner-submit" id="env-submit-btn" onclick="submitEnv()">記錄</button>
+            </div>
+          </div>
+        </div>
+        <div class="clean-section">
+          <div class="clean-section-label">清潔度</div>
+          <div class="clean-bar-wrap">
+            <div class="clean-bar-fill" id="clean-bar" style="width:78%"></div>
+          </div>
+          <div class="clean-desc" id="clean-desc">—</div>
+        </div>
       </div>
-      <div class="status-display" id="env-display"></div>
-      <textarea class="owner-textarea" id="env-input" maxlength="60" placeholder="房間現在的樣子..." style="display:none;"></textarea>
-      <div class="edit-actions" id="env-edit-actions" style="display:none;">
-        <i class="ti ti-x edit-clear-icon" id="env-clear-x" onclick="clearEnv()" title="清除"></i>
-        <span class="clear-confirm" id="env-clear-confirm" onclick="confirmClearEnv()">清除</span>
-        <span class="edit-cancel" onclick="cancelEnv()">取消</span>
-        <button class="owner-submit" id="env-submit-btn" onclick="submitEnv()">記錄</button>
-      </div>
-    </div>
-
-    <div>
-      <div class="panel-section-title">清潔度</div>
-      <div class="clean-bar-wrap">
-        <div class="clean-bar-fill" id="clean-bar" style="width:78%"></div>
-      </div>
-      <div class="clean-desc" id="clean-desc">—</div>
     </div>
 
     <div>
       <div class="switch-rows">
         <div class="switch-row">
           <div class="switch-tile" onclick="toggle('light_on')">
-            <i class="ti ti-bulb"></i>
-            <span class="switch-label">燈</span>
+            <div class="switch-icon-label"><i class="ti ti-bulb"></i><span>燈</span></div>
             <div class="switch" id="it-light"><div class="switch-knob"></div></div>
           </div>
           <div class="switch-tile" onclick="toggle('toilet_open')">
-            <i class="ti ti-door"></i>
-            <span class="switch-label">廁所門</span>
+            <div class="switch-icon-label"><i class="ti ti-door"></i><span>廁所門</span></div>
             <div class="switch" id="it-toilet"><div class="switch-knob"></div></div>
           </div>
         </div>
         <div class="switch-row">
           <div class="switch-tile" onclick="toggle('window_open')">
-            <i class="ti ti-window"></i>
-            <span class="switch-label">窗戶</span>
+            <div class="switch-icon-label"><i class="ti ti-window"></i><span>窗戶</span></div>
             <div class="switch" id="it-window"><div class="switch-knob"></div></div>
           </div>
           <div class="switch-tile" onclick="toggle('ac_on')">
-            <i class="ti ti-snowflake"></i>
-            <span class="switch-label">冷氣</span>
+            <div class="switch-icon-label"><i class="ti ti-snowflake"></i><span>冷氣</span></div>
             <div class="switch" id="it-ac"><div class="switch-knob"></div></div>
           </div>
         </div>
@@ -678,25 +686,15 @@ async function toggle(key) {
   });
 }
 
-function createEditableField({ display, icons, input, editActions, clearIcon, clearConfirm, emptyText, onSave, onClear }) {
+function createEditableField({ display, icons, input, editActions, emptyText, onSave }) {
   let value = '';
-  let clearTimer = null;
-  let outsideHandler = null;
 
   function render(text) {
     value = text || '';
     display.textContent = value || emptyText;
   }
 
-  function resetClear() {
-    if (clearTimer) { clearTimeout(clearTimer); clearTimer = null; }
-    if (outsideHandler) { document.removeEventListener('click', outsideHandler); outsideHandler = null; }
-    clearConfirm.style.display = 'none';
-    clearIcon.style.display = 'inline';
-  }
-
   function showDisplay() {
-    resetClear();
     display.style.display = 'block';
     icons.style.display = 'flex';
     input.style.display = 'none';
@@ -704,7 +702,6 @@ function createEditableField({ display, icons, input, editActions, clearIcon, cl
   }
 
   function showInput() {
-    resetClear();
     display.style.display = 'none';
     icons.style.display = 'none';
     input.style.display = 'block';
@@ -720,27 +717,9 @@ function createEditableField({ display, icons, input, editActions, clearIcon, cl
     showDisplay();
   }
 
-  // 點 X：藏起 X、露出「清除」確認鈕；2 秒後或點別處則變回 X
-  function clear() {
-    if (clearTimer) return;
-    clearIcon.style.display = 'none';
-    clearConfirm.style.display = 'inline';
-    clearTimer = setTimeout(resetClear, 2000);
-    outsideHandler = (e) => { if (e.target !== clearConfirm) resetClear(); };
-    setTimeout(() => document.addEventListener('click', outsideHandler), 0);
-  }
-
-  async function confirmClearFn() {
-    resetClear();
-    await onClear();
-    render('');
-    input.value = '';
-    showDisplay();
-  }
-
+  // 清空後按「記錄」即視為清除，不需另外的清除按鈕
   async function submit() {
     const v = input.value.trim();
-    if (!v) return;
     await onSave(v);
     render(v);
     showDisplay();
@@ -754,7 +733,7 @@ function createEditableField({ display, icons, input, editActions, clearIcon, cl
 
   render('');
   showDisplay();
-  return { edit, cancel, clear, confirmClear: confirmClearFn, submit, setFromServer };
+  return { edit, cancel, submit, setFromServer };
 }
 
 const statusField = createEditableField({
@@ -762,33 +741,27 @@ const statusField = createEditableField({
   icons: document.getElementById('status-icons'),
   input: document.getElementById('owner-input'),
   editActions: document.getElementById('owner-edit-actions'),
-  clearIcon: document.getElementById('status-clear-x'),
-  clearConfirm: document.getElementById('clear-confirm'),
   emptyText: '尚無狀態',
   onSave: (v) => fetch('/api/owner', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'status', input: v }) }),
-  onClear: () => fetch('/api/owner', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'status', input: '' }) }),
 });
 function editStatus() { statusField.edit(); }
 function cancelStatus() { statusField.cancel(); }
-function clearStatus() { statusField.clear(); }
-function confirmClear() { statusField.confirmClear(); document.getElementById('panel-btn').classList.remove('has-input'); }
-function submitStatus() { statusField.submit(); document.getElementById('panel-btn').classList.add('has-input'); }
+function submitStatus() {
+  const v = document.getElementById('owner-input').value.trim();
+  statusField.submit();
+  document.getElementById('panel-btn').classList.toggle('has-input', v !== '');
+}
 
 const envField = createEditableField({
   display: document.getElementById('env-display'),
   icons: document.getElementById('env-icons'),
   input: document.getElementById('env-input'),
   editActions: document.getElementById('env-edit-actions'),
-  clearIcon: document.getElementById('env-clear-x'),
-  clearConfirm: document.getElementById('env-clear-confirm'),
   emptyText: '尚無描述',
   onSave: (v) => fetch('/api/room', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ env_desc: v }) }),
-  onClear: () => fetch('/api/room', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ env_desc: '' }) }),
 });
 function editEnv() { envField.edit(); }
 function cancelEnv() { envField.cancel(); }
-function clearEnv() { envField.clear(); }
-function confirmClearEnv() { envField.confirmClear(); }
 function submitEnv() { envField.submit(); }
 
 function openCompose() {
@@ -814,6 +787,7 @@ async function submitRoomAction() {
   });
   closeCompose();
   document.getElementById('panel-btn').classList.add('has-input');
+  load();
 }
 
 function escapeHtml(str) {
@@ -1022,6 +996,7 @@ async function load() {
     document.getElementById('status-time').textContent = world.owner_status_time ? '最後更新 ' + world.owner_status_time : '';
 
     envField.setFromServer(world.room.env_desc || '');
+    document.getElementById('env-time').textContent = world.room.env_desc_time ? '最後更新 ' + world.room.env_desc_time : '';
 
     const ownerAction = world.owner_action || '';
     document.getElementById('panel-btn').classList.toggle('has-input', !!(ownerStatus || ownerAction));
