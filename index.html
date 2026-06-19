@@ -238,12 +238,11 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
 .owner-textarea::placeholder { color: #c0b0a0; font-size: 11px; }
 
 .owner-submit {
-  flex: 1;
   background: #5a4a3a;
   color: #f5f0e8;
   border: none;
   border-radius: 8px;
-  padding: 8px;
+  padding: 8px 18px;
   font-size: 11px;
   font-family: 'Noto Serif TC', serif;
   cursor: pointer;
@@ -251,16 +250,17 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
 }
 .owner-submit:active { background: #4a3a2a; }
 
-.edit-actions { display: flex; gap: 8px; margin-top: 6px; align-items: center; }
+.edit-actions { display: flex; gap: 8px; margin-top: 8px; align-items: center; justify-content: space-between; }
+.edit-actions-right { display: flex; align-items: center; gap: 4px; }
 .edit-cancel {
   font-size: 11px;
   color: #9a8a7a;
   cursor: pointer;
-  padding: 8px 10px;
+  padding: 8px 12px;
 }
 .edit-cancel:hover { color: #6a5a4a; }
 .edit-clear-icon {
-  font-size: 15px;
+  font-size: 16px;
   color: #b0a090;
   cursor: pointer;
   padding: 6px;
@@ -534,8 +534,10 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
           <div class="edit-actions" id="owner-edit-actions" style="display:none;">
             <i class="ti ti-x edit-clear-icon" id="status-clear-x" onclick="clearStatus()" title="清除"></i>
             <span class="clear-confirm" id="clear-confirm" onclick="confirmClear()">清除</span>
-            <span class="edit-cancel" onclick="cancelStatus()">取消</span>
-            <button class="owner-submit" id="owner-submit-btn" onclick="submitStatus()">記錄</button>
+            <div class="edit-actions-right">
+              <span class="edit-cancel" onclick="cancelStatus()">取消</span>
+              <button class="owner-submit" id="owner-submit-btn" onclick="submitStatus()">記錄</button>
+            </div>
           </div>
         </div>
       </div>
@@ -580,8 +582,10 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
             <div class="edit-actions" id="env-edit-actions" style="display:none;">
               <i class="ti ti-x edit-clear-icon" id="env-clear-x" onclick="clearEnv()" title="清除"></i>
               <span class="clear-confirm" id="env-clear-confirm" onclick="confirmClearEnv()">清除</span>
-              <span class="edit-cancel" onclick="cancelEnv()">取消</span>
-              <button class="owner-submit" id="env-submit-btn" onclick="submitEnv()">記錄</button>
+              <div class="edit-actions-right">
+                <span class="edit-cancel" onclick="cancelEnv()">取消</span>
+                <button class="owner-submit" id="env-submit-btn" onclick="submitEnv()">記錄</button>
+              </div>
             </div>
           </div>
         </div>
@@ -846,6 +850,7 @@ async function submitRoomAction() {
   });
   closeCompose();
   document.getElementById('panel-btn').classList.add('has-input');
+  load();
 }
 
 function escapeHtml(str) {
