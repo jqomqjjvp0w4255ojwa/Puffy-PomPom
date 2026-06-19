@@ -1,8 +1,6 @@
 const http = require('http');
-const path = require('path');
-
-const Anthropic = require('@anthropic-ai/sdk');
 const fs = require('fs');
+const Anthropic = require('@anthropic-ai/sdk');
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -15,23 +13,28 @@ const SYSTEM_PROMPT = `你是白糰糰宇宙的世界引擎。根據當前世界
 江湖氣，不依賴人，有自己的事要做。邏輯是他的，行為隨時發生，從不解釋原因。
 他與同居人是平等的江湖關係，不是感情關係，不是主僕。
 
+毛況系統：
+- 正常：毛毛蓬鬆潔白
+- 房間清潔度低於30時：白糰糰會癢，手太短搆不到，只能到處蹭牆蹭地，越蹭越禿一塊
+- 禿塊：蹭太多某處毛稀疏，他會用竹籤遮住那塊不讓人看
+
 小黑影：
 半物質影子生命，只活動在陰影中，不說話，以荒唐方式騷擾白糰糰。
-環境越髒越活躍。用「他」稱呼。
+清潔度低於60時變活躍。用「他」稱呼。
 
 食物來源邏輯：
 - 白糰糰無法自己開冰箱
-- 窗戶開著時可以取得窗外露水
-- 室內潮濕時可以吸收濕氣
-- 極度飢餓時會吃灰塵（導致健康下降）
-- 同居人開冰箱或把食物放在外面時才能取得冰塊等食物
+- 窗戶開著才能取得窗外露水，是最主要水分來源
+- 窗戶關著時飽食度下降更快
+- 飽食低於25時會吃灰塵，導致健康下降且毛變髒
+- 同居人開冰箱或把食物放在外面才能取得冰塊等食物
+- 清潔度低時能找到更多「寶藏垃圾」
 
 規則：
 - 白糰糰絕對不說話，只有動作與生理變化
 - 他有自己的日程，不因為沒人看就停下來
 - 情感只透過行為流露，不直接描述情緒
 - 寫法像漫畫分鏡，有聲音、有停頓、有留白、要斷行
-- 小黑影在cleanliness低於60時變活躍
 - 不要把白糰糰寫成貓或任何動物
 
 輸出格式，只輸出這個JSON，不要其他文字與markdown：
@@ -41,7 +44,7 @@ const SYSTEM_PROMPT = `你是白糰糰宇宙的世界引擎。根據當前世界
     "hp": 數字,
     "food": 數字,
     "location": "地點",
-    "mood": "狀態"
+    "fur": "正常或髒污或禿塊描述"
   },
   "shadow": {
     "active": true或false,
@@ -51,6 +54,9 @@ const SYSTEM_PROMPT = `你是白糰糰宇宙的世界引擎。根據當前世界
   "room": {
     "cleanliness": 數字,
     "window_open": true或false,
+    "ac_on": false,
+    "light_on": true,
+    "toilet_open": false,
     "events_today": ["事件"]
   }
 }`;
@@ -60,7 +66,8 @@ function getRandomMinutes(min, max) {
 }
 
 function getNextDelay() {
-  const hour = new Date().getHours();
+  const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Taipei' }));
+  const hour = now.getHours();
   const isNight = hour >= 22 || hour < 6;
   if (isNight) {
     return getRandomMinutes(180, 360) * 60 * 1000;
@@ -78,9 +85,26 @@ function getRealTime() {
   return { display: `${month}/${date} ${hour}:${min}`, hour: now.getHours() };
 }
 
+function applyNaturalDecay(world) {
+  const bt = world.characters.baituantuan;
+  const windowOpen = world.room.window_open;
+  let foodDelta = windowOpen ? -3 : -5;
+  let newFood = Math.max(0, bt.food + foodDelta);
+  let newHp = bt.hp;
+  if (newFood < 25) newHp = Math.max(0, newHp - 3);
+  else if (newFood > 60) newHp = Math.min(100, newHp + 1);
+  return {
+    ...world,
+    characters: {
+      ...world.characters,
+      baituantuan: { ...bt, food: newFood, hp: newHp }
+    }
+  };
+}
+
 const server = http.createServer((req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  
+
   if (req.url.startsWith('/api/world')) {
     try {
       const world = JSON.parse(fs.readFileSync('world.json', 'utf8'));
@@ -91,6 +115,24 @@ const server = http.createServer((req, res) => {
       res.writeHead(500);
       res.end('error');
     }
+
+  } else if (req.url.startsWith('/api/room')) {
+    try {
+      const body = [];
+      req.on('data', chunk => body.push(chunk));
+      req.on('end', () => {
+        const data = JSON.parse(Buffer.concat(body).toString());
+        const world = JSON.parse(fs.readFileSync('world.json', 'utf8'));
+        world.room = { ...world.room, ...data };
+        fs.writeFileSync('world.json', JSON.stringify(world, null, 2));
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ ok: true }));
+      });
+    } catch (e) {
+      res.writeHead(500);
+      res.end('error');
+    }
+
   } else if (req.url === '/' || req.url === '/index.html') {
     try {
       const html = fs.readFileSync('index.html', 'utf8');
@@ -111,17 +153,23 @@ server.listen(process.env.PORT || 3000, () => {
 });
 
 async function tick() {
-  const world = JSON.parse(fs.readFileSync('world.json', 'utf8'));
+  let world = JSON.parse(fs.readFileSync('world.json', 'utf8'));
+  world = applyNaturalDecay(world);
+
   const { display } = getRealTime();
+  const bt = world.characters.baituantuan;
 
   const prompt = `當前時間：${display}
-白糰糰：HP${world.characters.baituantuan.hp} 飽食${world.characters.baituantuan.food} 位置:${world.characters.baituantuan.location}
+白糰糰：健康${bt.hp} 飽食${bt.food} 毛況:${bt.fur || '正常'} 位置:${bt.location}
 小黑影：${world.characters.shadow.active ? '活躍' : '潛伏'} 位置:${world.characters.shadow.location} 灰塵:${world.characters.shadow.dust_count}
-房間整潔度：${world.room.cleanliness} 窗戶：${world.room.window_open ? '開著' : '關著'}
+房間清潔度：${world.room.cleanliness}
+窗戶：${world.room.window_open ? '開' : '關'} 冷氣：${world.room.ac_on ? '開' : '關'} 燈：${world.room.light_on ? '開' : '關'} 廁所門：${world.room.toilet_open ? '開' : '關'}
 今天已發生：${world.room.events_today.join('，') || '無'}
-近期記憶：${(world.characters.baituantuan.memory || []).slice(-3).join(' / ') || '無'}
+近期記憶：${(bt.memory || []).slice(-3).join(' / ') || '無'}
 
 生成這段時間白糰糰的動態。`;
+
+  const delay = getNextDelay();
 
   try {
     const response = await client.messages.create({
@@ -137,34 +185,37 @@ async function tick() {
 
     const newWorld = {
       ...world,
+      nextTickAt: Date.now() + delay,
       characters: {
         baituantuan: {
           ...world.characters.baituantuan,
           ...result.baituantuan,
-          memory: [...(world.characters.baituantuan.memory || []).slice(-10), result.scene]
+          memory: [...(bt.memory || []).slice(-10), result.scene]
         },
         shadow: { ...world.characters.shadow, ...result.shadow }
       },
-      room: {
-        ...world.room,
-        ...result.room
-      }
+      room: { ...world.room, ...result.room }
     };
 
     fs.writeFileSync('world.json', JSON.stringify(newWorld, null, 2));
 
-    const log = `\n【${display}】\n${result.scene}\n白糰糰 HP:${result.baituantuan.hp} 飽食:${result.baituantuan.food} 位置:${result.baituantuan.location}\n${result.shadow.active ? '⚠️ 小黑影出沒中' : ''}\n${'─'.repeat(40)}`;
+    const furNote = result.baituantuan.fur && result.baituantuan.fur !== '正常'
+      ? ` · ${result.baituantuan.fur}` : '';
+    const log = `\n【${display}】\n${result.scene}\n健康 ${result.baituantuan.hp} · 飽食 ${result.baituantuan.food}${furNote} · ${result.baituantuan.location}\n${result.shadow.active ? '⚠️ 小黑影出沒中' : ''}\n${'─'.repeat(40)}`;
 
     fs.appendFileSync('log.txt', log);
     console.log(log);
 
   } catch (e) {
     console.error('錯誤：', e.message);
+    const world2 = JSON.parse(fs.readFileSync('world.json', 'utf8'));
+    world2.nextTickAt = Date.now() + delay;
+    fs.writeFileSync('world.json', JSON.stringify(world2, null, 2));
   }
 
-  const delay = getNextDelay();
   setTimeout(tick, delay);
 }
+console.log(`下次更新：${Math.round(delay/60000)} 分鐘後（${new Date(Date.now()+delay).toLocaleString('zh-TW',{timeZone:'Asia/Taipei'})}）`);
 
 tick();
 console.log('白糰糰宇宙啟動中...');

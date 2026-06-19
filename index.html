@@ -4,228 +4,196 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>白糰糰觀察日記</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;500&display=swap" rel="stylesheet">
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;500&display=swap');
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 4rem; font-family: 'Noto Serif TC', serif; }
 
-  * { box-sizing: border-box; margin: 0; padding: 0; }
+.cover { max-width: 480px; margin: 0 auto 1.5rem; text-align: center; }
+.cover h1 { font-size: 22px; font-weight: 500; color: #5a4a3a; letter-spacing: 0.15em; margin-bottom: 4px; }
+.cover-date { font-size: 12px; color: #9a8a7a; letter-spacing: 0.1em; }
 
-  body {
-    background: #f5f0e8;
-    min-height: 100vh;
-    padding: 2rem 1rem;
-    font-family: 'Noto Serif TC', serif;
-  }
+.notebook { max-width: 480px; margin: 0 auto 1.5rem; background: #fff; border-radius: 4px; box-shadow: 2px 2px 12px rgba(0,0,0,0.08); overflow: hidden; }
 
-  .cover {
-    max-width: 480px;
-    margin: 0 auto 2rem;
-    text-align: center;
-  }
+.notebook-header { padding: 1.25rem 1.5rem 1rem; border-bottom: 2px solid #e8c84a; }
+.header-label { font-size: 11px; color: #9a8a7a; letter-spacing: 0.1em; margin-bottom: 8px; }
+.status-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.status-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #7a6a5a; }
+.bar { width: 56px; height: 4px; background: #ede8e0; border-radius: 2px; overflow: hidden; }
+.bar-hp { height: 100%; background: #7ab87a; border-radius: 2px; transition: width 0.5s; }
+.bar-food { height: 100%; background: #e8b45a; border-radius: 2px; transition: width 0.5s; }
+.location-tag { font-size: 11px; color: #9a8a7a; margin-left: auto; }
+.fur-tag { font-size: 11px; color: #c07050; }
+.shadow-active { font-size: 11px; color: #c07050; margin-top: 6px; }
 
-  .cover h1 {
-    font-size: 22px;
-    font-weight: 500;
-    color: #5a4a3a;
-    letter-spacing: 0.15em;
-    margin-bottom: 4px;
-  }
+.entries { padding: 0 1.5rem; }
+.entry { border-bottom: 1px solid #ede8e0; padding: 1rem 0; }
+.entry:last-child { border-bottom: none; }
+.entry-time { font-size: 11px; color: #b0a090; margin-bottom: 6px; letter-spacing: 0.05em; }
+.entry-text { font-size: 14px; color: #4a3a2a; line-height: 2; white-space: pre-line; }
+.entry-stats { font-size: 11px; color: #b0a090; margin-top: 6px; }
+.entry-shadow { font-size: 11px; color: #c07050; margin-top: 3px; }
 
-  .cover p {
-    font-size: 12px;
-    color: #9a8a7a;
-    letter-spacing: 0.1em;
-  }
+.empty { padding: 3rem 1.5rem; text-align: center; font-size: 13px; color: #b0a090; line-height: 2; }
 
-  .notebook {
-    max-width: 480px;
-    margin: 0 auto;
-    background: #fff;
-    border-radius: 4px;
-    box-shadow: 2px 2px 12px rgba(0,0,0,0.08);
-    overflow: hidden;
-  }
+.room-panel { max-width: 480px; margin: 0 auto 1.5rem; background: #fff; border-radius: 4px; box-shadow: 2px 2px 12px rgba(0,0,0,0.08); overflow: hidden; }
+.room-header { padding: 1rem 1.5rem 0.75rem; border-bottom: 1px solid #ede8e0; display: flex; justify-content: space-between; align-items: center; }
+.room-header-label { font-size: 11px; color: #9a8a7a; letter-spacing: 0.1em; }
+.room-body { padding: 1rem 1.5rem; }
 
-  .notebook-header {
-    background: #fff;
-    padding: 1.5rem 2rem 0.5rem;
-    border-bottom: 2px solid #e8c84a;
-  }
+.room-section { margin-bottom: 1rem; }
+.room-section:last-child { margin-bottom: 0; }
+.room-section-title { font-size: 11px; color: #9a8a7a; margin-bottom: 8px; letter-spacing: 0.05em; }
 
-  .date-label {
-    font-size: 11px;
-    color: #9a8a7a;
-    letter-spacing: 0.1em;
-    margin-bottom: 6px;
-  }
+.toggles { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.toggle-btn { background: #f5f0e8; border: 1px solid #e0d8cc; border-radius: 6px; padding: 8px 12px; font-size: 12px; font-family: 'Noto Serif TC', serif; color: #7a6a5a; cursor: pointer; text-align: left; transition: all 0.15s; display: flex; justify-content: space-between; align-items: center; }
+.toggle-btn.on { background: #fff8e8; border-color: #e8c84a; color: #5a4a2a; }
+.toggle-dot { width: 8px; height: 8px; border-radius: 50%; background: #c0b0a0; }
+.toggle-btn.on .toggle-dot { background: #e8c84a; }
 
-  .status-row {
-    display: flex;
-    gap: 1rem;
-    font-size: 12px;
-    color: #7a6a5a;
-    padding-bottom: 0.75rem;
-  }
+.clean-bar-wrap { background: #ede8e0; border-radius: 4px; height: 6px; margin: 6px 0; overflow: hidden; cursor: pointer; }
+.clean-bar-fill { height: 100%; border-radius: 4px; transition: width 0.3s; }
+.clean-desc { font-size: 11px; color: #9a8a7a; margin-top: 4px; }
+.clean-controls { display: flex; gap: 8px; margin-top: 8px; }
+.clean-btn { flex: 1; background: #f5f0e8; border: 1px solid #e0d8cc; border-radius: 6px; padding: 6px; font-size: 12px; font-family: 'Noto Serif TC', serif; color: #7a6a5a; cursor: pointer; text-align: center; }
+.clean-btn:active { background: #ede8e0; }
 
-  .status-item { display: flex; align-items: center; gap: 4px; }
-
-  .bar {
-    width: 60px;
-    height: 4px;
-    background: #ede8e0;
-    border-radius: 2px;
-    overflow: hidden;
-  }
-
-  .bar-fill-hp { height: 100%; background: #7ab87a; border-radius: 2px; transition: width 0.5s; }
-  .bar-fill-food { height: 100%; background: #e8b45a; border-radius: 2px; transition: width 0.5s; }
-
-  .location-tag {
-    font-size: 11px;
-    color: #9a8a7a;
-    margin-left: auto;
-  }
-
-  .lines {
-    padding: 0 2rem;
-  }
-
-  .line {
-    border-bottom: 1px solid #e8e0d4;
-    min-height: 2.2rem;
-    display: flex;
-    align-items: flex-end;
-    padding-bottom: 2px;
-  }
-
-  .entry {
-    padding: 1rem 0;
-    width: 100%;
-  }
-
-  .entry-time {
-    font-size: 11px;
-    color: #b0a090;
-    letter-spacing: 0.08em;
-    margin-bottom: 6px;
-  }
-
-  .entry-text {
-    font-size: 14px;
-    color: #4a3a2a;
-    line-height: 2;
-    white-space: pre-line;
-  }
-
-  .entry-stats {
-    font-size: 11px;
-    color: #b0a090;
-    margin-top: 6px;
-  }
-
-  .shadow-alert {
-    font-size: 11px;
-    color: #c07050;
-    margin-top: 4px;
-  }
-
-  .empty {
-    padding: 3rem 2rem;
-    text-align: center;
-    font-size: 13px;
-    color: #b0a090;
-    line-height: 2;
-  }
-
-  .loading {
-    padding: 3rem 2rem;
-    text-align: center;
-    font-size: 13px;
-    color: #b0a090;
-  }
-
-  .refresh-hint {
-    text-align: center;
-    font-size: 11px;
-    color: #c0b0a0;
-    padding: 1rem;
-    letter-spacing: 0.05em;
-  }
+.weather-row { display: flex; gap: 16px; font-size: 12px; color: #7a6a5a; }
 </style>
 </head>
 <body>
 
 <div class="cover">
   <h1>白糰糰觀察日記</h1>
-  <p id="cover-date">載入中...</p>
+  <p class="cover-date" id="cover-date">載入中...</p>
 </div>
 
 <div class="notebook">
   <div class="notebook-header">
-    <div class="date-label">今日狀態</div>
+    <div class="header-label">現在</div>
     <div class="status-row">
       <div class="status-item">
         健康
-        <div class="bar"><div class="bar-fill-hp" id="bar-hp" style="width:0%"></div></div>
+        <div class="bar"><div class="bar-hp" id="bar-hp" style="width:0%"></div></div>
         <span id="val-hp">—</span>
       </div>
       <div class="status-item">
         飽食
-        <div class="bar"><div class="bar-fill-food" id="bar-food" style="width:0%"></div></div>
+        <div class="bar"><div class="bar-food" id="bar-food" style="width:0%"></div></div>
         <span id="val-food">—</span>
       </div>
       <div class="location-tag" id="location">—</div>
     </div>
+    <div class="fur-tag" id="fur-tag"></div>
+    <div class="shadow-active" id="shadow-tag"></div>
   </div>
-
-  <div class="lines" id="entries">
-    <div class="loading">觀察中...</div>
+  <div class="entries" id="entries">
+    <div class="empty">觀察中...</div>
   </div>
 </div>
 
-<div class="refresh-hint">每隔一段時間自動更新</div>
+<div class="room-panel">
+  <div class="room-header">
+    <div class="room-header-label">居住環境</div>
+    <div class="weather-row" id="weather-row">—</div>
+  </div>
+  <div class="room-body">
+
+    <div class="room-section">
+      <div class="room-section-title">開關</div>
+      <div class="toggles">
+        <button class="toggle-btn" id="btn-window" onclick="toggle('window_open')">
+          窗戶 <span class="toggle-dot"></span>
+        </button>
+        <button class="toggle-btn" id="btn-ac" onclick="toggle('ac_on')">
+          冷氣 <span class="toggle-dot"></span>
+        </button>
+        <button class="toggle-btn" id="btn-light" onclick="toggle('light_on')">
+          燈 <span class="toggle-dot"></span>
+        </button>
+        <button class="toggle-btn" id="btn-toilet" onclick="toggle('toilet_open')">
+          廁所門 <span class="toggle-dot"></span>
+        </button>
+      </div>
+    </div>
+
+    <div class="room-section">
+      <div class="room-section-title">房間清潔度</div>
+      <div class="clean-bar-wrap">
+        <div class="clean-bar-fill" id="clean-bar" style="width:78%"></div>
+      </div>
+      <div class="clean-desc" id="clean-desc">—</div>
+      <div class="clean-controls">
+        <button class="clean-btn" onclick="adjustClean(-10)">打掃一下 ＋</button>
+        <button class="clean-btn" onclick="adjustClean(10)">放著不管 －</button>
+      </div>
+    </div>
+
+  </div>
+</div>
 
 <script>
-async function load() {
-  try {
-    const res = await fetch('/api/world?t=' + Date.now());
-    const data = await res.json();
-    const world = data.world;
-    const log = data.log;
+let roomState = {
+  window_open: false,
+  ac_on: false,
+  light_on: true,
+  toilet_open: false,
+  cleanliness: 78
+};
 
-    const bt = world.characters.baituantuan;
-    document.getElementById('bar-hp').style.width = bt.hp + '%';
-    document.getElementById('bar-food').style.width = bt.food + '%';
-    document.getElementById('val-hp').textContent = bt.hp + '%';
-    document.getElementById('val-food').textContent = bt.food + '%';
-    document.getElementById('location').textContent = bt.location;
+function getCleanDesc(v) {
+  if (v >= 80) return '乾淨，小黑影沒什麼動靜';
+  if (v >= 50) return '有些灰塵，角落開始積東西';
+  if (v >= 30) return '有點亂，但白糰糰能找到不少寶藏';
+  if (v >= 15) return '很髒，白糰糰開始癢癢，小黑影活躍';
+  return '非常髒亂，白糰糰拚命蹭，禿塊風險高';
+}
 
-    const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Taipei' }));
-    document.getElementById('cover-date').textContent =
-      (now.getMonth()+1) + ' 月 ' + now.getDate() + ' 日';
+function getCleanColor(v) {
+  if (v >= 60) return '#7ab87a';
+  if (v >= 30) return '#e8b45a';
+  return '#c07050';
+}
 
-    const entries = parseLog(log);
-    const container = document.getElementById('entries');
+function updateCleanUI() {
+  const v = roomState.cleanliness;
+  document.getElementById('clean-bar').style.width = v + '%';
+  document.getElementById('clean-bar').style.background = getCleanColor(v);
+  document.getElementById('clean-desc').textContent = getCleanDesc(v);
+}
 
-    if (entries.length === 0) {
-      container.innerHTML = '<div class="empty">白糰糰還沒有動靜。<br>他可能在冰箱裡。</div>';
-      return;
-    }
-
-    container.innerHTML = entries.reverse().map(e => `
-      <div class="line">
-        <div class="entry">
-          <div class="entry-time">${e.time}</div>
-          <div class="entry-text">${e.scene}</div>
-          <div class="entry-stats">HP ${e.hp} · 飽食 ${e.food} · ${e.location}</div>
-          ${e.shadow ? '<div class="shadow-alert">⚠ 小黑影出沒中</div>' : ''}
-        </div>
-      </div>
-    `).join('');
-
-  } catch(e) {
-    document.getElementById('entries').innerHTML =
-      '<div class="empty">暫時無法連線。</div>';
+function updateToggleUI() {
+  const map = {
+    window_open: 'btn-window',
+    ac_on: 'btn-ac',
+    light_on: 'btn-light',
+    toilet_open: 'btn-toilet'
+  };
+  for (const [key, id] of Object.entries(map)) {
+    const btn = document.getElementById(id);
+    if (roomState[key]) btn.classList.add('on');
+    else btn.classList.remove('on');
   }
+}
+
+async function toggle(key) {
+  roomState[key] = !roomState[key];
+  updateToggleUI();
+  await fetch('/api/room', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ [key]: roomState[key] })
+  });
+}
+
+async function adjustClean(delta) {
+  roomState.cleanliness = Math.max(0, Math.min(100, roomState.cleanliness - delta));
+  updateCleanUI();
+  await fetch('/api/room', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ cleanliness: roomState.cleanliness })
+  });
 }
 
 function parseLog(log) {
@@ -233,10 +201,11 @@ function parseLog(log) {
   const blocks = log.split('─'.repeat(40)).filter(b => b.trim());
   return blocks.map(block => {
     const timeMatch = block.match(/【(.+?)】/);
-    const sceneMatch = block.match(/】\n([\s\S]+?)\n白糰糰/);
-    const hpMatch = block.match(/HP:(\d+)/);
-    const foodMatch = block.match(/飽食:(\d+)/);
-    const locMatch = block.match(/位置:(.+)/);
+    const sceneMatch = block.match(/】\n([\s\S]+?)\n健康/);
+    const hpMatch = block.match(/健康 (\d+)/);
+    const foodMatch = block.match(/飽食 (\d+)/);
+    const locMatch = block.match(/· ([^·\n]+)$/m);
+    const furMatch = block.match(/飽食 \d+ · (.+?) · /);
     const shadowMatch = block.includes('小黑影出沒中');
     if (!timeMatch) return null;
     return {
@@ -245,9 +214,64 @@ function parseLog(log) {
       hp: hpMatch ? hpMatch[1] : '—',
       food: foodMatch ? foodMatch[1] : '—',
       location: locMatch ? locMatch[1].trim() : '—',
+      fur: furMatch ? furMatch[1] : null,
       shadow: shadowMatch
     };
   }).filter(Boolean);
+}
+
+async function load() {
+  try {
+    const res = await fetch('/api/world?t=' + Date.now());
+    const data = await res.json();
+    const world = data.world;
+    const bt = world.characters.baituantuan;
+
+    document.getElementById('bar-hp').style.width = bt.hp + '%';
+    document.getElementById('bar-food').style.width = bt.food + '%';
+    document.getElementById('val-hp').textContent = bt.hp + '%';
+    document.getElementById('val-food').textContent = bt.food + '%';
+    document.getElementById('location').textContent = bt.location;
+
+    const fur = bt.fur && bt.fur !== '正常' ? bt.fur : '';
+    document.getElementById('fur-tag').textContent = fur;
+    document.getElementById('shadow-tag').textContent =
+      world.characters.shadow.active ? '⚠ 小黑影出沒中' : '';
+
+    const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Taipei' }));
+    document.getElementById('cover-date').textContent =
+      (now.getMonth()+1) + ' 月 ' + now.getDate() + ' 日';
+
+    roomState.window_open = world.room.window_open;
+    roomState.ac_on = world.room.ac_on || false;
+    roomState.light_on = world.room.light_on !== false;
+    roomState.toilet_open = world.room.toilet_open || false;
+    roomState.cleanliness = world.room.cleanliness;
+    updateToggleUI();
+    updateCleanUI();
+
+    document.getElementById('weather-row').textContent =
+      world.weather ? `${world.weather} ${world.temp}℃` : '—';
+
+    const entries = parseLog(data.log);
+    const container = document.getElementById('entries');
+    if (entries.length === 0) {
+      container.innerHTML = '<div class="empty">白糰糰還沒有動靜。<br>他可能在冰箱裡。</div>';
+      return;
+    }
+    container.innerHTML = entries.reverse().map(e => `
+      <div class="entry">
+        <div class="entry-time">${e.time}</div>
+        <div class="entry-text">${e.scene}</div>
+        <div class="entry-stats">健康 ${e.hp} · 飽食 ${e.food} · ${e.location}${e.fur ? ' · ' + e.fur : ''}</div>
+        ${e.shadow ? '<div class="entry-shadow">⚠ 小黑影出沒中</div>' : ''}
+      </div>
+    `).join('');
+
+  } catch(e) {
+    document.getElementById('entries').innerHTML =
+      '<div class="empty">暫時無法連線。</div>';
+  }
 }
 
 load();
