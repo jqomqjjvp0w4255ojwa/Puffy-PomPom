@@ -26,5 +26,7 @@
     "events_today": []
   },
    "owner_status": "",
-  "owner_action": ""
+  "owner_action": "",
+  "visitor_messages": [],
+  "visitor_log": []
 }

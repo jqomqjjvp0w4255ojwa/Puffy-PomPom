@@ -28,6 +28,11 @@ const SYSTEM_PROMPT = `你是白糰糰宇宙的世界引擎。根據當前世界
 清潔度低於60時變活躍，低於30時可能讓Mr. DUST現身。
 用「它」稱呼。
 
+訪客留言：
+偶爾會有訪客（白糰糰的朋友，不是同居人）留言。
+白糰糰聽不懂人話也不回話，留言對他來說只是一陣動靜或聲響。
+他可能因此有反應：轉頭看一下、警戒、好奇湊近、被嚇到躲起來，也可能完全沒反應、自顧自做自己的事。
+不要把留言寫成對話或白糰糰在「回應」訊息內容，只是行為上的些微波動。
 
 食物來源邏輯：
 - 白糰糰無法自己開冰箱
@@ -157,6 +162,31 @@ const server = http.createServer((req, res) => {
       res.end('error');
     }
 
+  } else if (req.url.startsWith('/api/visitor')) {
+    try {
+      const body = [];
+      req.on('data', chunk => body.push(chunk));
+      req.on('end', () => {
+        const data = JSON.parse(Buffer.concat(body).toString());
+        const name = (data.name || '').trim().slice(0, 20);
+        const message = (data.message || '').trim().slice(0, 100);
+        if (!message) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ ok: false, error: 'empty message' }));
+          return;
+        }
+        const world = JSON.parse(fs.readFileSync('world.json', 'utf8'));
+        const { display } = getRealTime();
+        world.visitor_messages = [...(world.visitor_messages || []), { name: name || '匿名訪客', message, time: display }];
+        fs.writeFileSync('world.json', JSON.stringify(world, null, 2));
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ ok: true }));
+      });
+    } catch (e) {
+      res.writeHead(500);
+      res.end('error');
+    }
+
   } else if (req.url === '/' || req.url === '/index.html') {
     try {
       const html = fs.readFileSync('index.html', 'utf8');
@@ -187,13 +217,18 @@ async function tick() {
   const ownerAction = world.owner_action ? `同居人對房間的行為：${world.owner_action}` : '';
   const ownerInput = (ownerStatus || ownerAction) ? '\n' + [ownerStatus, ownerAction].filter(Boolean).join('\n') : '';
 
+  const visitorMessages = world.visitor_messages || [];
+  const visitorInput = visitorMessages.length > 0
+    ? '\n訪客留言：\n' + visitorMessages.map(m => `${m.name || '匿名訪客'}：${m.message}`).join('\n')
+    : '';
+
   const prompt = `當前時間：${display}
 白糰糰：健康${bt.hp} 飽食${bt.food} 毛況:${bt.fur || '正常'} 位置:${bt.location}
 小黑影：${world.characters.shadow.active ? '活躍' : '潛伏'} 位置:${world.characters.shadow.location} 灰塵:${world.characters.shadow.dust_count}
 房間清潔度：${world.room.cleanliness}
 窗戶：${world.room.window_open ? '開' : '關'} 冷氣：${world.room.ac_on ? '開' : '關'} 燈：${world.room.light_on ? '開' : '關'} 廁所門：${world.room.toilet_open ? '開' : '關'}
 今天已發生：${world.room.events_today.join('，') || '無'}
-近期記憶：${(bt.memory || []).slice(-3).join(' / ') || '無'}${ownerInput}
+近期記憶：${(bt.memory || []).slice(-3).join(' / ') || '無'}${ownerInput}${visitorInput}
 
 生成這段時間白糰糰的動態。`;
 
@@ -233,6 +268,12 @@ async function tick() {
       }];
       newWorld.owner_action = '';
     }
+
+    if (visitorMessages.length > 0) {
+      newWorld.visitor_log = [...(world.visitor_log || []).slice(-30), ...visitorMessages];
+      newWorld.visitor_messages = [];
+    }
+
     fs.writeFileSync('world.json', JSON.stringify(newWorld, null, 2));
 
     const furNote = result.baituantuan.fur && result.baituantuan.fur !== '正常'

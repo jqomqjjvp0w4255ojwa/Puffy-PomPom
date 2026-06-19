@@ -221,6 +221,55 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
 }
 .room-action-submit:active { background: #7a4a2a; }
 
+.guestbook { max-width: 480px; margin: 1.5rem auto 0; background: #fff; border-radius: 4px; box-shadow: 2px 2px 12px rgba(0,0,0,0.08); overflow: hidden; }
+.guestbook-form { padding: 1.25rem 1.5rem 1rem; border-bottom: 2px solid #e8c84a; }
+.visitor-name-input {
+  width: 100%;
+  background: #fff;
+  border: 1px solid #e0d8cc;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 12px;
+  font-family: 'Noto Serif TC', serif;
+  color: #4a3a2a;
+  outline: none;
+  margin-bottom: 8px;
+}
+.visitor-name-input:focus { border-color: #c8a87a; }
+.visitor-name-input::placeholder { color: #c0b0a0; font-size: 11px; }
+.visitor-message-textarea {
+  width: 100%;
+  background: #fff;
+  border: 1px solid #e0d8cc;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 12px;
+  font-family: 'Noto Serif TC', serif;
+  color: #4a3a2a;
+  resize: none;
+  height: 56px;
+  line-height: 1.7;
+  outline: none;
+}
+.visitor-message-textarea:focus { border-color: #c8a87a; }
+.visitor-message-textarea::placeholder { color: #c0b0a0; font-size: 11px; }
+.visitor-submit {
+  width: 100%;
+  margin-top: 6px;
+  background: #5a4a3a;
+  color: #f5f0e8;
+  border: none;
+  border-radius: 8px;
+  padding: 8px;
+  font-size: 11px;
+  font-family: 'Noto Serif TC', serif;
+  cursor: pointer;
+  letter-spacing: 0.05em;
+}
+.visitor-submit:active { background: #4a3a2a; }
+.visitor-pending { font-size: 11px; color: #c07050; margin-top: 6px; }
+.entry-visitor-name { font-size: 11px; color: #8a6a3a; margin-bottom: 4px; }
+
 @media (max-width: 400px) {
   .side-panel { width: 85vw; }
 }
@@ -254,6 +303,19 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
   </div>
   <div class="entries" id="entries">
     <div class="empty">觀察中...</div>
+  </div>
+</div>
+
+<div class="guestbook">
+  <div class="guestbook-form">
+    <div class="header-label">留言給白糰糰</div>
+    <input type="text" class="visitor-name-input" id="visitor-name" maxlength="20" placeholder="你的名字（可留空）">
+    <textarea class="visitor-message-textarea" id="visitor-message" maxlength="100" placeholder="想跟他說的話，他聽不懂，但可能會有反應..."></textarea>
+    <button class="visitor-submit" onclick="submitVisitorMessage()">留言</button>
+    <div class="visitor-pending" id="visitor-pending" style="display:none;">留言已送出，等白糰糰下次有動靜時可能會注意到</div>
+  </div>
+  <div class="entries" id="visitor-entries">
+    <div class="empty">還沒有人留言。</div>
   </div>
 </div>
 
@@ -458,6 +520,52 @@ async function submitRoomAction() {
   document.getElementById('panel-btn').classList.add('has-input');
 }
 
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str == null ? '' : String(str);
+  return div.innerHTML;
+}
+
+async function submitVisitorMessage() {
+  const name = document.getElementById('visitor-name').value.trim();
+  const message = document.getElementById('visitor-message').value.trim();
+  if (!message) return;
+  try {
+    await fetch('/api/visitor', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, message })
+    });
+    document.getElementById('visitor-message').value = '';
+    document.getElementById('visitor-pending').style.display = 'block';
+    load();
+  } catch (e) {}
+}
+
+function renderVisitorEntries(world) {
+  const pending = world.visitor_messages || [];
+  const log = world.visitor_log || [];
+  const container = document.getElementById('visitor-entries');
+  if (pending.length === 0 && log.length === 0) {
+    container.innerHTML = '<div class="empty">還沒有人留言。</div>';
+    return;
+  }
+  const pendingHtml = pending.slice().reverse().map(m => `
+    <div class="entry">
+      <div class="entry-visitor-name">${escapeHtml(m.name || '匿名訪客')} · ${escapeHtml(m.time)}</div>
+      <div class="entry-text">${escapeHtml(m.message)}</div>
+      <div class="entry-stats">等待白糰糰反應中...</div>
+    </div>
+  `).join('');
+  const logHtml = log.slice().reverse().map(m => `
+    <div class="entry">
+      <div class="entry-visitor-name">${escapeHtml(m.name || '匿名訪客')} · ${escapeHtml(m.time)}</div>
+      <div class="entry-text">${escapeHtml(m.message)}</div>
+    </div>
+  `).join('');
+  container.innerHTML = pendingHtml + logHtml;
+}
+
 function parseLog(log) {
   if (!log) return [];
   const blocks = log.split('─'.repeat(40)).filter(b => b.trim());
@@ -514,6 +622,11 @@ async function load() {
     }
     const ownerAction = world.owner_action || '';
     document.getElementById('panel-btn').classList.toggle('has-input', !!(ownerStatus || ownerAction));
+
+    renderVisitorEntries(world);
+    if ((world.visitor_messages || []).length === 0) {
+      document.getElementById('visitor-pending').style.display = 'none';
+    }
 
     const entries = parseLog(data.log);
     const container = document.getElementById('entries');
