@@ -114,6 +114,27 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
 }
 .panel-close i { font-size: 16px; }
 
+.panel-tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+.panel-tab {
+  flex: 1;
+  text-align: center;
+  padding: 8px 0;
+  font-size: 12px;
+  font-family: 'Noto Serif TC', serif;
+  color: #9a8a7a;
+  background: #f0ece4;
+  border: 1px solid #e0d8cc;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.panel-tab.active { background: #5a4a3a; color: #f5f0e8; border-color: #5a4a3a; }
+.panel-pane { display: none; }
+.panel-pane.active { display: flex; flex-direction: column; gap: 1.25rem; }
+
 .panel-section-title {
   font-size: 11px;
   color: #9a8a7a;
@@ -255,22 +276,6 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
 }
 .room-action-submit:active { background: #7a4a2a; }
 
-.guestbook { max-width: 480px; margin: 1.5rem auto 0; background: #fff; border-radius: 4px; box-shadow: 2px 2px 12px rgba(0,0,0,0.08); overflow: hidden; }
-.guestbook-form { padding: 1.25rem 1.5rem 1rem; border-bottom: 2px solid #e8c84a; }
-.visitor-name-input {
-  width: 100%;
-  background: #fff;
-  border: 1px solid #e0d8cc;
-  border-radius: 8px;
-  padding: 8px 10px;
-  font-size: 12px;
-  font-family: 'Noto Serif TC', serif;
-  color: #4a3a2a;
-  outline: none;
-  margin-bottom: 8px;
-}
-.visitor-name-input:focus { border-color: #c8a87a; }
-.visitor-name-input::placeholder { color: #c0b0a0; font-size: 11px; }
 .visitor-message-textarea {
   width: 100%;
   background: #fff;
@@ -302,7 +307,6 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
 }
 .visitor-submit:active { background: #4a3a2a; }
 .visitor-pending { font-size: 11px; color: #c07050; margin-top: 6px; }
-.entry-visitor-name { font-size: 11px; color: #8a6a3a; margin-bottom: 4px; }
 
 @media (max-width: 400px) {
   .side-panel { width: 85vw; }
@@ -345,19 +349,6 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
   </div>
 </div>
 
-<div class="guestbook">
-  <div class="guestbook-form">
-    <div class="header-label">給白糰糰的便利貼</div>
-    <input type="text" class="visitor-name-input" id="visitor-name" maxlength="20" placeholder="你的名字（可留空）">
-    <textarea class="visitor-message-textarea" id="visitor-message" maxlength="100" placeholder="想跟他說的話，他聽不懂，但可能會有反應..."></textarea>
-    <button class="visitor-submit" onclick="submitVisitorMessage()">貼上便利貼</button>
-    <div class="visitor-pending" id="visitor-pending" style="display:none;">便利貼已送出，等白糰糰下次有動靜時可能會注意到</div>
-  </div>
-  <div class="entries" id="visitor-entries">
-    <div class="empty">還沒有便利貼。</div>
-  </div>
-</div>
-
 <button class="panel-btn" id="panel-btn" onclick="openPanel()" aria-label="同居人面板">
   <i class="ti ti-user-circle"></i>
 </button>
@@ -369,54 +360,75 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
     <i class="ti ti-x"></i> 關閉
   </button>
 
-  <div>
-    <div class="panel-section-title">房間清潔度</div>
-    <div class="clean-bar-wrap">
-      <div class="clean-bar-fill" id="clean-bar" style="width:78%"></div>
-    </div>
-    <div class="clean-desc" id="clean-desc">—</div>
+  <div class="panel-tabs">
+    <div class="panel-tab active" data-tab="personal" onclick="switchTab('personal')">個人</div>
+    <div class="panel-tab" data-tab="room" onclick="switchTab('room')">房間</div>
+    <div class="panel-tab" data-tab="note" onclick="switchTab('note')">便利貼</div>
   </div>
 
-  <div>
-    <div class="panel-section-title">開關</div>
-    <div class="switch-rows">
-      <div class="switch-row">
-        <span class="switch-label"><i class="ti ti-bulb"></i> 燈</span>
-        <div class="switch" id="it-light" onclick="toggle('light_on')"><div class="switch-knob"></div></div>
+  <div class="panel-pane active" data-pane="personal">
+    <div>
+      <div class="panel-section-title">
+        我的狀態
+        <span class="status-icons" id="status-icons">
+          <i class="ti ti-pencil" onclick="editStatus()" title="編輯"></i>
+          <i class="ti ti-x" onclick="clearStatus()" title="清除"></i>
+        </span>
       </div>
-      <div class="switch-row">
-        <span class="switch-label"><i class="ti ti-door"></i> 廁所門</span>
-        <div class="switch" id="it-toilet" onclick="toggle('toilet_open')"><div class="switch-knob"></div></div>
-      </div>
-      <div class="switch-row">
-        <span class="switch-label"><i class="ti ti-window"></i> 窗戶</span>
-        <div class="switch" id="it-window" onclick="toggle('window_open')"><div class="switch-knob"></div></div>
-      </div>
-      <div class="switch-row">
-        <span class="switch-label"><i class="ti ti-snowflake"></i> 冷氣</span>
-        <div class="switch" id="it-ac" onclick="toggle('ac_on')"><div class="switch-knob"></div></div>
-      </div>
+      <div class="status-display" id="status-display"></div>
+      <div class="clear-confirm" id="clear-confirm" onclick="confirmClear()">再按一次確認清除</div>
+      <textarea class="owner-textarea" id="owner-input" maxlength="30" placeholder="在做什麼、有什麼變化..."></textarea>
+      <button class="owner-submit" id="owner-submit-btn" onclick="submitStatus()">記錄</button>
     </div>
   </div>
 
-  <div>
-    <div class="panel-section-title">
-      我的狀態
-      <span class="status-icons" id="status-icons">
-        <i class="ti ti-pencil" onclick="editStatus()" title="編輯"></i>
-        <i class="ti ti-x" onclick="clearStatus()" title="清除"></i>
-      </span>
+  <div class="panel-pane" data-pane="room">
+    <div>
+      <div class="panel-section-title">房間清潔度</div>
+      <div class="clean-bar-wrap">
+        <div class="clean-bar-fill" id="clean-bar" style="width:78%"></div>
+      </div>
+      <div class="clean-desc" id="clean-desc">—</div>
     </div>
-    <div class="status-display" id="status-display"></div>
-    <div class="clear-confirm" id="clear-confirm" onclick="confirmClear()">再按一次確認清除</div>
-    <textarea class="owner-textarea" id="owner-input" maxlength="30" placeholder="在做什麼、有什麼變化..."></textarea>
-    <button class="owner-submit" id="owner-submit-btn" onclick="submitStatus()">記錄</button>
+
+    <div>
+      <div class="panel-section-title">開關</div>
+      <div class="switch-rows">
+        <div class="switch-row">
+          <span class="switch-label"><i class="ti ti-bulb"></i> 燈</span>
+          <div class="switch" id="it-light" onclick="toggle('light_on')"><div class="switch-knob"></div></div>
+        </div>
+        <div class="switch-row">
+          <span class="switch-label"><i class="ti ti-door"></i> 廁所門</span>
+          <div class="switch" id="it-toilet" onclick="toggle('toilet_open')"><div class="switch-knob"></div></div>
+        </div>
+        <div class="switch-row">
+          <span class="switch-label"><i class="ti ti-window"></i> 窗戶</span>
+          <div class="switch" id="it-window" onclick="toggle('window_open')"><div class="switch-knob"></div></div>
+        </div>
+        <div class="switch-row">
+          <span class="switch-label"><i class="ti ti-snowflake"></i> 冷氣</span>
+          <div class="switch" id="it-ac" onclick="toggle('ac_on')"><div class="switch-knob"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="room-action-wrap" id="room-action-wrap">
+      <div class="room-action-title">對房間的行為</div>
+      <textarea class="room-action-textarea" id="room-action-input" maxlength="50" placeholder=""></textarea>
+      <button class="room-action-submit" onclick="submitRoomAction()">記錄・等待世界回應</button>
+    </div>
   </div>
 
-  <div class="room-action-wrap" id="room-action-wrap">
-    <div class="room-action-title">對房間的行為</div>
-    <textarea class="room-action-textarea" id="room-action-input" maxlength="50" placeholder=""></textarea>
-    <button class="room-action-submit" onclick="submitRoomAction()">記錄・等待世界回應</button>
+  <div class="panel-pane" data-pane="note">
+    <div>
+      <textarea class="visitor-message-textarea" id="visitor-message" maxlength="100" placeholder="想跟他說的話，他聽不懂，但可能會有反應..."></textarea>
+      <button class="visitor-submit" onclick="submitVisitorMessage()">貼上便利貼</button>
+      <div class="visitor-pending" id="visitor-pending" style="display:none;">便利貼已送出，等白糰糰下次有動靜時可能會注意到</div>
+    </div>
+    <div class="entries" id="visitor-entries">
+      <div class="empty">還沒有便利貼。</div>
+    </div>
   </div>
 
 </div>
@@ -448,6 +460,11 @@ function openPanel() {
 function closePanel() {
   document.getElementById('side-panel').classList.remove('open');
   document.getElementById('overlay').classList.remove('open');
+}
+
+function switchTab(tab) {
+  document.querySelectorAll('.panel-tab').forEach(el => el.classList.toggle('active', el.dataset.tab === tab));
+  document.querySelectorAll('.panel-pane').forEach(el => el.classList.toggle('active', el.dataset.pane === tab));
 }
 
 function getCleanDesc(v) {
@@ -566,14 +583,13 @@ function escapeHtml(str) {
 }
 
 async function submitVisitorMessage() {
-  const name = document.getElementById('visitor-name').value.trim();
   const message = document.getElementById('visitor-message').value.trim();
   if (!message) return;
   try {
     await fetch('/api/visitor', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, message })
+      body: JSON.stringify({ message })
     });
     document.getElementById('visitor-message').value = '';
     document.getElementById('visitor-pending').style.display = 'block';
@@ -589,14 +605,14 @@ function renderVisitorEntries(pending, log) {
   }
   const pendingHtml = pending.slice().reverse().map(m => `
     <div class="entry">
-      <div class="entry-visitor-name">${escapeHtml(m.name || '匿名訪客')} · ${escapeHtml(m.time)}</div>
+      <div class="entry-time">${escapeHtml(m.time)}</div>
       <div class="entry-text">${escapeHtml(m.message)}</div>
       <div class="entry-stats">等待白糰糰反應中...</div>
     </div>
   `).join('');
   const logHtml = log.slice().reverse().map(m => `
     <div class="entry">
-      <div class="entry-visitor-name">${escapeHtml(m.name || '匿名訪客')} · ${escapeHtml(m.time)}</div>
+      <div class="entry-time">${escapeHtml(m.time)}</div>
       <div class="entry-text">${escapeHtml(m.message)}</div>
     </div>
   `).join('');
