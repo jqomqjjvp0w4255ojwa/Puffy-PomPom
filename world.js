@@ -128,8 +128,6 @@ async function tick() {
   }
 
   const delay = getNextDelay();
-  const nextMin = Math.round(delay / 60000);
-  console.log(`下次更新：${nextMin} 分鐘後`);
   setTimeout(tick, delay);
 }
 
