@@ -67,7 +67,7 @@ function getNextDelay() {
 }
 
 function getRealTime() {
-  const now = new Date();
+  const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Taipei' }));
   const month = now.getMonth() + 1;
   const date = now.getDate();
   const hour = String(now.getHours()).padStart(2, '0');
