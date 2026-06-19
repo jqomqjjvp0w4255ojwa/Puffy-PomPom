@@ -81,7 +81,7 @@ function getRealTime() {
 const server = http.createServer((req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   
-  if (req.url === '/api/world') {
+  if (req.url.startsWith('/api/world')) {
     try {
       const world = JSON.parse(fs.readFileSync('world.json', 'utf8'));
       const logContent = fs.existsSync('log.txt') ? fs.readFileSync('log.txt', 'utf8') : '';
