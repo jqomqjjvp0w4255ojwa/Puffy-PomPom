@@ -212,10 +212,10 @@ async function tick() {
     world2.nextTickAt = Date.now() + delay;
     fs.writeFileSync('world.json', JSON.stringify(world2, null, 2));
   }
+console.log(`下次更新：${Math.round(delay/60000)} 分鐘後（${new Date(Date.now()+delay).toLocaleString('zh-TW',{timeZone:'Asia/Taipei'})}）`);
 
   setTimeout(tick, delay);
 }
-console.log(`下次更新：${Math.round(delay/60000)} 分鐘後（${new Date(Date.now()+delay).toLocaleString('zh-TW',{timeZone:'Asia/Taipei'})}）`);
 
 tick();
 console.log('白糰糰宇宙啟動中...');
