@@ -5,8 +5,20 @@ const Anthropic = require('@anthropic-ai/sdk');
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-const LOGS_DIR = path.join(__dirname, 'logs');
+const DATA_DIR = process.env.RAILWAY_VOLUME_MOUNT_PATH || __dirname;
+const WORLD_FILE = path.join(DATA_DIR, 'world.json');
+const SEED_WORLD_FILE = path.join(__dirname, 'world.json');
+const LEGACY_LOG_FILE = path.join(__dirname, 'log.txt');
+const LOGS_DIR = path.join(DATA_DIR, 'logs');
 const MIGRATION_MARKER = path.join(LOGS_DIR, '.migrated');
+
+// Volume 剛掛載時是空的，用 repo 內建的 world.json 當初始值種一份過去。
+function ensureWorldFile() {
+  if (!fs.existsSync(WORLD_FILE)) {
+    fs.mkdirSync(path.dirname(WORLD_FILE), { recursive: true });
+    fs.copyFileSync(SEED_WORLD_FILE, WORLD_FILE);
+  }
+}
 
 const SYSTEM_PROMPT = `你是白糰糰宇宙的世界引擎。根據當前世界狀態，生成這段時間內發生的事。
 
@@ -132,7 +144,7 @@ function inferDateKey(display, refNow) {
 }
 
 function ensureLogsDir() {
-  if (!fs.existsSync(LOGS_DIR)) fs.mkdirSync(LOGS_DIR);
+  if (!fs.existsSync(LOGS_DIR)) fs.mkdirSync(LOGS_DIR, { recursive: true });
 }
 
 function dayFilePath(dateKey) {
@@ -182,8 +194,8 @@ function migrateLegacyLogs() {
   const buckets = {};
   const bucket = dateKey => (buckets[dateKey] = buckets[dateKey] || emptyDay(dateKey));
 
-  if (fs.existsSync('log.txt')) {
-    const logContent = fs.readFileSync('log.txt', 'utf8');
+  if (fs.existsSync(LEGACY_LOG_FILE)) {
+    const logContent = fs.readFileSync(LEGACY_LOG_FILE, 'utf8');
     const blocks = logContent.split('─'.repeat(40)).map(b => b.trim()).filter(Boolean);
     for (const block of blocks) {
       const timeMatch = block.match(/【(.+?)】/);
@@ -209,7 +221,7 @@ function migrateLegacyLogs() {
   }
 
   let world = {};
-  try { world = JSON.parse(fs.readFileSync('world.json', 'utf8')); } catch (e) {}
+  try { world = JSON.parse(fs.readFileSync(WORLD_FILE, 'utf8')); } catch (e) {}
 
   for (const entry of (world.owner_log || [])) {
     const dateKey = inferDateKey(entry.time, now) || getTodayKey();
@@ -250,7 +262,7 @@ const server = http.createServer((req, res) => {
 
   if (req.url.startsWith('/api/world')) {
     try {
-      const world = JSON.parse(fs.readFileSync('world.json', 'utf8'));
+      const world = JSON.parse(fs.readFileSync(WORLD_FILE, 'utf8'));
       res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
       res.end(JSON.stringify({ world }));
     } catch (e) {
@@ -284,9 +296,9 @@ const server = http.createServer((req, res) => {
       req.on('data', chunk => body.push(chunk));
       req.on('end', () => {
         const data = JSON.parse(Buffer.concat(body).toString());
-        const world = JSON.parse(fs.readFileSync('world.json', 'utf8'));
+        const world = JSON.parse(fs.readFileSync(WORLD_FILE, 'utf8'));
         world.room = { ...world.room, ...data };
-        fs.writeFileSync('world.json', JSON.stringify(world, null, 2));
+        fs.writeFileSync(WORLD_FILE, JSON.stringify(world, null, 2));
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ ok: true }));
       });
@@ -300,10 +312,10 @@ const server = http.createServer((req, res) => {
       req.on('data', chunk => body.push(chunk));
       req.on('end', () => {
         const data = JSON.parse(Buffer.concat(body).toString());
-        const world = JSON.parse(fs.readFileSync('world.json', 'utf8'));
+        const world = JSON.parse(fs.readFileSync(WORLD_FILE, 'utf8'));
         if (data.type === 'status') world.owner_status = data.input || '';
         if (data.type === 'action') world.owner_action = data.input || '';
-        fs.writeFileSync('world.json', JSON.stringify(world, null, 2));
+        fs.writeFileSync(WORLD_FILE, JSON.stringify(world, null, 2));
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ ok: true }));
       });
@@ -325,10 +337,10 @@ const server = http.createServer((req, res) => {
           res.end(JSON.stringify({ ok: false, error: 'empty message' }));
           return;
         }
-        const world = JSON.parse(fs.readFileSync('world.json', 'utf8'));
+        const world = JSON.parse(fs.readFileSync(WORLD_FILE, 'utf8'));
         const { display } = getRealTime();
         world.visitor_messages = [...(world.visitor_messages || []), { name: name || '匿名訪客', message, time: display }];
-        fs.writeFileSync('world.json', JSON.stringify(world, null, 2));
+        fs.writeFileSync(WORLD_FILE, JSON.stringify(world, null, 2));
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ ok: true }));
       });
@@ -357,7 +369,7 @@ server.listen(process.env.PORT || 3000, () => {
 });
 
 async function tick() {
-  let world = JSON.parse(fs.readFileSync('world.json', 'utf8'));
+  let world = JSON.parse(fs.readFileSync(WORLD_FILE, 'utf8'));
   world = applyNaturalDecay(world);
 
   const { display } = getRealTime();
@@ -426,7 +438,7 @@ async function tick() {
       newWorld.visitor_messages = [];
     }
 
-    fs.writeFileSync('world.json', JSON.stringify(newWorld, null, 2));
+    fs.writeFileSync(WORLD_FILE, JSON.stringify(newWorld, null, 2));
 
     const furNote = result.baituantuan.fur && result.baituantuan.fur !== '正常'
       ? ` · ${result.baituantuan.fur}` : '';
@@ -445,15 +457,16 @@ async function tick() {
 
   } catch (e) {
     console.error('錯誤：', e.message);
-    const world2 = JSON.parse(fs.readFileSync('world.json', 'utf8'));
+    const world2 = JSON.parse(fs.readFileSync(WORLD_FILE, 'utf8'));
     world2.nextTickAt = Date.now() + delay;
-    fs.writeFileSync('world.json', JSON.stringify(world2, null, 2));
+    fs.writeFileSync(WORLD_FILE, JSON.stringify(world2, null, 2));
   }
 console.log(`下次更新：${Math.round(delay/60000)} 分鐘後（${new Date(Date.now()+delay).toLocaleString('zh-TW',{timeZone:'Asia/Taipei'})}）`);
 
   setTimeout(tick, delay);
 }
 
+ensureWorldFile();
 migrateLegacyLogs();
 tick();
 console.log('白糰糰宇宙啟動中...');
