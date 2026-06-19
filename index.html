@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>白糰糰觀察日記</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;500&display=swap');
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: #f5f0e8;
+    min-height: 100vh;
+    padding: 2rem 1rem;
+    font-family: 'Noto Serif TC', serif;
+  }
+
+  .cover {
+    max-width: 480px;
+    margin: 0 auto 2rem;
+    text-align: center;
+  }
+
+  .cover h1 {
+    font-size: 22px;
+    font-weight: 500;
+    color: #5a4a3a;
+    letter-spacing: 0.15em;
+    margin-bottom: 4px;
+  }
+
+  .cover p {
+    font-size: 12px;
+    color: #9a8a7a;
+    letter-spacing: 0.1em;
+  }
+
+  .notebook {
+    max-width: 480px;
+    margin: 0 auto;
+    background: #fff;
+    border-radius: 4px;
+    box-shadow: 2px 2px 12px rgba(0,0,0,0.08);
+    overflow: hidden;
+  }
+
+  .notebook-header {
+    background: #fff;
+    padding: 1.5rem 2rem 0.5rem;
+    border-bottom: 2px solid #e8c84a;
+  }
+
+  .date-label {
+    font-size: 11px;
+    color: #9a8a7a;
+    letter-spacing: 0.1em;
+    margin-bottom: 6px;
+  }
+
+  .status-row {
+    display: flex;
+    gap: 1rem;
+    font-size: 12px;
+    color: #7a6a5a;
+    padding-bottom: 0.75rem;
+  }
+
+  .status-item { display: flex; align-items: center; gap: 4px; }
+
+  .bar {
+    width: 60px;
+    height: 4px;
+    background: #ede8e0;
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  .bar-fill-hp { height: 100%; background: #7ab87a; border-radius: 2px; transition: width 0.5s; }
+  .bar-fill-food { height: 100%; background: #e8b45a; border-radius: 2px; transition: width 0.5s; }
+
+  .location-tag {
+    font-size: 11px;
+    color: #9a8a7a;
+    margin-left: auto;
+  }
+
+  .lines {
+    padding: 0 2rem;
+  }
+
+  .line {
+    border-bottom: 1px solid #e8e0d4;
+    min-height: 2.2rem;
+    display: flex;
+    align-items: flex-end;
+    padding-bottom: 2px;
+  }
+
+  .entry {
+    padding: 1rem 0;
+    width: 100%;
+  }
+
+  .entry-time {
+    font-size: 11px;
+    color: #b0a090;
+    letter-spacing: 0.08em;
+    margin-bottom: 6px;
+  }
+
+  .entry-text {
+    font-size: 14px;
+    color: #4a3a2a;
+    line-height: 2;
+    white-space: pre-line;
+  }
+
+  .entry-stats {
+    font-size: 11px;
+    color: #b0a090;
+    margin-top: 6px;
+  }
+
+  .shadow-alert {
+    font-size: 11px;
+    color: #c07050;
+    margin-top: 4px;
+  }
+
+  .empty {
+    padding: 3rem 2rem;
+    text-align: center;
+    font-size: 13px;
+    color: #b0a090;
+    line-height: 2;
+  }
+
+  .loading {
+    padding: 3rem 2rem;
+    text-align: center;
+    font-size: 13px;
+    color: #b0a090;
+  }
+
+  .refresh-hint {
+    text-align: center;
+    font-size: 11px;
+    color: #c0b0a0;
+    padding: 1rem;
+    letter-spacing: 0.05em;
+  }
+</style>
+</head>
+<body>
+
+<div class="cover">
+  <h1>白糰糰觀察日記</h1>
+  <p id="cover-date">載入中...</p>
+</div>
+
+<div class="notebook">
+  <div class="notebook-header">
+    <div class="date-label">今日狀態</div>
+    <div class="status-row">
+      <div class="status-item">
+        健康
+        <div class="bar"><div class="bar-fill-hp" id="bar-hp" style="width:0%"></div></div>
+        <span id="val-hp">—</span>
+      </div>
+      <div class="status-item">
+        飽食
+        <div class="bar"><div class="bar-fill-food" id="bar-food" style="width:0%"></div></div>
+        <span id="val-food">—</span>
+      </div>
+      <div class="location-tag" id="location">—</div>
+    </div>
+  </div>
+
+  <div class="lines" id="entries">
+    <div class="loading">觀察中...</div>
+  </div>
+</div>
+
+<div class="refresh-hint">每隔一段時間自動更新</div>
+
+<script>
+async function load() {
+  try {
+    const res = await fetch('/api/world?t=' + Date.now());
+    const data = await res.json();
+    const world = data.world;
+    const log = data.log;
+
+    const bt = world.characters.baituantuan;
+    document.getElementById('bar-hp').style.width = bt.hp + '%';
+    document.getElementById('bar-food').style.width = bt.food + '%';
+    document.getElementById('val-hp').textContent = bt.hp + '%';
+    document.getElementById('val-food').textContent = bt.food + '%';
+    document.getElementById('location').textContent = bt.location;
+
+    const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Taipei' }));
+    document.getElementById('cover-date').textContent =
+      (now.getMonth()+1) + ' 月 ' + now.getDate() + ' 日';
+
+    const entries = parseLog(log);
+    const container = document.getElementById('entries');
+
+    if (entries.length === 0) {
+      container.innerHTML = '<div class="empty">白糰糰還沒有動靜。<br>他可能在冰箱裡。</div>';
+      return;
+    }
+
+    container.innerHTML = entries.reverse().map(e => `
+      <div class="line">
+        <div class="entry">
+          <div class="entry-time">${e.time}</div>
+          <div class="entry-text">${e.scene}</div>
+          <div class="entry-stats">HP ${e.hp} · 飽食 ${e.food} · ${e.location}</div>
+          ${e.shadow ? '<div class="shadow-alert">⚠ 小黑影出沒中</div>' : ''}
+        </div>
+      </div>
+    `).join('');
+
+  } catch(e) {
+    document.getElementById('entries').innerHTML =
+      '<div class="empty">暫時無法連線。</div>';
+  }
+}
+
+function parseLog(log) {
+  if (!log) return [];
+  const blocks = log.split('─'.repeat(40)).filter(b => b.trim());
+  return blocks.map(block => {
+    const timeMatch = block.match(/【(.+?)】/);
+    const sceneMatch = block.match(/】\n([\s\S]+?)\n白糰糰/);
+    const hpMatch = block.match(/HP:(\d+)/);
+    const foodMatch = block.match(/飽食:(\d+)/);
+    const locMatch = block.match(/位置:(.+)/);
+    const shadowMatch = block.includes('小黑影出沒中');
+    if (!timeMatch) return null;
+    return {
+      time: timeMatch[1],
+      scene: sceneMatch ? sceneMatch[1].trim() : '',
+      hp: hpMatch ? hpMatch[1] : '—',
+      food: foodMatch ? foodMatch[1] : '—',
+      location: locMatch ? locMatch[1].trim() : '—',
+      shadow: shadowMatch
+    };
+  }).filter(Boolean);
+}
+
+load();
+setInterval(load, 3 * 60 * 1000);
+</script>
+</body>
+</html>

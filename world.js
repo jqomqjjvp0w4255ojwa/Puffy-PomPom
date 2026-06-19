@@ -1,3 +1,6 @@
+const http = require('http');
+const path = require('path');
+
 const Anthropic = require('@anthropic-ai/sdk');
 const fs = require('fs');
 
@@ -74,6 +77,38 @@ function getRealTime() {
   const min = String(now.getMinutes()).padStart(2, '0');
   return { display: `${month}/${date} ${hour}:${min}`, hour: now.getHours() };
 }
+
+const server = http.createServer((req, res) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  
+  if (req.url === '/api/world') {
+    try {
+      const world = JSON.parse(fs.readFileSync('world.json', 'utf8'));
+      const logContent = fs.existsSync('log.txt') ? fs.readFileSync('log.txt', 'utf8') : '';
+      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ world, log: logContent }));
+    } catch (e) {
+      res.writeHead(500);
+      res.end('error');
+    }
+  } else if (req.url === '/' || req.url === '/index.html') {
+    try {
+      const html = fs.readFileSync('index.html', 'utf8');
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+      res.end(html);
+    } catch (e) {
+      res.writeHead(404);
+      res.end('not found');
+    }
+  } else {
+    res.writeHead(404);
+    res.end('not found');
+  }
+});
+
+server.listen(process.env.PORT || 3000, () => {
+  console.log(`伺服器啟動，port ${process.env.PORT || 3000}`);
+});
 
 async function tick() {
   const world = JSON.parse(fs.readFileSync('world.json', 'utf8'));
