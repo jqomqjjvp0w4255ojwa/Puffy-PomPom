@@ -26,6 +26,20 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
 .fur-tag { font-size: 11px; color: #c07050; margin-top: 4px; }
 .shadow-active { font-size: 11px; color: #c07050; }
 
+.pagination { display: flex; align-items: center; justify-content: space-between; padding: 10px 1.5rem; border-bottom: 1px solid #ede8e0; }
+.page-btn {
+  background: none;
+  border: 1px solid #e0d8cc;
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-family: 'Noto Serif TC', serif;
+  color: #7a6a5a;
+  cursor: pointer;
+}
+.page-btn:disabled { color: #d0c8bc; cursor: default; }
+.page-label { font-size: 11px; color: #9a8a7a; letter-spacing: 0.05em; }
+
 .entries { padding: 0 1.5rem; }
 .entry { border-bottom: 1px solid #ede8e0; padding: 1rem 0; }
 .entry:last-child { border-bottom: none; }
@@ -301,6 +315,11 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
     <div class="fur-tag" id="fur-tag"></div>
     <div class="shadow-active" id="shadow-tag"></div>
   </div>
+  <div class="pagination">
+    <button class="page-btn" id="prev-day-btn" onclick="goPrevDay()" disabled>‹ 前一天</button>
+    <span class="page-label" id="page-label">—</span>
+    <button class="page-btn" id="next-day-btn" onclick="goNextDay()" disabled>後一天 ›</button>
+  </div>
   <div class="entries" id="entries">
     <div class="empty">觀察中...</div>
   </div>
@@ -542,9 +561,7 @@ async function submitVisitorMessage() {
   } catch (e) {}
 }
 
-function renderVisitorEntries(world) {
-  const pending = world.visitor_messages || [];
-  const log = world.visitor_log || [];
+function renderVisitorEntries(pending, log) {
   const container = document.getElementById('visitor-entries');
   if (pending.length === 0 && log.length === 0) {
     container.innerHTML = '<div class="empty">還沒有人留言。</div>';
@@ -566,28 +583,80 @@ function renderVisitorEntries(world) {
   container.innerHTML = pendingHtml + logHtml;
 }
 
-function parseLog(log) {
-  if (!log) return [];
-  const blocks = log.split('─'.repeat(40)).filter(b => b.trim());
-  return blocks.map(block => {
-    const timeMatch = block.match(/【(.+?)】/);
-    const sceneMatch = block.match(/】\n([\s\S]+?)\n健康/);
-    const hpMatch = block.match(/健康 (\d+)/);
-    const foodMatch = block.match(/飽食 (\d+)/);
-    const locMatch = block.match(/· ([^·\n]+)$/m);
-    const furMatch = block.match(/飽食 \d+ · (.+?) · /);
-    const shadowMatch = block.includes('小黑影出沒中');
-    if (!timeMatch) return null;
-    return {
-      time: timeMatch[1],
-      scene: sceneMatch ? sceneMatch[1].trim() : '',
-      hp: hpMatch ? hpMatch[1] : '—',
-      food: foodMatch ? foodMatch[1] : '—',
-      location: locMatch ? locMatch[1].trim() : '—',
-      fur: furMatch ? furMatch[1] : null,
-      shadow: shadowMatch
-    };
-  }).filter(Boolean);
+function renderDiaryEntries(diary) {
+  const container = document.getElementById('entries');
+  if (!diary || diary.length === 0) {
+    container.innerHTML = '<div class="empty">這天還沒有動靜。</div>';
+    return;
+  }
+  container.innerHTML = diary.slice().reverse().map(e => `
+    <div class="entry">
+      <div class="entry-time">${escapeHtml(e.time)}</div>
+      <div class="entry-text">${escapeHtml(e.scene)}</div>
+      <div class="entry-stats">健康 ${e.hp} · 飽食 ${e.food} · ${escapeHtml(e.location)}${e.fur ? ' · ' + escapeHtml(e.fur) : ''}</div>
+      ${e.shadowActive ? '<div class="entry-shadow">⚠ 小黑影出沒中</div>' : ''}
+    </div>
+  `).join('');
+}
+
+let availableDates = [];
+let currentDateKey = null;
+let followLatest = true;
+
+function updatePaginationUI() {
+  const idx = availableDates.indexOf(currentDateKey);
+  const total = availableDates.length;
+  document.getElementById('page-label').textContent = total ? `${currentDateKey}（第 ${idx + 1} / ${total} 頁）` : '—';
+  document.getElementById('prev-day-btn').disabled = idx <= 0;
+  document.getElementById('next-day-btn').disabled = idx === -1 || idx >= total - 1;
+}
+
+async function loadDay(dateKey) {
+  const res = await fetch('/api/day?date=' + dateKey + '&t=' + Date.now());
+  const day = await res.json();
+  renderDiaryEntries(day.diary);
+  updatePaginationUI();
+}
+
+async function refreshDatesAndDay() {
+  const res = await fetch('/api/dates?t=' + Date.now());
+  const data = await res.json();
+  availableDates = data.dates || [];
+  if (availableDates.length === 0) {
+    document.getElementById('entries').innerHTML = '<div class="empty">白糰糰還沒有動靜。<br>他可能在冰箱裡。</div>';
+    updatePaginationUI();
+    return;
+  }
+  if (followLatest || !currentDateKey || availableDates.indexOf(currentDateKey) === -1) {
+    currentDateKey = availableDates[availableDates.length - 1];
+  }
+  await loadDay(currentDateKey);
+}
+
+function goPrevDay() {
+  const idx = availableDates.indexOf(currentDateKey);
+  if (idx > 0) {
+    currentDateKey = availableDates[idx - 1];
+    followLatest = false;
+    loadDay(currentDateKey);
+  }
+}
+
+function goNextDay() {
+  const idx = availableDates.indexOf(currentDateKey);
+  if (idx >= 0 && idx < availableDates.length - 1) {
+    currentDateKey = availableDates[idx + 1];
+    followLatest = currentDateKey === availableDates[availableDates.length - 1];
+    loadDay(currentDateKey);
+  }
+}
+
+async function refreshGuestbook(world) {
+  try {
+    const res = await fetch('/api/day?t=' + Date.now());
+    const today = await res.json();
+    renderVisitorEntries(world.visitor_messages || [], today.visitorLog || []);
+  } catch (e) {}
 }
 
 async function load() {
@@ -623,25 +692,11 @@ async function load() {
     const ownerAction = world.owner_action || '';
     document.getElementById('panel-btn').classList.toggle('has-input', !!(ownerStatus || ownerAction));
 
-    renderVisitorEntries(world);
     if ((world.visitor_messages || []).length === 0) {
       document.getElementById('visitor-pending').style.display = 'none';
     }
-
-    const entries = parseLog(data.log);
-    const container = document.getElementById('entries');
-    if (entries.length === 0) {
-      container.innerHTML = '<div class="empty">白糰糰還沒有動靜。<br>他可能在冰箱裡。</div>';
-      return;
-    }
-    container.innerHTML = entries.reverse().map(e => `
-      <div class="entry">
-        <div class="entry-time">${e.time}</div>
-        <div class="entry-text">${e.scene}</div>
-        <div class="entry-stats">健康 ${e.hp} · 飽食 ${e.food} · ${e.location}${e.fur ? ' · ' + e.fur : ''}</div>
-        ${e.shadow ? '<div class="entry-shadow">⚠ 小黑影出沒中</div>' : ''}
-      </div>
-    `).join('');
+    await refreshGuestbook(world);
+    await refreshDatesAndDay();
 
   } catch(e) {
     document.getElementById('entries').innerHTML = '<div class="empty">暫時無法連線。</div>';

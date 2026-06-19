@@ -1,8 +1,12 @@
 const http = require('http');
 const fs = require('fs');
+const path = require('path');
 const Anthropic = require('@anthropic-ai/sdk');
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+
+const LOGS_DIR = path.join(__dirname, 'logs');
+const MIGRATION_MARKER = path.join(LOGS_DIR, '.migrated');
 
 const SYSTEM_PROMPT = `你是白糰糰宇宙的世界引擎。根據當前世界狀態，生成這段時間內發生的事。
 
@@ -97,6 +101,127 @@ function getRealTime() {
   return { display: `${month}/${date} ${hour}:${min}`, hour: now.getHours() };
 }
 
+function getTaipeiNow() {
+  return new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Taipei' }));
+}
+
+function dateKeyOf(date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
+function getTodayKey() {
+  return dateKeyOf(getTaipeiNow());
+}
+
+// "display" 是沒有年份的 "M/D HH:MM" 字串，靠跟現在時間比較推回年份
+function inferDateKey(display, refNow) {
+  const m = display && display.match(/^(\d+)\/(\d+)/);
+  if (!m) return null;
+  const month = parseInt(m[1], 10);
+  const day = parseInt(m[2], 10);
+  let year = refNow.getFullYear();
+  const candidate = new Date(year, month - 1, day);
+  if (candidate.getTime() - refNow.getTime() > 24 * 60 * 60 * 1000) year -= 1;
+  return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+}
+
+function ensureLogsDir() {
+  if (!fs.existsSync(LOGS_DIR)) fs.mkdirSync(LOGS_DIR);
+}
+
+function dayFilePath(dateKey) {
+  return path.join(LOGS_DIR, `${dateKey}.json`);
+}
+
+function emptyDay(dateKey) {
+  return { date: dateKey, diary: [], ownerLog: [], visitorLog: [] };
+}
+
+function readDay(dateKey) {
+  const p = dayFilePath(dateKey);
+  if (!fs.existsSync(p)) return emptyDay(dateKey);
+  try {
+    return JSON.parse(fs.readFileSync(p, 'utf8'));
+  } catch (e) {
+    return emptyDay(dateKey);
+  }
+}
+
+function writeDay(dateKey, data) {
+  ensureLogsDir();
+  fs.writeFileSync(dayFilePath(dateKey), JSON.stringify(data, null, 2));
+}
+
+function appendToDay(dateKey, section, entries) {
+  const day = readDay(dateKey);
+  day[section] = [...(day[section] || []), ...entries];
+  writeDay(dateKey, day);
+}
+
+function listDateKeys() {
+  ensureLogsDir();
+  return fs.readdirSync(LOGS_DIR)
+    .filter(f => f.endsWith('.json'))
+    .map(f => f.replace('.json', ''))
+    .sort();
+}
+
+// 把舊的 log.txt（單一檔案）跟 world.json 裡的 owner_log/visitor_log 轉成每日一檔的格式。
+// 只會新增檔案，絕不刪除或覆寫原始資料，且用 .migrated 標記避免重複轉檔。
+function migrateLegacyLogs() {
+  ensureLogsDir();
+  if (fs.existsSync(MIGRATION_MARKER)) return;
+
+  const now = getTaipeiNow();
+  const buckets = {};
+  const bucket = dateKey => (buckets[dateKey] = buckets[dateKey] || emptyDay(dateKey));
+
+  if (fs.existsSync('log.txt')) {
+    const logContent = fs.readFileSync('log.txt', 'utf8');
+    const blocks = logContent.split('─'.repeat(40)).map(b => b.trim()).filter(Boolean);
+    for (const block of blocks) {
+      const timeMatch = block.match(/【(.+?)】/);
+      if (!timeMatch) continue;
+      const display = timeMatch[1];
+      const dateKey = inferDateKey(display, now);
+      if (!dateKey) continue;
+      const sceneMatch = block.match(/】\n([\s\S]+?)\n健康/);
+      const hpMatch = block.match(/健康 (\d+)/);
+      const foodMatch = block.match(/飽食 (\d+)/);
+      const furMatch = block.match(/飽食 \d+ · (.+?) · /);
+      const locMatch = block.match(/· ([^·\n]+)$/m);
+      bucket(dateKey).diary.push({
+        time: display,
+        scene: sceneMatch ? sceneMatch[1].trim() : '',
+        hp: hpMatch ? Number(hpMatch[1]) : null,
+        food: foodMatch ? Number(foodMatch[1]) : null,
+        location: locMatch ? locMatch[1].trim() : '',
+        fur: furMatch ? furMatch[1] : null,
+        shadowActive: block.includes('小黑影出沒中')
+      });
+    }
+  }
+
+  let world = {};
+  try { world = JSON.parse(fs.readFileSync('world.json', 'utf8')); } catch (e) {}
+
+  for (const entry of (world.owner_log || [])) {
+    const dateKey = inferDateKey(entry.time, now) || getTodayKey();
+    bucket(dateKey).ownerLog.push(entry);
+  }
+  for (const entry of (world.visitor_log || [])) {
+    const dateKey = inferDateKey(entry.time, now) || getTodayKey();
+    bucket(dateKey).visitorLog.push(entry);
+  }
+
+  for (const [dateKey, data] of Object.entries(buckets)) {
+    writeDay(dateKey, data);
+  }
+
+  fs.writeFileSync(MIGRATION_MARKER, new Date().toISOString());
+  console.log(`已將舊資料轉檔成 ${Object.keys(buckets).length} 個每日檔案（logs/）`);
+}
+
 function applyNaturalDecay(world) {
   const bt = world.characters.baituantuan;
   const windowOpen = world.room.window_open;
@@ -120,9 +245,28 @@ const server = http.createServer((req, res) => {
   if (req.url.startsWith('/api/world')) {
     try {
       const world = JSON.parse(fs.readFileSync('world.json', 'utf8'));
-      const logContent = fs.existsSync('log.txt') ? fs.readFileSync('log.txt', 'utf8') : '';
       res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-      res.end(JSON.stringify({ world, log: logContent }));
+      res.end(JSON.stringify({ world }));
+    } catch (e) {
+      res.writeHead(500);
+      res.end('error');
+    }
+
+  } else if (req.url.startsWith('/api/dates')) {
+    try {
+      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ dates: listDateKeys() }));
+    } catch (e) {
+      res.writeHead(500);
+      res.end('error');
+    }
+
+  } else if (req.url.startsWith('/api/day')) {
+    try {
+      const url = new URL(req.url, 'http://localhost');
+      const dateKey = url.searchParams.get('date') || getTodayKey();
+      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify(readDay(dateKey)));
     } catch (e) {
       res.writeHead(500);
       res.end('error');
@@ -260,17 +404,19 @@ async function tick() {
       room: { ...world.room, ...result.room }
     };
 
+    const todayKey = getTodayKey();
+
     if (world.owner_action) {
-      newWorld.owner_log = [...(world.owner_log || []).slice(-20), {
+      appendToDay(todayKey, 'ownerLog', [{
         time: display,
         status: world.owner_status || '',
         action: world.owner_action
-      }];
+      }]);
       newWorld.owner_action = '';
     }
 
     if (visitorMessages.length > 0) {
-      newWorld.visitor_log = [...(world.visitor_log || []).slice(-30), ...visitorMessages];
+      appendToDay(todayKey, 'visitorLog', visitorMessages);
       newWorld.visitor_messages = [];
     }
 
@@ -278,10 +424,18 @@ async function tick() {
 
     const furNote = result.baituantuan.fur && result.baituantuan.fur !== '正常'
       ? ` · ${result.baituantuan.fur}` : '';
-    const log = `\n【${display}】\n${result.scene}\n健康 ${result.baituantuan.hp} · 飽食 ${result.baituantuan.food}${furNote} · ${result.baituantuan.location}\n${result.shadow.active ? '⚠️ 小黑影出沒中' : ''}\n${'─'.repeat(40)}`;
 
-    fs.appendFileSync('log.txt', log);
-    console.log(log);
+    appendToDay(todayKey, 'diary', [{
+      time: display,
+      scene: result.scene,
+      hp: result.baituantuan.hp,
+      food: result.baituantuan.food,
+      location: result.baituantuan.location,
+      fur: result.baituantuan.fur && result.baituantuan.fur !== '正常' ? result.baituantuan.fur : null,
+      shadowActive: !!result.shadow.active
+    }]);
+
+    console.log(`【${display}】\n${result.scene}\n健康 ${result.baituantuan.hp} · 飽食 ${result.baituantuan.food}${furNote} · ${result.baituantuan.location}\n${result.shadow.active ? '⚠️ 小黑影出沒中' : ''}`);
 
   } catch (e) {
     console.error('錯誤：', e.message);
@@ -294,5 +448,6 @@ console.log(`下次更新：${Math.round(delay/60000)} 分鐘後（${new Date(Da
   setTimeout(tick, delay);
 }
 
+migrateLegacyLogs();
 tick();
 console.log('白糰糰宇宙啟動中...');
