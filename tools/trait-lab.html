@@ -492,12 +492,44 @@ function readCSV(e, callback) {
   e.target.value = '';
 }
 
+// ===================== 自動存檔（localStorage，僅留在這台瀏覽器，仍建議定期匯出CSV備份） =====================
+const STORAGE_KEY = 'puffy-trait-lab-v1';
+function saveToStorage() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ nicknameGrid, textureGrid, moodBands }));
+  } catch (err) { /* 存儲空間不足或被封鎖時略過，不影響操作 */ }
+}
+function loadFromStorage() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return false;
+    const data = JSON.parse(raw);
+    if (data.nicknameGrid) nicknameGrid = data.nicknameGrid;
+    if (data.textureGrid) textureGrid = data.textureGrid;
+    if (data.moodBands) moodBands = data.moodBands;
+    return true;
+  } catch (err) { return false; }
+}
+// 包一層：所有會改到資料的函式跑完後都存一次
+['nicknameUpdatePreview','nicknameImportCSV','nicknameClearAll','nicknameFillSample',
+ 'textureUpdatePreview','textureImportCSV','textureClearAll','textureFillSample',
+ 'moodUpdatePreview','moodImportCSV','moodAddBand','moodFillSample'].forEach(fnName => {
+  const original = window[fnName];
+  window[fnName] = function (...args) {
+    const result = original.apply(this, args);
+    saveToStorage();
+    return result;
+  };
+});
+
 // ===================== 初始化 =====================
+const restored = loadFromStorage();
 nicknameBuildTable();
 nicknameUpdatePreview();
 textureBuildTable();
 textureUpdatePreview();
-moodFillSample();
+if (!restored) moodFillSample();
+moodRenderBands();
 moodUpdatePreview();
 </script>
 
