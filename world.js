@@ -2,6 +2,7 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const Anthropic = require('@anthropic-ai/sdk');
+const { FRAGMENTS, COLLECTION_HINTS, matchFragments } = require('./fragments');
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -280,7 +281,16 @@ function dayFilePath(dateKey) {
 }
 
 function emptyDay(dateKey) {
-  return { date: dateKey, diary: [], ownerLog: [], visitorLog: [] };
+  return { date: dateKey, diary: [], ownerLog: [], visitorLog: [], fragmentLog: [] };
+}
+
+// world.json 裡的 fragments 欄位可能是舊資料（不存在）或半成形，補齊成完整結構。
+function ensureFragmentsState(world) {
+  if (!world.fragments) world.fragments = { collected: [], pending: null, hintsShown: [] };
+  if (!Array.isArray(world.fragments.collected)) world.fragments.collected = [];
+  if (world.fragments.pending === undefined) world.fragments.pending = null;
+  if (!Array.isArray(world.fragments.hintsShown)) world.fragments.hintsShown = [];
+  return world.fragments;
 }
 
 function readDay(dateKey) {
@@ -469,6 +479,48 @@ const server = http.createServer((req, res) => {
       res.end('error');
     }
 
+  } else if (req.url.startsWith('/api/fragment')) {
+    try {
+      const body = [];
+      req.on('data', chunk => body.push(chunk));
+      req.on('end', () => {
+        const data = JSON.parse(Buffer.concat(body).toString());
+        const world = JSON.parse(fs.readFileSync(WORLD_FILE, 'utf8'));
+        const fragState = ensureFragmentsState(world);
+        const pending = fragState.pending;
+        let bonusHint = null;
+
+        if (pending && pending.id === data.id) {
+          const { display } = getRealTime();
+          if (data.action === 'keep') {
+            if (!fragState.collected.includes(pending.id)) fragState.collected.push(pending.id);
+            const sourceIds = FRAGMENTS.filter(f => f.source === pending.source).map(f => f.id);
+            const isComplete = sourceIds.length > 0 && sourceIds.every(id => fragState.collected.includes(id));
+            if (isComplete && COLLECTION_HINTS[pending.source] && !fragState.hintsShown.includes(pending.source)) {
+              bonusHint = COLLECTION_HINTS[pending.source];
+              fragState.hintsShown.push(pending.source);
+            }
+            world.last_activity = { time: display, text: `得到一紙片，上面寫著：${pending.text}` };
+          } else {
+            world.last_activity = { time: display, text: '剛剛丟了張怪紙片' };
+          }
+          fragState.pending = null;
+          appendToDay(getTodayKey(), 'fragmentLog', [{
+            time: display, id: pending.id, source: pending.source, action: data.action,
+            text: data.action === 'keep' ? pending.text : null
+          }]);
+        }
+
+        world.fragments = fragState;
+        fs.writeFileSync(WORLD_FILE, JSON.stringify(world, null, 2));
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ ok: true, bonusHint }));
+      });
+    } catch (e) {
+      res.writeHead(500);
+      res.end('error');
+    }
+
   } else if (req.url.startsWith('/api/visitor/delete')) {
     try {
       const body = [];
@@ -633,6 +685,20 @@ async function tick() {
       room: { ...world.room, ...result.room }
     };
 
+    const fragState = ensureFragmentsState(world);
+    newWorld.fragments = { ...fragState };
+    if (!fragState.pending) {
+      const hits = matchFragments(result.scene, combinedPlayerText, fragState.collected);
+      if (hits.length > 0) {
+        const f = hits[0];
+        newWorld.fragments = {
+          ...fragState,
+          pending: { id: f.id, source: f.source, label: f.label || '', text: f.text, time: display }
+        };
+        console.log(`紙片掉落待領取：${f.id}`);
+      }
+    }
+
     const todayKey = getTodayKey();
 
     if (world.owner_action) {
@@ -642,6 +708,7 @@ async function tick() {
         action: world.owner_action
       }]);
       newWorld.owner_action = '';
+      newWorld.last_activity = { time: display, text: world.owner_action };
     }
 
     if (visitorMessages.length > 0) {

@@ -35,5 +35,11 @@
   "owner_status": "",
   "owner_action": "",
   "visitor_messages": [],
-  "visitor_log": []
+  "visitor_log": [],
+  "fragments": {
+    "collected": [],
+    "pending": null,
+    "hintsShown": []
+  },
+  "last_activity": null
 }

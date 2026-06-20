@@ -389,6 +389,67 @@ async function deleteNote() {
   renderNoteDraft();
 }
 
+// ===== 黑影紙片 =====
+let currentFragmentPending = null;
+const fragmentActionsDefaultHTML = document.getElementById('fragment-card-actions').innerHTML;
+
+function openFragmentCard() {
+  document.getElementById('fragment-overlay').classList.add('open');
+  document.getElementById('fragment-card').classList.add('open');
+}
+function closeFragmentCard() {
+  document.getElementById('fragment-overlay').classList.remove('open');
+  document.getElementById('fragment-card').classList.remove('open');
+}
+
+function renderFragmentCard(pending) {
+  document.getElementById('fragment-card-source').textContent = pending.source || '';
+  document.getElementById('fragment-card-label').textContent = pending.label || '';
+  document.getElementById('fragment-card-text').textContent = pending.text || '';
+  document.getElementById('fragment-card-bonus').style.display = 'none';
+  document.getElementById('fragment-card-bonus').textContent = '';
+  document.getElementById('fragment-card-actions').innerHTML = fragmentActionsDefaultHTML;
+}
+
+function maybeShowFragmentCard(fragments) {
+  const pending = fragments && fragments.pending;
+  if (pending) {
+    if (!currentFragmentPending || currentFragmentPending.id !== pending.id) {
+      currentFragmentPending = pending;
+      renderFragmentCard(pending);
+      openFragmentCard();
+    }
+  } else if (currentFragmentPending) {
+    currentFragmentPending = null;
+    closeFragmentCard();
+  }
+}
+
+async function resolveFragment(action) {
+  if (!currentFragmentPending) return;
+  document.querySelectorAll('#fragment-card-actions .fragment-btn').forEach(b => b.disabled = true);
+  let data = {};
+  try {
+    const res = await fetch('/api/fragment', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action, id: currentFragmentPending.id })
+    });
+    data = await res.json();
+  } catch (e) {}
+
+  if (data.bonusHint) {
+    document.getElementById('fragment-card-bonus').style.display = 'block';
+    document.getElementById('fragment-card-bonus').textContent = data.bonusHint;
+    document.getElementById('fragment-card-actions').innerHTML =
+      '<button class="fragment-btn fragment-btn-keep" onclick="closeFragmentCard(); currentFragmentPending = null;">知道了</button>';
+  } else {
+    closeFragmentCard();
+    currentFragmentPending = null;
+  }
+  load();
+}
+
 function renderDiaryEntries(diary) {
   const container = document.getElementById('entries');
   if (!diary || diary.length === 0) {
@@ -457,14 +518,13 @@ function goNextDay() {
   }
 }
 
-function renderActivityFeed(pendingAction, ownerLog) {
+function renderActivityFeed(pendingAction, lastActivity) {
   const container = document.getElementById('activity-feed');
   let html;
   if (pendingAction) {
     html = `<div class="feed-entry"><div class="feed-time">我的動態</div><div class="feed-text">${escapeHtml(pendingAction)}</div></div>`;
-  } else if (ownerLog && ownerLog.length > 0) {
-    const latest = ownerLog[ownerLog.length - 1];
-    html = `<div class="feed-entry"><div class="feed-time">${escapeHtml(latest.time)}</div><div class="feed-text">${escapeHtml(latest.action)}</div></div>`;
+  } else if (lastActivity && lastActivity.text) {
+    html = `<div class="feed-entry"><div class="feed-time">${escapeHtml(lastActivity.time)}</div><div class="feed-text">${escapeHtml(lastActivity.text)}</div></div>`;
   } else {
     html = '<div class="empty">還沒有動態。</div>';
   }
@@ -475,12 +535,8 @@ function renderActivityFeed(pendingAction, ownerLog) {
 }
 
 async function refreshTodayPanels(world) {
-  try {
-    const res = await fetch('/api/day?t=' + Date.now());
-    const today = await res.json();
-    renderActivityFeed(world.owner_action || '', today.ownerLog || []);
-    refreshNoteWidget(world.visitor_messages || []);
-  } catch (e) {}
+  renderActivityFeed(world.owner_action || '', world.last_activity || null);
+  refreshNoteWidget(world.visitor_messages || []);
 }
 
 async function refreshWeather(fallback) {
@@ -549,6 +605,8 @@ async function load() {
     setAwayUI(ownerAway);
 
     document.getElementById('rent-overlay').style.display = world.for_rent ? 'flex' : 'none';
+
+    maybeShowFragmentCard(world.fragments);
 
     await refreshTodayPanels(world);
     await refreshDatesAndDay();

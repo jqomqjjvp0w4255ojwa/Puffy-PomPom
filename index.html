@@ -248,6 +248,18 @@
   </div>
 </div>
 
+<div class="fragment-overlay" id="fragment-overlay"></div>
+<div class="fragment-card" id="fragment-card">
+  <div class="fragment-card-source" id="fragment-card-source"></div>
+  <div class="fragment-card-label" id="fragment-card-label"></div>
+  <div class="fragment-card-text" id="fragment-card-text"></div>
+  <div class="fragment-card-bonus" id="fragment-card-bonus" style="display:none;"></div>
+  <div class="fragment-card-actions" id="fragment-card-actions">
+    <button class="fragment-btn fragment-btn-discard" onclick="resolveFragment('discard')"><i class="ti ti-trash"></i> 丟棄</button>
+    <button class="fragment-btn fragment-btn-keep" onclick="resolveFragment('keep')"><i class="ti ti-bookmark"></i> 收起</button>
+  </div>
+</div>
+
 <script src="app.js"></script>
 </body>
 </html>

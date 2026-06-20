@@ -632,3 +632,67 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
 @media (max-width: 400px) {
   .side-panel { width: 85vw; }
 }
+
+/* 黑影紙片 */
+.fragment-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(14,12,10,0.78);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  z-index: 700;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s;
+}
+.fragment-overlay.open { opacity: 1; pointer-events: all; }
+.fragment-card {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -46%) rotate(-1.5deg) scale(0.94);
+  width: 280px;
+  max-width: calc(100vw - 2.5rem);
+  background: #ece4d2;
+  box-shadow: 0 16px 36px rgba(0,0,0,0.45);
+  padding: 1.6rem 1.4rem 1.2rem;
+  z-index: 701;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s, transform 0.25s;
+  font-family: 'Noto Serif TC', serif;
+  clip-path: polygon(
+    0% 4%, 5% 0%, 10% 5%, 15% 1%, 20% 4%, 25% 0%, 30% 5%, 35% 1%, 40% 4%, 45% 0%, 50% 5%, 55% 1%, 60% 4%, 65% 0%, 70% 5%, 75% 1%, 80% 4%, 85% 0%, 90% 5%, 95% 1%, 100% 4%,
+    100% 96%, 95% 100%, 90% 95%, 85% 99%, 80% 96%, 75% 100%, 70% 95%, 65% 99%, 60% 96%, 55% 100%, 50% 95%, 45% 99%, 40% 96%, 35% 100%, 30% 95%, 25% 99%, 20% 96%, 15% 100%, 10% 96%, 5% 99%, 0% 96%
+  );
+}
+.fragment-card.open { opacity: 1; pointer-events: all; transform: translate(-50%, -50%) rotate(-1.5deg) scale(1); }
+.fragment-card-source { font-size: 11px; color: #8a7a68; letter-spacing: 0.08em; text-align: center; }
+.fragment-card-label { font-size: 11px; color: #b09858; text-align: center; margin-top: 2px; min-height: 14px; }
+.fragment-card-text {
+  font-size: 14px;
+  color: #3a3228;
+  line-height: 2;
+  text-align: center;
+  white-space: pre-wrap;
+  margin: 0.9rem 0 0.6rem;
+}
+.fragment-card-bonus {
+  font-size: 12px;
+  color: #6a5238;
+  background: #fdf6e3;
+  border-radius: 6px;
+  padding: 0.6rem 0.7rem;
+  line-height: 1.7;
+  margin-bottom: 0.8rem;
+}
+.fragment-card-actions { display: flex; justify-content: center; gap: 10px; margin-top: 0.4rem; }
+.fragment-btn {
+  display: flex; align-items: center; gap: 5px;
+  border: none; border-radius: 16px; padding: 7px 16px;
+  font-family: inherit; font-size: 12px; cursor: pointer;
+  background: #ddd3bf; color: #5a4a3a;
+  transition: background 0.2s, opacity 0.2s;
+}
+.fragment-btn:disabled { opacity: 0.5; cursor: default; }
+.fragment-btn-keep { background: #5a8fc0; color: #fff; }
