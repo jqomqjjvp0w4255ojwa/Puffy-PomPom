@@ -280,17 +280,28 @@ function editEnv() { envField.edit(); }
 function cancelEnv() { envField.cancel(); }
 function submitEnv() { envField.submit(); }
 
+function updateComposeCount() {
+  const inp = document.getElementById('room-action-input');
+  const el = document.getElementById('compose-count');
+  if (!inp || !el) return;
+  const max = inp.maxLength > 0 ? inp.maxLength : 50;
+  el.textContent = `${inp.value.length}/${max}`;
+  el.classList.toggle('is-full', inp.value.length >= max);
+}
 function openCompose() {
   document.getElementById('compose-trigger').style.display = 'none';
   document.getElementById('compose-box').style.display = 'block';
   const inp = document.getElementById('room-action-input');
   inp.placeholder = randomPlaceholder();
+  inp.oninput = updateComposeCount;
+  updateComposeCount();
   inp.focus();
 }
 function closeCompose() {
   document.getElementById('compose-box').style.display = 'none';
   document.getElementById('compose-trigger').style.display = 'flex';
   document.getElementById('room-action-input').value = '';
+  updateComposeCount();
 }
 
 async function submitRoomAction() {

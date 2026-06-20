@@ -109,7 +109,10 @@
         </div>
       </div>
       <div class="compose-box" id="compose-box" style="display:none;">
-        <textarea class="room-action-textarea" id="room-action-input" maxlength="50" placeholder=""></textarea>
+        <div class="compose-input-wrap">
+          <textarea class="room-action-textarea" id="room-action-input" maxlength="50" placeholder=""></textarea>
+          <span class="compose-count" id="compose-count">0/50</span>
+        </div>
         <div class="compose-actions">
           <span class="edit-cancel" onclick="closeCompose()">取消</span>
           <button class="room-action-submit" onclick="submitRoomAction()">記錄・等待世界回應</button>
