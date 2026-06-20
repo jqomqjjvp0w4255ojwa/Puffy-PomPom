@@ -354,7 +354,7 @@ const server = http.createServer((req, res) => {
       req.on('end', () => {
         const data = JSON.parse(Buffer.concat(body).toString());
         const name = (data.name || '').trim().slice(0, 20);
-        const message = (data.message || '').trim().slice(0, 100);
+        const message = (data.message || '').trim().slice(0, 50);
         const color = (data.color || 'yellow').trim().slice(0, 20);
         if (!message) {
           res.writeHead(400, { 'Content-Type': 'application/json' });

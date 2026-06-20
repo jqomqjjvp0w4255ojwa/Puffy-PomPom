@@ -439,14 +439,15 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
   .note-overlay { display: block; }
   .note-overlay.open { opacity: 1; pointer-events: all; }
   .sticky-note {
-    left: 0;
-    right: 0;
-    bottom: 0;
-    width: 100%;
-    min-height: 45vh;
-    border-radius: 16px 16px 0 0;
+    left: 1rem;
+    right: 1rem;
+    bottom: 1rem;
+    width: auto;
+    min-height: 0;
+    max-height: 38vh;
+    border-radius: 12px;
     transform: translateY(100%);
-    padding: 0.85rem 1rem 1rem;
+    padding: 0.7rem 0.85rem 0.85rem;
   }
   .sticky-note.open { transform: translateY(0); }
 }
