@@ -123,6 +123,42 @@ function getTaipeiNow() {
   return new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Taipei' }));
 }
 
+// WMO weather code -> 中文氣候
+function weatherDesc(code) {
+  if (code === 0) return '晴';
+  if (code <= 3) return '多雲';
+  if (code <= 48) return '霧';
+  if (code <= 57) return '毛毛雨';
+  if (code <= 67) return '雨';
+  if (code <= 77) return '雪';
+  if (code <= 82) return '陣雨';
+  if (code <= 86) return '陣雪';
+  if (code <= 99) return '雷雨';
+  return '—';
+}
+
+// 抓台北即時天氣（Open-Meteo，免金鑰）。失敗回 null，不影響 tick。
+async function fetchWeather() {
+  try {
+    const url = 'https://api.open-meteo.com/v1/forecast?latitude=25.033&longitude=121.565&current=temperature_2m,relative_humidity_2m,weather_code&timezone=Asia%2FTaipei';
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 8000);
+    const res = await fetch(url, { signal: controller.signal });
+    clearTimeout(timer);
+    if (!res.ok) return null;
+    const data = await res.json();
+    const c = data.current;
+    return {
+      temp: Math.round(c.temperature_2m),
+      humidity: Math.round(c.relative_humidity_2m),
+      desc: weatherDesc(c.weather_code),
+      time: getRealTime().display,
+    };
+  } catch (e) {
+    return null;
+  }
+}
+
 function dateKeyOf(date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 }
@@ -431,6 +467,11 @@ async function tick() {
     ? '\n訪客留言：\n' + visitorMessages.map(m => `${m.name || '匿名訪客'}：${m.message}`).join('\n')
     : '';
 
+  const weather = await fetchWeather() || world.weather || null;
+  const weatherInput = weather
+    ? `\n戶外天氣（台北實況）：${weather.desc} ${weather.temp}℃ 濕度${weather.humidity}%（白糰糰適溫0~20℃，太熱絨毛蒸發會變裸糰糰並躲藏、情緒過載變紅糰糰；涼爽則絨毛蓬鬆變涼糰糰。室內冷氣/窗戶會調節體感。）`
+    : '';
+
   const prompt = `當前時間：${display}
 白糰糰：健康${bt.hp} 飽食${bt.food} 毛況:${bt.fur || '正常'} 位置:${bt.location}
 小黑影：${world.characters.shadow.active ? '活躍' : '潛伏'} 位置:${world.characters.shadow.location} 灰塵:${world.characters.shadow.dust_count}
@@ -438,7 +479,7 @@ async function tick() {
 窗戶：${world.room.window_open ? '開' : '關'} 冷氣：${world.room.ac_on ? '開' : '關'} 燈：${world.room.light_on ? '開' : '關'} 廁所門：${world.room.toilet_open ? '開' : '關'}
 同居人對房間環境的描述：${world.room.env_desc || '無'}
 今天已發生：${world.room.events_today.join('，') || '無'}
-近期記憶：${(bt.memory || []).slice(-3).join(' / ') || '無'}${ownerInput}${awayInput}${visitorInput}
+近期記憶：${(bt.memory || []).slice(-3).join(' / ') || '無'}${weatherInput}${ownerInput}${awayInput}${visitorInput}
 
 生成這段時間白糰糰的動態。`;
 
@@ -459,6 +500,7 @@ async function tick() {
     const newWorld = {
       ...world,
       nextTickAt: Date.now() + delay,
+      weather: weather || world.weather || null,
       characters: {
         baituantuan: {
           ...world.characters.baituantuan,
@@ -507,6 +549,19 @@ async function tick() {
     console.error('錯誤：', e.message);
     const world2 = JSON.parse(fs.readFileSync(WORLD_FILE, 'utf8'));
     world2.nextTickAt = Date.now() + delay;
+    if (weather) world2.weather = weather;
+
+    // 額度用盡 / 金鑰失效 → 進入吉屋出租（停止呼叫 API，前端蓋上告示）。
+    // 只在帳務/授權類錯誤時觸發，暫時性網路或伺服器錯誤照常重試。
+    const msg = (e.message || '').toLowerCase();
+    const billingError = e.status === 401 || e.status === 403 ||
+      (e.status === 400 && /credit|billing|balance|quota|insufficient/.test(msg)) ||
+      /credit balance|billing|insufficient_quota|insufficient credit/.test(msg);
+    if (billingError) {
+      world2.for_rent = true;
+      console.error('偵測到額度/金鑰問題，進入吉屋出租狀態。');
+    }
+
     fs.writeFileSync(WORLD_FILE, JSON.stringify(world2, null, 2));
   }
 console.log(`下次更新：${Math.round(delay/60000)} 分鐘後（${new Date(Date.now()+delay).toLocaleString('zh-TW',{timeZone:'Asia/Taipei'})}）`);
