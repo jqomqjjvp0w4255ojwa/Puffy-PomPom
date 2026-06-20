@@ -316,14 +316,7 @@ function renderDiaryEntries(diary) {
     <div class="entry">
       <div class="entry-time">${escapeHtml(e.time)}</div>
       <div class="entry-text">${escapeHtml(e.scene)}</div>
-      <div class="entry-stats">
-        <div class="entry-stat-line">
-          <span class="entry-stat-label">健康</span><span>${e.hp}</span>
-          <span class="entry-stat-label">飽食</span><span>${e.food}</span>
-        </div>
-        <div class="entry-stat-line"><span class="entry-stat-label">地點</span><span>${escapeHtml(e.location)}</span></div>
-        ${e.fur ? `<div class="entry-stat-line"><span class="entry-stat-label">外觀</span><span>${escapeHtml(e.fur)}</span></div>` : ''}
-      </div>
+      <div class="entry-stats">健康 ${e.hp} · 飽食 ${e.food} · ${escapeHtml(e.location)}${e.fur ? ` · ${escapeHtml(e.fur)}` : ''}</div>
       ${e.shadowActive ? '<div class="entry-shadow">⚠ 小黑影出沒中</div>' : ''}
     </div>
   `).join('');

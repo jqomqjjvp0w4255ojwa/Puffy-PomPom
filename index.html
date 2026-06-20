@@ -83,7 +83,6 @@
           </div>
           <div class="status-display has-dot" id="status-display"></div>
           <textarea class="owner-textarea" id="owner-input" maxlength="30" placeholder="在做什麼、有什麼變化..." style="display:none;"></textarea>
-          <div class="profile-meta" id="status-time"></div>
           <div class="edit-actions" id="owner-edit-actions" style="display:none;">
             <span class="edit-cancel" onclick="cancelStatus()">取消</span>
             <button class="owner-submit" id="owner-submit-btn" onclick="submitStatus()">記錄</button>
@@ -110,6 +109,7 @@
         </div>
       </div>
     </div>
+    <div class="card-time-tag" id="status-time"></div>
 
     <div>
       <div class="section-label">房間</div>
@@ -177,8 +177,8 @@
 <div class="note-overlay" id="note-overlay" onclick="closeNote()"></div>
 <div class="sticky-note" id="sticky-note" data-color="yellow">
   <div class="sticky-note-menu">
-    <i class="ti ti-dots" onclick="toggleNoteMenu()"></i>
     <i class="ti ti-minus" onclick="closeNote()" title="收合"></i>
+    <i class="ti ti-dots" onclick="toggleNoteMenu()"></i>
     <div class="sticky-note-menu-dropdown" id="note-menu-dropdown">
       <div class="note-color-picker">
         <span class="note-color-dot" data-color="yellow" onclick="setNoteColor('yellow')"></span>
