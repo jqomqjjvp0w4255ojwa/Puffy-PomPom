@@ -272,6 +272,16 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
   transition: background 0.2s;
 }
 .switch-tile:hover { background: #f7f3ec; }
+.ac-tile:has(.switch.on) { grid-column: span 2; justify-content: space-between; }
+.ac-tile-info {
+  display: none;
+  flex: 1;
+  font-size: 11px;
+  color: #9a8a7a;
+  text-align: left;
+  cursor: pointer;
+}
+.ac-tile:has(.switch.on) .ac-tile-info { display: block; }
 .switch-icon-label {
   display: flex;
   flex-direction: column;
@@ -535,10 +545,13 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
 }
 
 .feed-body { font-size: 12px; color: #4a3a2a; line-height: 1.7; min-height: 17px; }
+.feed-body .empty { padding: 0; text-align: left; font-size: 12px; line-height: 1.7; }
 .feed-entry { animation: feed-fade-in 0.18s ease; }
 @keyframes feed-fade-in { from { opacity: 0; transform: translateY(2px); } to { opacity: 1; transform: translateY(0); } }
 .feed-time { font-size: 10px; color: #b0a090; margin-bottom: 3px; }
 .feed-text { white-space: pre-line; }
+.feed-text-prefix { color: #b0a090; }
+.feed-text-quote { font-weight: 700; font-style: italic; }
 .feed-nav { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
 .feed-nav-btn {
   background: none;
@@ -626,20 +639,25 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
   margin-top: 4px;
 }
 .note-read-mark {
-  display: flex;
-  align-items: center;
-  gap: 6px;
+  position: relative;
+  width: 130px;
+  height: 82px;
   margin-top: 6px;
-  font-size: 11px;
-  color: rgba(0,0,0,0.4);
 }
-.sesame-print { display: inline-flex; gap: 1px; }
-.sesame-print i { display: block; width: 3px; height: 6px; border-radius: 50%; background: rgba(0,0,0,0.28); }
-.sesame-print i:nth-child(odd) { transform: translateY(-2px); }
-.note-read-mark .sesame-print:nth-child(1) { transform: rotate(-22deg) translate(-2px, 4px); }
-.note-read-mark .sesame-print:nth-child(2) { transform: rotate(-30deg) translate(2px, -1px); }
-.note-read-mark .sesame-print:nth-child(3) { transform: rotate(-25deg) translate(-2px, -7px); }
-.note-read-mark .read-label { margin-left: 5px; letter-spacing: 0.05em; }
+/* 糰糰蜿蜒漫步的米粒步伐（依附件版本縮放） */
+.rice-step {
+  position: absolute;
+  width: 4px;
+  height: 7px;
+  background: #8c826e;
+  border-radius: 50% 50% 50% 50% / 35% 35% 65% 65%;
+}
+.note-read-mark .step-1 { left: 25px;  bottom: 24px; transform: rotate(55deg) scale(1);          opacity: 0.85; }
+.note-read-mark .step-2 { left: 48px;  bottom: 27px; transform: rotate(65deg) scale(0.9, 1.1);   opacity: 0.6; }
+.note-read-mark .step-3 { left: 55px;  bottom: 42px; transform: rotate(60deg) scale(1.1, 0.9);   opacity: 0.8; }
+.note-read-mark .step-4 { left: 80px;  bottom: 47px; transform: rotate(45deg) scale(0.95);        opacity: 0.45; }
+.note-read-mark .step-5 { left: 88px;  bottom: 64px; transform: rotate(35deg) scale(1.15, 1.05); opacity: 0.9; }
+.note-read-mark .step-6 { left: 110px; bottom: 69px; transform: rotate(40deg) scale(0.85);        opacity: 0.55; }
 
 .sticky-note-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 6px; }
 .sticky-note-actions i { font-size: 20px; color: rgba(0,0,0,0.5); cursor: pointer; }
@@ -664,8 +682,8 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
     right: 1rem;
     bottom: 1rem;
     width: auto;
-    min-height: 0;
-    max-height: 38vh;
+    min-height: 50vh;
+    max-height: 60vh;
     border-radius: 12px;
     transform: translateY(100%);
     padding: 0.7rem 0.85rem 0.85rem;

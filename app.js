@@ -75,6 +75,9 @@ function updateAllToggles() {
     document.getElementById(id).classList.toggle('on', !!roomState[key]);
   }
   document.getElementById('it-ac').classList.toggle('on', !!roomState.ac.on);
+  const ac = roomState.ac;
+  const info = ac.broken ? '故障' : `${AC_MODE_LABEL[ac.mode]}${ac.mode === 'fan' ? '' : ' ' + ac.temp + '℃'}`;
+  document.getElementById('ac-tile-info').textContent = info;
 }
 
 // ===== 冷氣遙控 =====
@@ -559,7 +562,7 @@ let feedCards = [{ text: '', editable: true }];
 function buildFeedCards(ownerAction, pendingNotes) {
   const cards = [{ text: ownerAction || '', editable: true }];
   for (const n of (pendingNotes || [])) {
-    if (n && n.text) cards.push({ time: n.time || '', text: n.text, editable: false });
+    if (n && (n.text || n.quote)) cards.push({ time: n.time || '', text: n.text || '', quote: n.quote || '', editable: false });
   }
   return cards;
 }
@@ -568,9 +571,15 @@ function renderFeedCard() {
   const body = document.getElementById('feed-body');
   const nav = document.getElementById('feed-nav');
   const card = feedCards[feedIndex];
-  const html = (!card.text)
-    ? '<div class="empty">還沒有動態。</div>'
-    : `<div class="feed-entry"><div class="feed-time">${escapeHtml(card.editable ? '我的動態' : (card.time || ''))}</div><div class="feed-text">${escapeHtml(card.text)}</div></div>`;
+  let html;
+  if (!card.text && !card.quote) {
+    html = '<div class="empty">還沒有動態。</div>';
+  } else {
+    const textHtml = card.quote
+      ? `<span class="feed-text-prefix">${escapeHtml(card.text)}</span><span class="feed-text-quote">「${escapeHtml(card.quote)}」</span>`
+      : escapeHtml(card.text);
+    html = `<div class="feed-entry"><div class="feed-time">${escapeHtml(card.editable ? '我的動態' : (card.time || ''))}</div><div class="feed-text">${textHtml}</div></div>`;
+  }
   if (body.dataset.rendered !== html) {
     body.dataset.rendered = html;
     body.innerHTML = html;
