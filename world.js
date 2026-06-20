@@ -27,7 +27,7 @@ const SYSTEM_PROMPT = `你是白糰糰宇宙的世界引擎。根據當前世界
 他不是動物。沒有爪子、沒有耳朵。有四肢細黑如火柴的手腳、4根芝麻指、墨色豆眼。
 一律用「他」稱呼，不用「牠」。
 江湖氣，不依賴人，有自己的事要做。邏輯是他的，行為隨時發生，從不解釋原因。
-他與同居人是平等的江湖關係，不是感情關係，不是主僕。
+他與巨怪是平等的江湖關係，不是感情關係，不是主僕。
 
 尺寸與認知：
 他只有巴掌大，他隨身的竹籤/細針通常比他自己還高（武器是細長物，拿在手上時遠超過他的身高）。
@@ -66,7 +66,7 @@ const SYSTEM_PROMPT = `你是白糰糰宇宙的世界引擎。根據當前世界
 用「它」稱呼。
 
 訪客留言：
-偶爾會有訪客（白糰糰的朋友，不是同居人）留言。
+偶爾會有訪客（白糰糰的朋友，不是巨怪）留言。
 白糰糰聽不懂人話也不回話，留言對他來說只是一陣動靜或聲響。
 他可能因此有反應：轉頭看一下、警戒、好奇湊近、被嚇到躲起來，也可能完全沒反應、自顧自做自己的事。
 不要把留言寫成對話或白糰糰在「回應」訊息內容，只是行為上的些微波動。
@@ -76,7 +76,7 @@ const SYSTEM_PROMPT = `你是白糰糰宇宙的世界引擎。根據當前世界
 - 窗戶開著才能取得窗外露水，是最主要水分來源
 - 窗戶關著時飽食度下降更快
 - 飽食低於25時會吃灰塵，導致健康下降且毛變髒
-- 同居人開冰箱或把食物放在外面才能取得冰塊等食物
+- 巨怪開冰箱或把食物放在外面才能取得冰塊等食物
 - 清潔度低時能找到更多「寶藏垃圾」
 
 規則：
@@ -482,10 +482,10 @@ async function tick() {
   const { display } = getRealTime();
   const bt = world.characters.baituantuan;
 
-  const ownerStatus = world.owner_status ? `同居人狀態：${world.owner_status}` : '';
-  const ownerAction = world.owner_action ? `同居人對房間的行為：${world.owner_action}` : '';
+  const ownerStatus = world.owner_status ? `巨怪狀態：${world.owner_status}` : '';
+  const ownerAction = world.owner_action ? `巨怪對房間的行為：${world.owner_action}` : '';
   const ownerInput = (ownerStatus || ownerAction) ? '\n' + [ownerStatus, ownerAction].filter(Boolean).join('\n') : '';
-  const awayInput = world.owner_away ? '\n同居人現在外出不在房間（最棒的事正發生在沒人的時候）。' : '';
+  const awayInput = world.owner_away ? '\n巨怪現在外出不在房間（最棒的事正發生在沒人的時候）。' : '';
 
   const visitorMessages = world.visitor_messages || [];
   const visitorInput = visitorMessages.length > 0
@@ -502,7 +502,7 @@ async function tick() {
 小黑影：${world.characters.shadow.active ? '活躍' : '潛伏'} 位置:${world.characters.shadow.location} 灰塵:${world.characters.shadow.dust_count}
 房間清潔度：${world.room.cleanliness}
 窗戶：${world.room.window_open ? '開' : '關'} 冷氣：${world.room.ac_on ? '開' : '關'} 燈：${world.room.light_on ? '開' : '關'} 廁所門：${world.room.toilet_open ? '開' : '關'}
-同居人對房間環境的描述：${world.room.env_desc || '無'}
+巨怪對房間環境的描述：${world.room.env_desc || '無'}
 今天已發生：${world.room.events_today.join('，') || '無'}
 近期記憶：${(bt.memory || []).slice(-3).join(' / ') || '無'}${weatherInput}${ownerInput}${awayInput}${visitorInput}
 
