@@ -43,6 +43,12 @@
   <div class="entries" id="entries">
     <div class="empty">觀察中...</div>
   </div>
+  <div class="rent-overlay" id="rent-overlay" style="display:none;">
+    <div class="rent-note">
+      <div class="rent-note-title">吉屋出租</div>
+      <div class="rent-note-text">房間暫時空著。<br>白糰糰不在，沒有人在觀察。</div>
+    </div>
+  </div>
 </div>
 
 <button class="panel-btn" id="panel-btn" onclick="openPanel()" aria-label="同居人面板">
@@ -55,9 +61,14 @@
 <div class="overlay" id="overlay" onclick="closePanel()"></div>
 <div class="side-panel" id="side-panel">
 
-  <button class="panel-close" onclick="closePanel()">
-    <i class="ti ti-x"></i> 關閉
-  </button>
+  <div class="panel-header">
+    <button class="panel-close" onclick="closePanel()">
+      <i class="ti ti-chevron-right"></i> 收合
+    </button>
+    <button class="panel-away" id="away-btn" onclick="toggleAway()" title="外出中">
+      <i class="ti ti-door-exit"></i>
+    </button>
+  </div>
 
   <div class="panel-content">
     <div class="card profile-card">
@@ -170,9 +181,14 @@
   </div>
   <textarea class="sticky-note-textarea" id="sticky-note-textarea" maxlength="50" placeholder="想跟他說的話，他聽不懂，但可能會有反應..."></textarea>
   <div class="sticky-note-saved" id="sticky-note-saved" style="display:none;"></div>
+  <div class="note-read-mark" id="note-read-mark" style="display:none;">
+    <i class="ti ti-paw-filled"></i><i class="ti ti-paw-filled"></i><i class="ti ti-paw-filled"></i>
+    <span>糰糰看過了</span>
+  </div>
   <div class="sticky-note-actions">
     <i class="ti ti-check" id="note-confirm-btn" onclick="confirmNote()"></i>
     <i class="ti ti-trash" id="note-delete-btn" onclick="deleteNote()" style="display:none;"></i>
+    <i class="ti ti-pencil" id="note-new-btn" onclick="startNewNote()" title="寫新的" style="display:none;"></i>
   </div>
 </div>
 

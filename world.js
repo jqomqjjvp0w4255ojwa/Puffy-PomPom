@@ -321,6 +321,7 @@ const server = http.createServer((req, res) => {
           world.owner_status_time = data.input ? getRealTime().display : '';
         }
         if (data.type === 'action') world.owner_action = data.input || '';
+        if (data.type === 'away') world.owner_away = !!data.away;
         fs.writeFileSync(WORLD_FILE, JSON.stringify(world, null, 2));
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ ok: true }));
@@ -406,6 +407,15 @@ server.listen(process.env.PORT || 3000, () => {
 
 async function tick() {
   let world = JSON.parse(fs.readFileSync(WORLD_FILE, 'utf8'));
+
+  if (world.for_rent) {
+    // 吉屋出租：房間空置，不讀取任何輸入、不呼叫 API（節省成本）
+    const delay = getNextDelay();
+    console.log(`吉屋出租中，跳過這次更新。下次檢查：${Math.round(delay/60000)} 分鐘後`);
+    setTimeout(tick, delay);
+    return;
+  }
+
   world = applyNaturalDecay(world);
 
   const { display } = getRealTime();
@@ -414,6 +424,7 @@ async function tick() {
   const ownerStatus = world.owner_status ? `同居人狀態：${world.owner_status}` : '';
   const ownerAction = world.owner_action ? `同居人對房間的行為：${world.owner_action}` : '';
   const ownerInput = (ownerStatus || ownerAction) ? '\n' + [ownerStatus, ownerAction].filter(Boolean).join('\n') : '';
+  const awayInput = world.owner_away ? '\n同居人現在外出不在房間（最棒的事正發生在沒人的時候）。' : '';
 
   const visitorMessages = world.visitor_messages || [];
   const visitorInput = visitorMessages.length > 0
@@ -427,7 +438,7 @@ async function tick() {
 窗戶：${world.room.window_open ? '開' : '關'} 冷氣：${world.room.ac_on ? '開' : '關'} 燈：${world.room.light_on ? '開' : '關'} 廁所門：${world.room.toilet_open ? '開' : '關'}
 同居人對房間環境的描述：${world.room.env_desc || '無'}
 今天已發生：${world.room.events_today.join('，') || '無'}
-近期記憶：${(bt.memory || []).slice(-3).join(' / ') || '無'}${ownerInput}${visitorInput}
+近期記憶：${(bt.memory || []).slice(-3).join(' / ') || '無'}${ownerInput}${awayInput}${visitorInput}
 
 生成這段時間白糰糰的動態。`;
 

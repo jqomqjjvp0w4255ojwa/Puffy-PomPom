@@ -30,6 +30,17 @@ function toggleStatusDetail() {
   document.getElementById('status-chevron').classList.toggle('collapsed');
 }
 
+let ownerAway = false;
+function toggleAway() {
+  ownerAway = !ownerAway;
+  document.getElementById('away-btn').classList.toggle('away', ownerAway);
+  fetch('/api/owner', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ type: 'away', away: ownerAway })
+  });
+}
+
 function getCleanDesc(v) {
   if (v >= 80) return '乾淨，小黑影沒什麼動靜';
   if (v >= 50) return '有些灰塵，角落開始積東西';
@@ -207,6 +218,22 @@ function renderNoteSaved(note) {
   saved.textContent = note.message;
   document.getElementById('note-confirm-btn').style.display = 'none';
   document.getElementById('note-delete-btn').style.display = 'inline';
+  document.getElementById('note-read-mark').style.display = 'none';
+  document.getElementById('note-new-btn').style.display = 'none';
+}
+
+function renderNoteRead(note) {
+  noteState.mode = 'read';
+  noteState.savedId = null;
+  document.getElementById('sticky-note').dataset.color = note.color || 'yellow';
+  document.getElementById('sticky-note-textarea').style.display = 'none';
+  const saved = document.getElementById('sticky-note-saved');
+  saved.style.display = 'block';
+  saved.textContent = note.message;
+  document.getElementById('note-confirm-btn').style.display = 'none';
+  document.getElementById('note-delete-btn').style.display = 'none';
+  document.getElementById('note-read-mark').style.display = 'flex';
+  document.getElementById('note-new-btn').style.display = 'inline';
 }
 
 function renderNoteDraft() {
@@ -216,6 +243,14 @@ function renderNoteDraft() {
   document.getElementById('sticky-note-saved').style.display = 'none';
   document.getElementById('note-confirm-btn').style.display = 'inline';
   document.getElementById('note-delete-btn').style.display = 'none';
+  document.getElementById('note-read-mark').style.display = 'none';
+  document.getElementById('note-new-btn').style.display = 'none';
+}
+
+function startNewNote() {
+  localStorage.removeItem('lastReadNote');
+  document.getElementById('sticky-note-textarea').value = '';
+  renderNoteDraft();
 }
 
 function refreshNoteWidget(pending) {
@@ -224,8 +259,23 @@ function refreshNoteWidget(pending) {
     if (noteState.mode !== 'saved' || noteState.savedId !== latest.id) {
       renderNoteSaved(latest);
     }
-  } else if (noteState.mode === 'saved') {
-    renderNoteDraft();
+    return;
+  }
+  // 沒有待讀留言
+  if (noteState.mode === 'saved') {
+    // 剛被 tick 讀走 → 標記為已讀，留下腳印
+    const readNote = {
+      message: document.getElementById('sticky-note-saved').textContent,
+      color: document.getElementById('sticky-note').dataset.color,
+    };
+    localStorage.setItem('lastReadNote', JSON.stringify(readNote));
+    renderNoteRead(readNote);
+  } else if (noteState.mode === 'draft') {
+    // 重新整理頁面時，把上一張被讀過的便利貼還原
+    const stored = localStorage.getItem('lastReadNote');
+    if (stored) {
+      try { renderNoteRead(JSON.parse(stored)); } catch (e) {}
+    }
   }
 }
 
@@ -394,6 +444,11 @@ async function load() {
 
     const ownerAction = world.owner_action || '';
     document.getElementById('panel-btn').classList.toggle('has-input', !!(ownerStatus || ownerAction));
+
+    ownerAway = !!world.owner_away;
+    document.getElementById('away-btn').classList.toggle('away', ownerAway);
+
+    document.getElementById('rent-overlay').style.display = world.for_rent ? 'flex' : 'none';
 
     await refreshTodayPanels(world);
     await refreshDatesAndDay();
