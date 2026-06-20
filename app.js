@@ -80,8 +80,8 @@ function updateAllToggles() {
   document.getElementById('ac-tile-info').textContent = info;
 }
 
-// ===== 冷氣遙控 =====
-const AC_MODE_LABEL = { cool: '冷氣', heat: '暖氣', fan: '送風', dry: '除濕' };
+// ===== 空調遙控 =====
+const AC_MODE_LABEL = { cool: '製冷', heat: '暖氣', fan: '送風', dry: '除濕' };
 
 function openAcRemote() {
   renderAcRemote();
@@ -310,6 +310,11 @@ function escapeHtml(str) {
   const div = document.createElement('div');
   div.textContent = str == null ? '' : String(str);
   return div.innerHTML;
+}
+
+// 外層已用「」包住整段引言，內文若本身含「」要降一級成『』，才是正確的巢狀引號用法
+function nestQuote(str) {
+  return String(str || '').replace(/「/g, '『').replace(/」/g, '』');
 }
 
 let noteState = { mode: 'draft', color: 'yellow', savedId: null };
@@ -576,7 +581,7 @@ function renderFeedCard() {
     html = '<div class="empty">還沒有動態。</div>';
   } else {
     const textHtml = card.quote
-      ? `<span class="feed-text-prefix">${escapeHtml(card.text)}</span><span class="feed-text-quote">「${escapeHtml(card.quote)}」</span>`
+      ? `${escapeHtml(card.text)}「${escapeHtml(nestQuote(card.quote))}」`
       : escapeHtml(card.text);
     html = `<div class="feed-entry"><div class="feed-time">${escapeHtml(card.editable ? '我的動態' : (card.time || ''))}</div><div class="feed-text">${textHtml}</div></div>`;
   }

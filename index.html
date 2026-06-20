@@ -163,8 +163,10 @@
           <div class="switch" id="it-window"><div class="switch-knob"></div></div>
         </div>
         <div class="switch-tile ac-tile" id="ac-tile" onclick="acTogglePower()">
-          <div class="switch-icon-label"><i class="ti ti-snowflake"></i><span>冷氣</span></div>
-          <div class="switch" id="it-ac"><div class="switch-knob"></div></div>
+          <div class="ac-tile-header">
+            <div class="switch-icon-label"><i class="ti ti-snowflake"></i><span>空調</span></div>
+            <div class="switch" id="it-ac"><div class="switch-knob"></div></div>
+          </div>
           <div class="ac-tile-info" id="ac-tile-info" onclick="event.stopPropagation(); openAcRemote();"></div>
         </div>
       </div>
@@ -185,12 +187,12 @@
 <div class="ac-overlay" id="ac-overlay" onclick="closeAcRemote()"></div>
 <div class="ac-remote" id="ac-remote">
   <div class="ac-remote-head">
-    <span class="ac-remote-title">冷氣遙控</span>
+    <span class="ac-remote-title">空調遙控</span>
     <button class="ac-power" id="ac-power" onclick="acTogglePower()" aria-label="電源"><i class="ti ti-power"></i></button>
   </div>
   <div class="ac-readout" id="ac-readout">
     <span class="ac-readout-temp" id="ac-readout-temp">22<small>℃</small></span>
-    <span class="ac-readout-mode" id="ac-readout-mode">冷氣</span>
+    <span class="ac-readout-mode" id="ac-readout-mode">製冷</span>
   </div>
   <div class="ac-broken" id="ac-broken" style="display:none;"><i class="ti ti-alert-triangle"></i> 故障中・關機再開機看看</div>
   <div class="ac-repair-bubble" id="ac-repair-bubble">是不是該找人來修......</div>
@@ -198,7 +200,7 @@
     <div class="ac-section">
       <div class="ac-section-label">模式</div>
       <div class="ac-modes">
-        <button class="ac-mode-btn" data-mode="cool" onclick="acSetMode('cool')"><i class="ti ti-snowflake"></i><span>冷氣</span></button>
+        <button class="ac-mode-btn" data-mode="cool" onclick="acSetMode('cool')"><i class="ti ti-snowflake"></i><span>製冷</span></button>
         <button class="ac-mode-btn" data-mode="heat" onclick="acSetMode('heat')"><i class="ti ti-flame"></i><span>暖氣</span></button>
         <button class="ac-mode-btn" data-mode="fan" onclick="acSetMode('fan')"><i class="ti ti-wind"></i><span>送風</span></button>
         <button class="ac-mode-btn" data-mode="dry" onclick="acSetMode('dry')"><i class="ti ti-droplet"></i><span>除濕</span></button>
