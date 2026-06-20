@@ -298,12 +298,13 @@ const PENDING_NOTE_CAP = 6;
 // 下次 tick 產生「糰糰觀察紀錄」時，這些會被折進那一則日記、然後清空（＝消化）。
 // owner_action 不進這裡：它是第 1 張「我的動態」卡，消化後寫進 ownerLog 與場景本身。
 // 連續重複同一句（例如連按重開冷氣）只留一筆，避免洗版。
-function pushPendingNote(world, text, time) {
-  if (!text) return;
+function pushPendingNote(world, payload, time) {
+  const note = typeof payload === 'string' ? { text: payload } : (payload || {});
+  if (!note.text && !note.quote) return;
   if (!Array.isArray(world.pending_notes)) world.pending_notes = [];
   const last = world.pending_notes[world.pending_notes.length - 1];
-  if (last && last.text === text) return;
-  world.pending_notes.push({ time: time || getRealTime().display, text });
+  if (last && last.text === (note.text || '') && last.quote === (note.quote || '')) return;
+  world.pending_notes.push({ time: time || getRealTime().display, text: note.text || '', quote: note.quote || '' });
   if (world.pending_notes.length > PENDING_NOTE_CAP) {
     world.pending_notes = world.pending_notes.slice(-PENDING_NOTE_CAP);
   }
@@ -484,7 +485,10 @@ const server = http.createServer((req, res) => {
           world.owner_status = data.input || '';
           world.owner_status_time = data.input ? getRealTime().display : '';
         }
-        if (data.type === 'action') world.owner_action = data.input || '';
+        if (data.type === 'action') {
+          world.owner_action = data.input || '';
+          world.owner_action_read = !data.input;
+        }
         if (data.type === 'away') world.owner_away = !!data.away;
         fs.writeFileSync(WORLD_FILE, JSON.stringify(world, null, 2));
         res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -516,7 +520,7 @@ const server = http.createServer((req, res) => {
               bonusHint = COLLECTION_HINTS[pending.source];
               fragState.hintsShown.push(pending.source);
             }
-            pushPendingNote(world, `得到一紙片，上面寫著：${pending.text}`, display);
+            pushPendingNote(world, { text: '得到一張紙片：', quote: pending.text }, display);
           } else {
             pushPendingNote(world, '剛剛丟了張怪紙片', display);
           }
@@ -645,8 +649,11 @@ async function tick() {
   const { display } = getRealTime();
   const bt = world.characters.baituantuan;
 
+  // owner_action 只在第一次被 AI 讀到時納入 prompt；讀過一次就只是顯示用的唯讀文字，
+  // 直到玩家送出新的一則才會再次變成「未讀」。
+  const ownerActionUnread = !!world.owner_action && !world.owner_action_read;
   const ownerStatus = world.owner_status ? `巨怪狀態：${world.owner_status}` : '';
-  const ownerAction = world.owner_action ? `巨怪對房間的行為：${world.owner_action}` : '';
+  const ownerAction = ownerActionUnread ? `巨怪對房間的行為：${world.owner_action}` : '';
   const ownerInput = (ownerStatus || ownerAction) ? '\n' + [ownerStatus, ownerAction].filter(Boolean).join('\n') : '';
   const awayInput = world.owner_away ? '\n巨怪現在外出不在房間（最棒的事正發生在沒人的時候）。' : '';
 
@@ -657,10 +664,11 @@ async function tick() {
 
   const pendingNotes = world.pending_notes || [];
   const pendingNotesInput = pendingNotes.length > 0
-    ? '\n尚未消化的系統紀錄（紙片、家電提示等，請自然融入或收尾這段動態，之後就會清空）：\n' + pendingNotes.map(n => `- ${n.text}`).join('\n')
+    ? '\n尚未消化的系統紀錄（紙片、家電提示等，請自然融入或收尾這段動態，之後就會清空）：\n' +
+      pendingNotes.map(n => `- ${n.text}${n.quote ? `「${n.quote}」` : ''}`).join('\n')
     : '';
 
-  const combinedPlayerText = [world.owner_status, world.owner_action, ...visitorMessages.map(m => m.message)]
+  const combinedPlayerText = [world.owner_status, ownerActionUnread ? world.owner_action : null, ...visitorMessages.map(m => m.message)]
     .filter(Boolean).join(' ');
   const triggeredEvent = detectTriggeredEvent(bt, combinedPlayerText);
   const eventInput = triggeredEvent ? '\n' + EVENT_PROMPTS[triggeredEvent] : '';
@@ -740,13 +748,14 @@ async function tick() {
 
     const todayKey = getTodayKey();
 
-    if (world.owner_action) {
+    if (ownerActionUnread) {
       appendToDay(todayKey, 'ownerLog', [{
         time: display,
         status: world.owner_status || '',
         action: world.owner_action
       }]);
-      newWorld.owner_action = '';
+      // 文字本身不清空，留著顯示在「我的動態」第 1 張；只標記已讀，下次 tick 不會再讀它。
+      newWorld.owner_action_read = true;
     }
 
     if (visitorMessages.length > 0) {

@@ -34,6 +34,7 @@
   },
   "owner_status": "",
   "owner_action": "",
+  "owner_action_read": true,
   "visitor_messages": [],
   "visitor_log": [],
   "fragments": {

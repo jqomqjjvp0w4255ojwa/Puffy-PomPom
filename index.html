@@ -162,9 +162,10 @@
           <div class="switch-icon-label"><i class="ti ti-window"></i><span>窗戶</span></div>
           <div class="switch" id="it-window"><div class="switch-knob"></div></div>
         </div>
-        <div class="switch-tile" onclick="openAcRemote()">
+        <div class="switch-tile ac-tile" id="ac-tile" onclick="acTogglePower()">
           <div class="switch-icon-label"><i class="ti ti-snowflake"></i><span>冷氣</span></div>
           <div class="switch" id="it-ac"><div class="switch-knob"></div></div>
+          <div class="ac-tile-info" id="ac-tile-info" onclick="event.stopPropagation(); openAcRemote();"></div>
         </div>
       </div>
     </div>
@@ -243,11 +244,10 @@
   </div>
   <textarea class="sticky-note-textarea" id="sticky-note-textarea" maxlength="50" placeholder="想跟他說的話，他聽不懂，但可能會有反應..."></textarea>
   <div class="sticky-note-saved" id="sticky-note-saved" style="display:none;"></div>
-  <div class="note-read-mark" id="note-read-mark" style="display:none;">
+  <div class="note-read-mark" id="note-read-mark" style="display:none;" title="糰糰看過了" aria-label="糰糰看過了">
     <span class="sesame-print"><i></i><i></i><i></i><i></i></span>
     <span class="sesame-print"><i></i><i></i><i></i><i></i></span>
     <span class="sesame-print"><i></i><i></i><i></i><i></i></span>
-    <span class="read-label">糰糰看過了</span>
   </div>
   <div class="sticky-note-actions">
     <i class="ti ti-check" id="note-confirm-btn" onclick="confirmNote()"></i>
