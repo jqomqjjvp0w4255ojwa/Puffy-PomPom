@@ -55,7 +55,9 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
 .entry:last-child { border-bottom: none; }
 .entry-time { font-size: 11px; color: #b0a090; margin-bottom: 6px; }
 .entry-text { font-size: 14px; color: #4a3a2a; line-height: 2; white-space: pre-line; }
-.entry-stats { font-size: 11px; color: #b0a090; margin-top: 6px; }
+.entry-stats { font-size: 11px; color: #b0a090; margin-top: 6px; display: flex; flex-direction: column; gap: 3px; }
+.entry-stat-line { display: flex; align-items: center; gap: 6px; }
+.entry-stat-label { display: inline-block; width: 26px; flex-shrink: 0; color: #c0b4a4; }
 .entry-shadow { font-size: 11px; color: #c07050; margin-top: 3px; }
 .empty { padding: 3rem 1.5rem; text-align: center; font-size: 13px; color: #b0a090; line-height: 2; }
 
@@ -151,7 +153,6 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  overflow: hidden;
   position: relative;
 }
 .card-badge i { font-size: 21px; }
