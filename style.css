@@ -5,7 +5,31 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
 .cover h1 { font-size: 22px; font-weight: 500; color: #5a4a3a; letter-spacing: 0.15em; margin-bottom: 4px; }
 .cover-date { font-size: 12px; color: #9a8a7a; letter-spacing: 0.1em; }
 
-.notebook { max-width: 480px; margin: 0 auto; background: #fff; border-radius: 4px; box-shadow: 2px 2px 12px rgba(0,0,0,0.08); overflow: hidden; }
+.notebook { max-width: 480px; margin: 0 auto; background: #fff; border-radius: 4px; box-shadow: 2px 2px 12px rgba(0,0,0,0.08); overflow: hidden; position: relative; }
+
+.rent-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(30,24,18,0.55);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 5;
+}
+.rent-note {
+  background: #fff8e8;
+  border: 1px solid #e8dcc0;
+  border-radius: 4px;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.35);
+  padding: 1.25rem 1.5rem;
+  text-align: center;
+  transform: rotate(-2deg);
+  max-width: 80%;
+}
+.rent-note-title { font-size: 18px; letter-spacing: 0.3em; color: #6a5238; margin-bottom: 10px; font-weight: 500; }
+.rent-note-text { font-size: 12px; color: #9a8a72; line-height: 1.9; }
 .notebook-header { padding: 1.25rem 1.5rem 1rem; border-bottom: 2px solid #e8c84a; }
 .header-label {
   display: flex;
@@ -55,7 +79,9 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
 .entry:last-child { border-bottom: none; }
 .entry-time { font-size: 11px; color: #b0a090; margin-bottom: 6px; }
 .entry-text { font-size: 14px; color: #4a3a2a; line-height: 2; white-space: pre-line; }
-.entry-stats { font-size: 11px; color: #b0a090; margin-top: 6px; }
+.entry-stats { font-size: 11px; color: #b0a090; margin-top: 6px; display: flex; flex-direction: column; gap: 3px; }
+.entry-stat-line { display: flex; align-items: center; gap: 6px; }
+.entry-stat-label { display: inline-block; width: 26px; flex-shrink: 0; color: #c0b4a4; }
 .entry-shadow { font-size: 11px; color: #c07050; margin-top: 3px; }
 .empty { padding: 3rem 1.5rem; text-align: center; font-size: 13px; color: #b0a090; line-height: 2; }
 
@@ -84,20 +110,21 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
 .side-panel {
   position: fixed;
   top: 0;
-  right: -320px;
+  right: 0;
   width: 300px;
   height: 100vh;
   background: #faf8f4;
   box-shadow: -2px 0 16px rgba(0,0,0,0.12);
   z-index: 400;
-  transition: right 0.3s ease;
+  transform: translateX(100%);
+  transition: transform 0.3s ease;
   overflow-y: auto;
   padding: 1.5rem 1.25rem 2rem;
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
 }
-.side-panel.open { right: 0; }
+.side-panel.open { transform: translateX(0); }
 
 .overlay {
   position: fixed;
@@ -110,6 +137,12 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
 }
 .overlay.open { opacity: 1; pointer-events: all; }
 
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.25rem;
+}
 .panel-close {
   background: none;
   border: none;
@@ -121,11 +154,51 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
   font-size: 11px;
   font-family: 'Noto Serif TC', serif;
   color: #9a8a7a;
-  margin-bottom: 0.25rem;
 }
 .panel-close i { font-size: 16px; }
+.panel-away {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #b0a090;
+  border-radius: 8px;
+  transition: color 0.2s, background 0.2s;
+}
+.panel-away i { font-size: 18px; }
+.panel-away:hover { color: #8a7a6a; background: #f0ebe2; }
+.panel-away.away { color: #c07050; background: #f7e6dc; }
 
-.panel-content { display: flex; flex-direction: column; gap: 0.85rem; }
+.panel-content { display: flex; flex-direction: column; gap: 0.85rem; position: relative; }
+
+.panel-away-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(255,255,255,0.7);
+  backdrop-filter: blur(7px);
+  -webkit-backdrop-filter: blur(7px);
+  border-radius: 12px;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.panel-away-text {
+  display: flex;
+  gap: 16px;
+  writing-mode: vertical-rl;
+  font-size: 15px;
+  letter-spacing: 0.35em;
+  color: #8a7a6a;
+  font-family: 'Noto Serif TC', serif;
+}
+.panel-away-text span:nth-child(1) { transform: rotate(-7deg) translateY(-10px); }
+.panel-away-text span:nth-child(2) { transform: rotate(5deg) translateY(14px); }
+.panel-away-text span:nth-child(3) { transform: rotate(-4deg) translateY(-6px); }
+.panel-away-text span:nth-child(4) { transform: rotate(8deg) translateY(8px); }
 
 .section-label {
   font-size: 10px;
@@ -151,7 +224,6 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  overflow: hidden;
   position: relative;
 }
 .card-badge i { font-size: 21px; }
@@ -419,7 +491,21 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
   overflow-y: auto;
   margin-top: 4px;
 }
-.sticky-note-actions { display: flex; justify-content: flex-end; margin-top: 6px; }
+.note-read-mark {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-top: 6px;
+  font-size: 11px;
+  color: rgba(0,0,0,0.4);
+}
+.note-read-mark i { font-size: 12px; color: rgba(0,0,0,0.28); }
+.note-read-mark i:nth-child(1) { transform: rotate(-20deg); }
+.note-read-mark i:nth-child(2) { transform: rotate(12deg) translateY(2px); }
+.note-read-mark i:nth-child(3) { transform: rotate(-6deg); }
+.note-read-mark span { margin-left: 5px; letter-spacing: 0.05em; }
+
+.sticky-note-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 6px; }
 .sticky-note-actions i { font-size: 20px; color: rgba(0,0,0,0.5); cursor: pointer; }
 .sticky-note-actions i:hover { color: rgba(0,0,0,0.75); }
 
@@ -438,14 +524,15 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
   .note-overlay { display: block; }
   .note-overlay.open { opacity: 1; pointer-events: all; }
   .sticky-note {
-    left: 0;
-    right: 0;
-    bottom: 0;
-    width: 100%;
-    min-height: 45vh;
-    border-radius: 16px 16px 0 0;
+    left: 1rem;
+    right: 1rem;
+    bottom: 1rem;
+    width: auto;
+    min-height: 0;
+    max-height: 38vh;
+    border-radius: 12px;
     transform: translateY(100%);
-    padding: 0.85rem 1rem 1rem;
+    padding: 0.7rem 0.85rem 0.85rem;
   }
   .sticky-note.open { transform: translateY(0); }
 }
