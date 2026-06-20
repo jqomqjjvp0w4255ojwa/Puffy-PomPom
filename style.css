@@ -4,6 +4,7 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
 .cover { max-width: 480px; margin: 0 auto 1.5rem; text-align: center; }
 .cover h1 { font-size: 22px; font-weight: 500; color: #5a4a3a; letter-spacing: 0.15em; margin-bottom: 4px; }
 .cover-date { font-size: 12px; color: #9a8a7a; letter-spacing: 0.1em; }
+.cover-weather { color: #b0a090; }
 
 .notebook { max-width: 480px; margin: 0 auto; background: #fff; border-radius: 4px; box-shadow: 2px 2px 12px rgba(0,0,0,0.08); overflow: hidden; position: relative; }
 

@@ -423,6 +423,8 @@ async function load() {
 
     const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Taipei' }));
     document.getElementById('cover-date').textContent = (now.getMonth()+1) + ' 月 ' + now.getDate() + ' 日';
+    const w = world.weather;
+    document.getElementById('cover-weather').textContent = w ? `　·　${w.desc} ${w.temp}℃ 濕度${w.humidity}%` : '';
 
     roomState.window_open = world.room.window_open;
     roomState.ac_on = world.room.ac_on || false;
