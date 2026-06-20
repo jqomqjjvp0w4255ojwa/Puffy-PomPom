@@ -293,17 +293,19 @@ function ensureFragmentsState(world) {
   return world.fragments;
 }
 
-const ACTIVITY_CAP = 8;
-// 「我的動態」統一進這個陣列：房間行為、紙片丟棄/收起、冷氣報修提示都丟這。
+const PENDING_NOTE_CAP = 6;
+// 未消化完的系統項目（紙片丟棄/收起、冷氣報修提示）暫存這裡，是「我的動態」第 1 張卡之後的卡片。
+// 下次 tick 產生「糰糰觀察紀錄」時，這些會被折進那一則日記、然後清空（＝消化）。
+// owner_action 不進這裡：它是第 1 張「我的動態」卡，消化後寫進 ownerLog 與場景本身。
 // 連續重複同一句（例如連按重開冷氣）只留一筆，避免洗版。
-function pushActivity(world, text, time) {
+function pushPendingNote(world, text, time) {
   if (!text) return;
-  if (!Array.isArray(world.activities)) world.activities = [];
-  const last = world.activities[world.activities.length - 1];
+  if (!Array.isArray(world.pending_notes)) world.pending_notes = [];
+  const last = world.pending_notes[world.pending_notes.length - 1];
   if (last && last.text === text) return;
-  world.activities.push({ time: time || getRealTime().display, text });
-  if (world.activities.length > ACTIVITY_CAP) {
-    world.activities = world.activities.slice(-ACTIVITY_CAP);
+  world.pending_notes.push({ time: time || getRealTime().display, text });
+  if (world.pending_notes.length > PENDING_NOTE_CAP) {
+    world.pending_notes = world.pending_notes.slice(-PENDING_NOTE_CAP);
   }
 }
 
@@ -514,9 +516,9 @@ const server = http.createServer((req, res) => {
               bonusHint = COLLECTION_HINTS[pending.source];
               fragState.hintsShown.push(pending.source);
             }
-            pushActivity(world, `得到一紙片，上面寫著：${pending.text}`, display);
+            pushPendingNote(world, `得到一紙片，上面寫著：${pending.text}`, display);
           } else {
-            pushActivity(world, '剛剛丟了張怪紙片', display);
+            pushPendingNote(world, '剛剛丟了張怪紙片', display);
           }
           fragState.pending = null;
           appendToDay(getTodayKey(), 'fragmentLog', [{
@@ -543,7 +545,7 @@ const server = http.createServer((req, res) => {
         const data = JSON.parse(Buffer.concat(body).toString());
         const text = (data.text || '').trim().slice(0, 60);
         const world = JSON.parse(fs.readFileSync(WORLD_FILE, 'utf8'));
-        pushActivity(world, text);
+        pushPendingNote(world, text);
         fs.writeFileSync(WORLD_FILE, JSON.stringify(world, null, 2));
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ ok: true }));
@@ -653,6 +655,11 @@ async function tick() {
     ? '\n訪客留言：\n' + visitorMessages.map(m => `${m.name || '匿名訪客'}：${m.message}`).join('\n')
     : '';
 
+  const pendingNotes = world.pending_notes || [];
+  const pendingNotesInput = pendingNotes.length > 0
+    ? '\n尚未消化的系統紀錄（紙片、家電提示等，請自然融入或收尾這段動態，之後就會清空）：\n' + pendingNotes.map(n => `- ${n.text}`).join('\n')
+    : '';
+
   const combinedPlayerText = [world.owner_status, world.owner_action, ...visitorMessages.map(m => m.message)]
     .filter(Boolean).join(' ');
   const triggeredEvent = detectTriggeredEvent(bt, combinedPlayerText);
@@ -684,7 +691,7 @@ async function tick() {
 窗戶：${world.room.window_open ? '開' : '關'} 冷氣：${acLabel} 燈：${world.room.light_on ? '開' : '關'} 廁所門：${world.room.toilet_open ? '開' : '關'}
 巨怪對房間環境的描述：${world.room.env_desc || '無'}
 今天已發生：${world.room.events_today.join('，') || '無'}
-近期記憶：${(bt.memory || []).slice(-3).join(' / ') || '無'}${weatherInput}${climateInput}${ownerInput}${awayInput}${visitorInput}${eventInput}
+近期記憶：${(bt.memory || []).slice(-3).join(' / ') || '無'}${weatherInput}${climateInput}${ownerInput}${awayInput}${visitorInput}${eventInput}${pendingNotesInput}
 
 生成這段時間白糰糰的動態。`;
 
@@ -739,13 +746,17 @@ async function tick() {
         status: world.owner_status || '',
         action: world.owner_action
       }]);
-      pushActivity(newWorld, world.owner_action, display);
       newWorld.owner_action = '';
     }
 
     if (visitorMessages.length > 0) {
       appendToDay(todayKey, 'visitorLog', visitorMessages);
       newWorld.visitor_messages = [];
+    }
+
+    // 未消化的系統紀錄已經被寫進這次的 prompt、融入 result.scene，消化完畢即清空。
+    if (pendingNotes.length > 0) {
+      newWorld.pending_notes = [];
     }
 
     fs.writeFileSync(WORLD_FILE, JSON.stringify(newWorld, null, 2));

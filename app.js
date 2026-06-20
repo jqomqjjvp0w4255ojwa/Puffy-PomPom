@@ -161,7 +161,7 @@ async function acTogglePower() {
       acRepairFails++;
       showAcRepairHint();
       await saveAc();                   // 先把冷氣狀態寫好，再記動態，避免兩個寫入打架
-      await logActivity('是不是該找人來修......');
+      await logPendingNote('是不是該找人來修......');
       load();                            // 讓「我的動態」即時帶到這一句
       return;
     }
@@ -552,35 +552,54 @@ function goNextDay() {
   }
 }
 
-const ACTIVITY_FEED_MAX = 5;
-function renderActivityFeed(pendingAction, activities) {
-  const container = document.getElementById('activity-feed');
-  const items = [];
-  // 待送出的房間行為釘在最上面（tick 消化後才會變成 activities 的一筆）
-  if (pendingAction) items.push({ time: '我的動態', text: pendingAction });
-  for (const a of (activities || []).slice().reverse()) {
-    if (a && a.text) items.push({ time: a.time || '', text: a.text });
+// 第 1 張永遠是我編輯的那一則（owner_action），其餘是還沒被 tick 消化的系統提示（紙片、家電提示）。
+let feedIndex = 0;
+let feedCards = [{ text: '', editable: true }];
+
+function buildFeedCards(ownerAction, pendingNotes) {
+  const cards = [{ text: ownerAction || '', editable: true }];
+  for (const n of (pendingNotes || [])) {
+    if (n && n.text) cards.push({ time: n.time || '', text: n.text, editable: false });
   }
-  let html;
-  if (items.length === 0) {
-    html = '<div class="empty">還沒有動態。</div>';
-  } else {
-    html = items.slice(0, ACTIVITY_FEED_MAX).map(it =>
-      `<div class="feed-entry"><div class="feed-time">${escapeHtml(it.time)}</div><div class="feed-text">${escapeHtml(it.text)}</div></div>`
-    ).join('');
+  return cards;
+}
+
+function renderFeedCard() {
+  const body = document.getElementById('feed-body');
+  const nav = document.getElementById('feed-nav');
+  const card = feedCards[feedIndex];
+  const html = (!card.text)
+    ? '<div class="empty">還沒有動態。</div>'
+    : `<div class="feed-entry"><div class="feed-time">${escapeHtml(card.editable ? '我的動態' : (card.time || ''))}</div><div class="feed-text">${escapeHtml(card.text)}</div></div>`;
+  if (body.dataset.rendered !== html) {
+    body.dataset.rendered = html;
+    body.innerHTML = html;
   }
-  if (container.dataset.rendered !== html) {
-    container.dataset.rendered = html;
-    container.innerHTML = html;
-  }
+  nav.style.display = feedCards.length > 1 ? 'flex' : 'none';
+  document.getElementById('feed-count').textContent = `${feedIndex + 1}/${feedCards.length}`;
+  document.getElementById('feed-prev').disabled = feedIndex === 0;
+  document.getElementById('feed-next').disabled = feedIndex === feedCards.length - 1;
+}
+
+function feedPrev() {
+  if (feedIndex > 0) { feedIndex--; renderFeedCard(); }
+}
+function feedNext() {
+  if (feedIndex < feedCards.length - 1) { feedIndex++; renderFeedCard(); }
+}
+
+function renderActivityFeed(ownerAction, pendingNotes) {
+  feedCards = buildFeedCards(ownerAction, pendingNotes);
+  if (feedIndex >= feedCards.length) feedIndex = feedCards.length - 1;
+  renderFeedCard();
 }
 
 async function refreshTodayPanels(world) {
-  renderActivityFeed(world.owner_action || '', world.activities || []);
+  renderActivityFeed(world.owner_action || '', world.pending_notes || []);
   refreshNoteWidget(world.visitor_messages || []);
 }
 
-async function logActivity(text) {
+async function logPendingNote(text) {
   try {
     await fetch('/api/activity', {
       method: 'POST',

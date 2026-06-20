@@ -534,11 +534,25 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
   vertical-align: middle;
 }
 
-.activity-feed { max-height: 168px; overflow-y: auto; }
-.feed-entry { font-size: 12px; color: #4a3a2a; line-height: 1.7; }
-.feed-entry + .feed-entry { margin-top: 9px; padding-top: 9px; border-top: 1px solid #f0ece4; }
+.feed-body { font-size: 12px; color: #4a3a2a; line-height: 1.7; min-height: 17px; }
+.feed-entry { animation: feed-fade-in 0.18s ease; }
+@keyframes feed-fade-in { from { opacity: 0; transform: translateY(2px); } to { opacity: 1; transform: translateY(0); } }
 .feed-time { font-size: 10px; color: #b0a090; margin-bottom: 3px; }
 .feed-text { white-space: pre-line; }
+.feed-nav { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+.feed-nav-btn {
+  background: none;
+  border: 1px solid #e0d8cc;
+  border-radius: 6px;
+  width: 22px;
+  height: 22px;
+  line-height: 1;
+  font-size: 12px;
+  color: #7a6a5a;
+  cursor: pointer;
+}
+.feed-nav-btn:disabled { color: #d0c8bc; cursor: default; }
+.feed-count { font-size: 10px; color: #9a8a7a; letter-spacing: 0.05em; }
 
 .sticky-note {
   position: fixed;

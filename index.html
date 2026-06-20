@@ -97,8 +97,15 @@
           <i class="ti ti-activity"></i>
           <div class="badge-plus" id="compose-trigger" onclick="openCompose()" title="記錄一則動態"><i class="ti ti-plus"></i></div>
         </div>
-        <div class="card-main activity-feed" id="activity-feed">
-          <div class="empty">還沒有動態。</div>
+        <div class="card-main">
+          <div class="feed-body" id="feed-body">
+            <div class="empty">還沒有動態。</div>
+          </div>
+          <div class="feed-nav" id="feed-nav" style="display:none;">
+            <button class="feed-nav-btn" id="feed-prev" onclick="feedPrev()">‹</button>
+            <span class="feed-count" id="feed-count">1/1</span>
+            <button class="feed-nav-btn" id="feed-next" onclick="feedNext()">›</button>
+          </div>
         </div>
       </div>
       <div class="compose-box" id="compose-box" style="display:none;">
