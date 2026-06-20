@@ -353,6 +353,8 @@ async function load() {
     const world = data.world;
     const bt = world.characters.baituantuan;
 
+    document.getElementById('bar-hp').style.width = bt.hp + '%';
+    document.getElementById('bar-food').style.width = bt.food + '%';
     document.getElementById('val-hp').textContent = bt.hp + '%';
     document.getElementById('val-food').textContent = bt.food + '%';
     document.getElementById('location').textContent = bt.location;
