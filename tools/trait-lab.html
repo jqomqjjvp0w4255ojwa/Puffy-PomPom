@@ -179,8 +179,8 @@
         <input type="range" id="nickname-fam-slider" min="0" max="100" value="50" oninput="nicknameUpdatePreview()">
       </div>
       <div class="slider-row">
-        <label><span>好感度</span><span><span id="nickname-aff-val">50</span> <span class="band-tag" id="nickname-aff-band"></span></span></label>
-        <input type="range" id="nickname-aff-slider" min="0" max="100" value="50" oninput="nicknameUpdatePreview()">
+        <label><span>好感度（負數＝反感，0＝中立）</span><span><span id="nickname-aff-val">0</span> <span class="band-tag" id="nickname-aff-band"></span></span></label>
+        <input type="range" id="nickname-aff-slider" min="-100" max="100" value="0" oninput="nicknameUpdatePreview()">
       </div>
       <div class="hint">拉桿對應的格子會在右側表格高亮。</div>
     </div>
@@ -236,8 +236,8 @@
       <div class="swatch" id="mood-swatch"></div>
       <div class="preview-name" id="mood-preview-name">—</div>
       <div class="slider-row">
-        <label><span>心情值</span><span><span id="mood-val">50</span></span></label>
-        <input type="range" id="mood-slider" min="0" max="100" value="50" oninput="moodUpdatePreview()">
+        <label><span>心情值（負數＝低落，0＝中性）</span><span><span id="mood-val">0</span></span></label>
+        <input type="range" id="mood-slider" min="-100" max="100" value="0" oninput="moodUpdatePreview()">
       </div>
       <div class="hint">心情值短期波動、會慢慢回到中性。</div>
     </div>
@@ -254,17 +254,28 @@ function switchTab(name) {
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id === `panel-${name}`));
 }
 
-// ===================== 共用：7x7 區段工具 =====================
+// ===================== 共用：7 段區間工具（可指定範圍，支援負數） =====================
 const BANDS = 7;
-const EDGES = [];
-for (let i = 0; i <= BANDS; i++) EDGES.push(Math.round(i * 100 / BANDS));
-function bandIndex(value) {
-  for (let i = 0; i < BANDS; i++) {
-    if (value <= EDGES[i + 1] || i === BANDS - 1) return i;
-  }
-  return BANDS - 1;
+function makeBandHelper(min, max, bands) {
+  const edges = [];
+  for (let i = 0; i <= bands; i++) edges.push(Math.round(min + i * (max - min) / bands));
+  return {
+    edges,
+    index(value) {
+      for (let i = 0; i < bands; i++) {
+        if (value <= edges[i + 1] || i === bands - 1) return i;
+      }
+      return bands - 1;
+    },
+    label(i) { return `${edges[i]}–${edges[i + 1]}`; }
+  };
 }
-function bandLabel(i) { return `${EDGES[i]}–${EDGES[i + 1]}`; }
+// 熟悉度：0~100（沒有「負熟悉」的概念）
+const FAM = makeBandHelper(0, 100, BANDS);
+// 好感度：-100~100，負數＝反感／厭惡，0＝中立
+const AFF = makeBandHelper(-100, 100, BANDS);
+// 形狀／硬度：0~100（質地軸維持原樣，不做負數）
+const UNIT = makeBandHelper(0, 100, BANDS);
 
 // ===================== 暱稱實驗室 =====================
 let nicknameGrid = Array.from({ length: BANDS }, () => Array.from({ length: BANDS }, () => ''));
@@ -274,12 +285,12 @@ function nicknameBuildTable() {
   table.innerHTML = '';
   const headRow = document.createElement('tr');
   headRow.innerHTML = `<th class="corner">熟悉度 ＼ 好感度</th>` +
-    Array.from({ length: BANDS }, (_, j) => `<th>${bandLabel(j)}</th>`).join('');
+    Array.from({ length: BANDS }, (_, j) => `<th>${AFF.label(j)}</th>`).join('');
   table.appendChild(headRow);
   for (let i = 0; i < BANDS; i++) {
     const row = document.createElement('tr');
     const th = document.createElement('th');
-    th.textContent = bandLabel(i);
+    th.textContent = FAM.label(i);
     row.appendChild(th);
     for (let j = 0; j < BANDS; j++) {
       const td = document.createElement('td');
@@ -299,9 +310,9 @@ function nicknameUpdatePreview() {
   const aff = Number(document.getElementById('nickname-aff-slider').value);
   document.getElementById('nickname-fam-val').textContent = fam;
   document.getElementById('nickname-aff-val').textContent = aff;
-  const fi = bandIndex(fam), aj = bandIndex(aff);
-  document.getElementById('nickname-fam-band').textContent = `(${bandLabel(fi)})`;
-  document.getElementById('nickname-aff-band').textContent = `(${bandLabel(aj)})`;
+  const fi = FAM.index(fam), aj = AFF.index(aff);
+  document.getElementById('nickname-fam-band').textContent = `(${FAM.label(fi)})`;
+  document.getElementById('nickname-aff-band').textContent = `(${AFF.label(aj)})`;
   document.querySelectorAll('#panel-nickname td.active').forEach(td => td.classList.remove('active'));
   const cell = document.getElementById(`nickname-cell-${fi}-${aj}`);
   if (cell) cell.classList.add('active');
@@ -311,7 +322,7 @@ function nicknameExportCSV() {
   const rows = [['熟悉度區段', '好感度區段', '暱稱'].join(',')];
   for (let i = 0; i < BANDS; i++)
     for (let j = 0; j < BANDS; j++)
-      rows.push([`"${bandLabel(i)}"`, `"${bandLabel(j)}"`, `"${(nicknameGrid[i][j] || '').replace(/"/g, '""')}"`].join(','));
+      rows.push([`"${FAM.label(i)}"`, `"${AFF.label(j)}"`, `"${(nicknameGrid[i][j] || '').replace(/"/g, '""')}"`].join(','));
   downloadCSV(rows.join('\n'), 'nickname-table.csv');
 }
 function nicknameImportCSV(e) {
@@ -320,8 +331,8 @@ function nicknameImportCSV(e) {
       const cols = line.match(/"([^"]*)"/g);
       if (!cols || cols.length < 3) return;
       const clean = cols.map(c => c.slice(1, -1).replace(/""/g, '"'));
-      for (let i = 0; i < BANDS; i++) if (bandLabel(i) === clean[0])
-        for (let j = 0; j < BANDS; j++) if (bandLabel(j) === clean[1])
+      for (let i = 0; i < BANDS; i++) if (FAM.label(i) === clean[0])
+        for (let j = 0; j < BANDS; j++) if (AFF.label(j) === clean[1])
           nicknameGrid[i][j] = clean[2];
     });
     nicknameBuildTable();
@@ -356,12 +367,12 @@ function textureBuildTable() {
   table.innerHTML = '';
   const headRow = document.createElement('tr');
   headRow.innerHTML = `<th class="corner">形狀 ＼ 硬度</th>` +
-    Array.from({ length: BANDS }, (_, j) => `<th>${bandLabel(j)}</th>`).join('');
+    Array.from({ length: BANDS }, (_, j) => `<th>${UNIT.label(j)}</th>`).join('');
   table.appendChild(headRow);
   for (let i = 0; i < BANDS; i++) {
     const row = document.createElement('tr');
     const th = document.createElement('th');
-    th.textContent = bandLabel(i);
+    th.textContent = UNIT.label(i);
     row.appendChild(th);
     for (let j = 0; j < BANDS; j++) {
       const td = document.createElement('td');
@@ -381,9 +392,9 @@ function textureUpdatePreview() {
   const hard = Number(document.getElementById('texture-hard-slider').value);
   document.getElementById('texture-shape-val').textContent = shape;
   document.getElementById('texture-hard-val').textContent = hard;
-  const si = bandIndex(shape), hj = bandIndex(hard);
-  document.getElementById('texture-shape-band').textContent = `(${bandLabel(si)})`;
-  document.getElementById('texture-hard-band').textContent = `(${bandLabel(hj)})`;
+  const si = UNIT.index(shape), hj = UNIT.index(hard);
+  document.getElementById('texture-shape-band').textContent = `(${UNIT.label(si)})`;
+  document.getElementById('texture-hard-band').textContent = `(${UNIT.label(hj)})`;
   document.querySelectorAll('#panel-texture td.active').forEach(td => td.classList.remove('active'));
   const cell = document.getElementById(`texture-cell-${si}-${hj}`);
   if (cell) cell.classList.add('active');
@@ -393,7 +404,7 @@ function textureExportCSV() {
   const rows = [['形狀區段', '硬度區段', '質地'].join(',')];
   for (let i = 0; i < BANDS; i++)
     for (let j = 0; j < BANDS; j++)
-      rows.push([`"${bandLabel(i)}"`, `"${bandLabel(j)}"`, `"${(textureGrid[i][j] || '').replace(/"/g, '""')}"`].join(','));
+      rows.push([`"${UNIT.label(i)}"`, `"${UNIT.label(j)}"`, `"${(textureGrid[i][j] || '').replace(/"/g, '""')}"`].join(','));
   downloadCSV(rows.join('\n'), 'texture-table.csv');
 }
 function textureImportCSV(e) {
@@ -402,8 +413,8 @@ function textureImportCSV(e) {
       const cols = line.match(/"([^"]*)"/g);
       if (!cols || cols.length < 3) return;
       const clean = cols.map(c => c.slice(1, -1).replace(/""/g, '"'));
-      for (let i = 0; i < BANDS; i++) if (bandLabel(i) === clean[0])
-        for (let j = 0; j < BANDS; j++) if (bandLabel(j) === clean[1])
+      for (let i = 0; i < BANDS; i++) if (UNIT.label(i) === clean[0])
+        for (let j = 0; j < BANDS; j++) if (UNIT.label(j) === clean[1])
           textureGrid[i][j] = clean[2];
     });
     textureBuildTable();
@@ -446,9 +457,9 @@ function moodRenderBands() {
     row.className = 'band-row';
     row.id = `mood-band-${idx}`;
     row.innerHTML = `
-      <input type="number" value="${b.min}" min="0" max="100" style="width:48px" />
+      <input type="number" value="${b.min}" min="-100" max="100" style="width:52px" />
       <span>～</span>
-      <input type="number" value="${b.max}" min="0" max="100" style="width:48px" />
+      <input type="number" value="${b.max}" min="-100" max="100" style="width:52px" />
       <input type="text" value="${b.name}" placeholder="例如：螢光黃" />
       <input type="color" value="${b.color}" />
       <button class="secondary" style="padding:6px 10px;">刪除</button>
@@ -482,7 +493,7 @@ function moodExportCSV() {
 function moodImportCSV(e) {
   readCSV(e, (lines) => {
     moodBands = lines.map(line => {
-      const m = line.match(/^(\d+),(\d+),"((?:[^"]|"")*)",(#[0-9a-fA-F]{6})$/);
+      const m = line.match(/^(-?\d+),(-?\d+),"((?:[^"]|"")*)",(#[0-9a-fA-F]{6})$/);
       if (!m) return null;
       return { min: Number(m[1]), max: Number(m[2]), name: m[3].replace(/""/g, '"'), color: m[4] };
     }).filter(Boolean);
@@ -493,10 +504,10 @@ function moodImportCSV(e) {
 }
 function moodFillSample() {
   moodBands = [
-    { min: 0, max: 24, name: '漂浮灰（寂寞）', color: '#b0b0b0' },
-    { min: 25, max: 49, name: '臭臭黑（不安）', color: '#3a3530' },
-    { min: 50, max: 74, name: '未完成磁斑（平靜/思念）', color: '#9aa8c0' },
-    { min: 75, max: 100, name: '螢光黃（快樂）', color: '#f0e040' },
+    { min: -100, max: -50, name: '臭臭黑（不安）', color: '#3a3530' },
+    { min: -49, max: -1, name: '漂浮灰（寂寞）', color: '#b0b0b0' },
+    { min: 0, max: 49, name: '未完成磁斑（平靜/思念）', color: '#9aa8c0' },
+    { min: 50, max: 100, name: '螢光黃（快樂）', color: '#f0e040' },
   ];
   moodRenderBands();
   moodUpdatePreview();
