@@ -285,11 +285,14 @@ function emptyDay(dateKey) {
 }
 
 // world.json 裡的 fragments 欄位可能是舊資料（不存在）或半成形，補齊成完整結構。
+const FRAGMENT_COOLDOWN_TICKS = 2; // 紙片掉落後，至少要再過這麼多次世界回應才可能再掉
+
 function ensureFragmentsState(world) {
   if (!world.fragments) world.fragments = { collected: [], pending: null, hintsShown: [] };
   if (!Array.isArray(world.fragments.collected)) world.fragments.collected = [];
   if (world.fragments.pending === undefined) world.fragments.pending = null;
   if (!Array.isArray(world.fragments.hintsShown)) world.fragments.hintsShown = [];
+  if (typeof world.fragments.cooldown !== 'number') world.fragments.cooldown = 0;
   return world.fragments;
 }
 
@@ -734,13 +737,16 @@ async function tick() {
 
     const fragState = ensureFragmentsState(world);
     newWorld.fragments = { ...fragState };
-    if (!fragState.pending) {
+    if (!fragState.pending && fragState.cooldown > 0) {
+      newWorld.fragments = { ...fragState, cooldown: fragState.cooldown - 1 };
+    } else if (!fragState.pending) {
       const hits = matchFragments(result.scene, combinedPlayerText, fragState.collected);
       if (hits.length > 0) {
         const f = hits[0];
         newWorld.fragments = {
           ...fragState,
-          pending: { id: f.id, source: f.source, label: f.label || '', text: f.text, time: display }
+          pending: { id: f.id, source: f.source, label: f.label || '', text: f.text, time: display },
+          cooldown: FRAGMENT_COOLDOWN_TICKS
         };
         console.log(`紙片掉落待領取：${f.id}`);
       }

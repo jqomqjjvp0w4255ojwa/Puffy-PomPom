@@ -17,98 +17,143 @@
   }
 
   .demo-hint {
-    padding: 14px 18px;
+    padding: 14px 18px 0;
     font-size: 12px;
     color: #b0a090;
-    background: #f5f0e8;
   }
 
-  .open-btn {
-    margin: 0 18px;
-    padding: 8px 16px;
-    border: 1px solid #e8c8b0;
+  /* ---- 主頁面（A.觀察）模擬內容 ---- */
+  .main-page {
+    padding: 70px 18px 40px;
+    max-width: 420px;
+    margin: 0 auto;
+  }
+  .main-page h1 {
+    font-size: 18px;
+    color: #8a5a3a;
+    text-align: center;
+    margin: 0 0 18px;
+  }
+  .main-page .card {
+    background: #fff;
+    border: 1px solid #f0ebe2;
+    border-radius: 16px;
+    padding: 14px;
+    box-shadow: 0 1px 4px rgba(120,100,80,0.05);
+    font-size: 13px;
+    line-height: 1.6;
+  }
+
+  /* ---- 收合時的選單按鈕（三條線） ---- */
+  .menu-btn {
+    position: fixed;
+    top: 14px;
+    left: 14px;
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    border: none;
     background: #fff;
     color: #8a5a3a;
-    border-radius: 20px;
-    font-size: 13px;
+    box-shadow: 0 2px 8px rgba(120,100,80,0.18);
+    font-size: 19px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     cursor: pointer;
+    z-index: 250;
   }
 
-  /* ---- 左側抽屜（仿右側 side-panel 樣式） ---- */
-  .overlay {
+  /* ---- 4-tab 選單（從選單按鈕展開的小面板） ---- */
+  .tab-menu {
+    position: fixed;
+    top: 14px;
+    left: 14px;
+    background: #faf8f4;
+    border-radius: 14px;
+    box-shadow: 0 4px 16px rgba(120,100,80,0.2);
+    padding: 8px;
+    z-index: 260;
+    display: none;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 130px;
+  }
+  .tab-menu.open { display: flex; }
+  .tab-menu-item {
+    border: none;
+    background: none;
+    text-align: left;
+    font-family: inherit;
+    font-size: 13px;
+    color: #5a4a3a;
+    padding: 8px 10px;
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .tab-menu-item:hover { background: #f0ebe2; }
+  .tab-menu-item.active { color: #8a5a3a; font-weight: 500; }
+  .tab-menu-item i { font-size: 16px; width: 18px; text-align: center; }
+
+  /* ---- B/C/D 彈出視窗（蓋在主畫面上，背景壓暗模糊） ---- */
+  .modal-overlay {
     position: fixed;
     inset: 0;
-    background: rgba(0,0,0,0.25);
+    background: rgba(20,16,12,0.45);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
     z-index: 300;
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.2s;
   }
-  .overlay.open { opacity: 1; pointer-events: all; }
+  .modal-overlay.open { opacity: 1; pointer-events: all; }
 
-  .side-drawer {
+  .modal-box {
     position: fixed;
-    top: 0;
-    left: 0;
-    width: 300px;
-    height: 100vh;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -48%);
+    width: min(360px, 88vw);
+    max-height: 78vh;
     background: #faf8f4;
-    box-shadow: 2px 0 16px rgba(0,0,0,0.12);
-    z-index: 400;
-    transform: translateX(-100%);
-    transition: transform 0.25s ease;
-    padding: 1rem;
-    overflow-y: auto;
+    border-radius: 20px;
+    box-shadow: 0 12px 32px rgba(0,0,0,0.25);
+    z-index: 310;
+    display: none;
+    flex-direction: column;
+    overflow: hidden;
   }
-  .side-drawer.open { transform: translateX(0); }
+  .modal-box.open { display: flex; }
 
-  @media (max-width: 480px) {
-    .side-drawer { width: 85vw; }
-  }
-
-  .drawer-header {
+  .modal-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: 0.75rem;
+    padding: 14px 16px 10px;
+    flex-shrink: 0;
   }
-  .drawer-close {
+  .modal-title { font-size: 14px; color: #8a5a3a; font-weight: 500; }
+  .modal-close {
     background: none;
     border: none;
-    color: #8a5a3a;
-    font-size: 13px;
-    display: flex;
-    align-items: center;
-    gap: 4px;
+    color: #b0a090;
+    font-size: 18px;
     cursor: pointer;
     padding: 0;
-  }
-
-  .tab-row {
     display: flex;
-    gap: 6px;
-    margin-bottom: 1rem;
-  }
-  .tab-btn {
-    flex: 1;
-    border: 1px solid #e8c8b0;
-    background: #fff;
-    color: #b0a090;
-    border-radius: 10px;
-    padding: 7px 4px;
-    font-size: 12px;
-    font-family: inherit;
-    cursor: pointer;
-    transition: all 0.15s;
-  }
-  .tab-btn.active {
-    background: #8a5a3a;
-    color: #fff;
-    border-color: #8a5a3a;
   }
 
-  .tab-panel { display: none; flex-direction: column; gap: 0.85rem; }
-  .tab-panel.active { display: flex; }
+  .modal-body {
+    padding: 0 16px 16px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+  }
 
   .section-label {
     font-size: 10px;
@@ -168,7 +213,7 @@
     margin-top: 4px;
   }
 
-  /* 筆記頁籤 */
+  /* 筆記 */
   .notes-heading {
     font-size: 12px;
     color: #8a5a3a;
@@ -187,26 +232,34 @@
 </head>
 <body>
 
-<div class="demo-hint">這是側欄功能的獨立預覽頁，資料皆為假資料，僅供確認外觀與架構。</div>
-<button class="open-btn" onclick="openDrawer()"><i class="ti ti-menu-2"></i> 開啟側欄</button>
+<div class="demo-hint">這是側欄功能的獨立預覽頁，資料皆為假資料，僅供確認外觀與架構。A.觀察＝主頁本身，B/C/D 開啟後是蓋在主畫面上的彈窗。</div>
 
-<div class="overlay" id="overlay" onclick="closeDrawer()"></div>
-<div class="side-drawer" id="side-drawer">
+<div class="main-page">
+  <h1>白糰糰觀察日記</h1>
+  <div class="card">這裡是 A.觀察（主頁），平常顯示的日記內容維持原樣，不受側欄影響。</div>
+</div>
 
-  <div class="drawer-header">
-    <button class="drawer-close" onclick="closeDrawer()">
-      收合 <i class="ti ti-chevron-left"></i>
-    </button>
+<!-- 收合時：三條線按鈕 -->
+<button class="menu-btn" id="menu-btn" onclick="toggleMenu()"><i class="ti ti-menu-2"></i></button>
+
+<!-- 展開的 4-tab 小選單 -->
+<div class="tab-menu" id="tab-menu">
+  <button class="tab-menu-item active" data-tab="a" onclick="selectTab('a')"><i class="ti ti-eye"></i> A．觀察</button>
+  <button class="tab-menu-item" data-tab="b" onclick="selectTab('b')"><i class="ti ti-history"></i> B．回顧</button>
+  <button class="tab-menu-item" data-tab="c" onclick="selectTab('c')"><i class="ti ti-chart-bar"></i> C．統計</button>
+  <button class="tab-menu-item" data-tab="d" onclick="selectTab('d')"><i class="ti ti-notes"></i> D．筆記</button>
+</div>
+
+<!-- B/C/D 共用的彈窗背景 -->
+<div class="modal-overlay" id="modal-overlay" onclick="closeModal()"></div>
+
+<!-- B．回顧 -->
+<div class="modal-box" id="modal-b">
+  <div class="modal-header">
+    <span class="modal-title">B．回顧</span>
+    <button class="modal-close" onclick="closeModal()"><i class="ti ti-x"></i></button>
   </div>
-
-  <div class="tab-row">
-    <button class="tab-btn active" data-tab="history" onclick="switchTab('history')">歷史回顧</button>
-    <button class="tab-btn" data-tab="stats" onclick="switchTab('stats')">統計總覽</button>
-    <button class="tab-btn" data-tab="notes" onclick="switchTab('notes')">筆記</button>
-  </div>
-
-  <!-- 歷史回顧 -->
-  <div class="tab-panel active" id="panel-history">
+  <div class="modal-body">
     <div class="section-label">過去的日記回應</div>
 
     <div class="card">
@@ -230,18 +283,30 @@
     </div>
     <div class="card-time-tag">第 10 天 · 21:45</div>
   </div>
+</div>
 
-  <!-- 統計總覽 -->
-  <div class="tab-panel" id="panel-stats">
+<!-- C．統計 -->
+<div class="modal-box" id="modal-c">
+  <div class="modal-header">
+    <span class="modal-title">C．統計</span>
+    <button class="modal-close" onclick="closeModal()"><i class="ti ti-x"></i></button>
+  </div>
+  <div class="modal-body">
     <div class="section-label">陪伴關係</div>
     <div class="card stat-card">
       <div class="stat-value">12</div>
       <div class="stat-label">陪伴關係總天數</div>
     </div>
   </div>
+</div>
 
-  <!-- 筆記 -->
-  <div class="tab-panel" id="panel-notes">
+<!-- D．筆記 -->
+<div class="modal-box" id="modal-d">
+  <div class="modal-header">
+    <span class="modal-title">D．筆記</span>
+    <button class="modal-close" onclick="closeModal()"><i class="ti ti-x"></i></button>
+  </div>
+  <div class="modal-body">
     <div class="notes-heading">#黑影筆記：當你觸及黑暗，秘密也會觸碰你</div>
 
     <div class="card">
@@ -258,22 +323,43 @@
 
     <div class="empty-note">（其餘碎片尚未蒐集）</div>
   </div>
-
 </div>
 
 <script>
-function openDrawer() {
-  document.getElementById('side-drawer').classList.add('open');
-  document.getElementById('overlay').classList.add('open');
+function toggleMenu() {
+  document.getElementById('tab-menu').classList.toggle('open');
 }
-function closeDrawer() {
-  document.getElementById('side-drawer').classList.remove('open');
-  document.getElementById('overlay').classList.remove('open');
+function closeMenu() {
+  document.getElementById('tab-menu').classList.remove('open');
 }
-function switchTab(name) {
-  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
-  document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id === `panel-${name}`));
+function selectTab(name) {
+  document.querySelectorAll('.tab-menu-item').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
+  closeMenu();
+  if (name === 'a') {
+    closeModal();
+    return;
+  }
+  openModal(name);
 }
+function openModal(name) {
+  document.getElementById('modal-overlay').classList.add('open');
+  document.querySelectorAll('.modal-box').forEach(m => m.classList.remove('open'));
+  document.getElementById(`modal-${name}`).classList.add('open');
+}
+function closeModal() {
+  document.getElementById('modal-overlay').classList.remove('open');
+  document.querySelectorAll('.modal-box').forEach(m => m.classList.remove('open'));
+  document.querySelectorAll('.tab-menu-item').forEach(b => b.classList.toggle('active', b.dataset.tab === 'a'));
+}
+
+// 點外面收合 4-tab 小選單
+document.addEventListener('click', (e) => {
+  const menu = document.getElementById('tab-menu');
+  const btn = document.getElementById('menu-btn');
+  if (menu.classList.contains('open') && !menu.contains(e.target) && !btn.contains(e.target)) {
+    closeMenu();
+  }
+});
 </script>
 
 </body>

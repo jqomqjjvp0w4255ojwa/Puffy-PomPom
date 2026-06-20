@@ -114,12 +114,46 @@
   button:active { opacity: 0.85; }
   input[type=file] { display: none; }
   .hint { font-size: 11px; color: #a08868; margin-top: 8px; line-height: 1.6; }
+
+  .sync-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    background: #fff;
+    border: 1px solid #e8c8b0;
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin-bottom: 16px;
+    font-size: 12px;
+  }
+  .sync-bar input[type=text] {
+    flex: 1;
+    min-width: 200px;
+    font-family: inherit;
+    font-size: 12px;
+    border: 1px solid #e8c8b0;
+    border-radius: 6px;
+    padding: 6px 8px;
+  }
+  .sync-status { font-size: 11px; white-space: nowrap; }
+  .sync-status.ok { color: #5a8a4a; }
+  .sync-status.fail { color: #c05a3a; }
+  .sync-status.busy { color: #b07a4a; }
+  .sync-status.off { color: #a08868; }
 </style>
 </head>
 <body>
 
 <h1>糰糰隱藏數值實驗室</h1>
 <div class="sub">三個對照表合併在一起：暱稱（熟悉度×好感度）／質地（形狀×硬度）／心情色彩（單軸），各自獨立填寫、各自匯出 CSV</div>
+
+<div class="sync-bar">
+  <span>雲端同步（GAS+Sheet）網址：</span>
+  <input type="text" id="gas-url-input" placeholder="貼上 Apps Script 部署網址（.../exec）">
+  <button class="secondary" onclick="saveGasUrl()">儲存網址</button>
+  <span class="sync-status off" id="sync-status">尚未連接，僅存在這台瀏覽器</span>
+</div>
 
 <div class="tabs">
   <button class="tab-btn active" data-tab="nickname" onclick="switchTab('nickname')">暱稱實驗室</button>
@@ -510,7 +544,68 @@ function loadFromStorage() {
     return true;
   } catch (err) { return false; }
 }
-// 包一層：所有會改到資料的函式跑完後都存一次
+
+// ===================== 雲端同步（Google Apps Script + Sheet，跨裝置用） =====================
+// 採「樂觀更新」：畫面先照本地資料立刻更新，背景再把整包資料 POST 上雲端，
+// 失敗也不會卡住操作，只是同步狀態顯示失敗，下次存檔會再試一次。
+const GAS_URL_KEY = 'puffy-trait-lab-gas-url';
+let gasUrl = localStorage.getItem(GAS_URL_KEY) || '';
+let syncTimer = null;
+
+function setSyncStatus(state, text) {
+  const el = document.getElementById('sync-status');
+  el.className = `sync-status ${state}`;
+  el.textContent = text;
+}
+function saveGasUrl() {
+  const input = document.getElementById('gas-url-input');
+  gasUrl = input.value.trim();
+  localStorage.setItem(GAS_URL_KEY, gasUrl);
+  if (!gasUrl) {
+    setSyncStatus('off', '尚未連接，僅存在這台瀏覽器');
+    return;
+  }
+  loadFromSheet();
+}
+function syncToSheet() {
+  if (!gasUrl) return;
+  clearTimeout(syncTimer);
+  // debounce：連續輸入時不要每個字都送一次
+  syncTimer = setTimeout(() => {
+    setSyncStatus('busy', '同步中…');
+    fetch(gasUrl, {
+      method: 'POST',
+      body: JSON.stringify({ nicknameGrid, textureGrid, moodBands })
+    })
+      .then(r => r.json())
+      .then(data => {
+        if (data && data.ok) setSyncStatus('ok', '已同步到雲端');
+        else setSyncStatus('fail', '同步失敗，下次操作會重試');
+      })
+      .catch(() => setSyncStatus('fail', '同步失敗（離線或網址錯誤），下次操作會重試'));
+  }, 600);
+}
+function loadFromSheet() {
+  if (!gasUrl) return;
+  setSyncStatus('busy', '讀取雲端資料中…');
+  fetch(gasUrl)
+    .then(r => r.json())
+    .then(data => {
+      if (data && (data.nicknameGrid || data.textureGrid || data.moodBands)) {
+        if (data.nicknameGrid) nicknameGrid = data.nicknameGrid;
+        if (data.textureGrid) textureGrid = data.textureGrid;
+        if (data.moodBands) moodBands = data.moodBands;
+        nicknameBuildTable(); nicknameUpdatePreview();
+        textureBuildTable(); textureUpdatePreview();
+        moodRenderBands(); moodUpdatePreview();
+        saveToStorage();
+      }
+      setSyncStatus('ok', '已連接雲端並同步');
+    })
+    .catch(() => setSyncStatus('fail', '無法讀取雲端資料，先用本地版本'));
+}
+
+// 包一層：所有會改到資料的函式跑完後都存一次（本地立即存，雲端背景同步）
 ['nicknameUpdatePreview','nicknameImportCSV','nicknameClearAll','nicknameFillSample',
  'textureUpdatePreview','textureImportCSV','textureClearAll','textureFillSample',
  'moodUpdatePreview','moodImportCSV','moodAddBand','moodFillSample'].forEach(fnName => {
@@ -518,11 +613,13 @@ function loadFromStorage() {
   window[fnName] = function (...args) {
     const result = original.apply(this, args);
     saveToStorage();
+    syncToSheet();
     return result;
   };
 });
 
 // ===================== 初始化 =====================
+document.getElementById('gas-url-input').value = gasUrl;
 const restored = loadFromStorage();
 nicknameBuildTable();
 nicknameUpdatePreview();
@@ -531,6 +628,7 @@ textureUpdatePreview();
 if (!restored) moodFillSample();
 moodRenderBands();
 moodUpdatePreview();
+if (gasUrl) loadFromSheet();
 </script>
 
 </body>
