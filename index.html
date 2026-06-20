@@ -17,21 +17,18 @@
 
 <div class="notebook">
   <div class="notebook-header">
-    <div class="header-label">現在</div>
-    <div class="status-row">
-      <div class="status-item">
-        健康
-        <div class="bar"><div class="bar-hp" id="bar-hp" style="width:0%"></div></div>
-        <span id="val-hp">—</span>
-      </div>
-      <div class="status-item">
-        飽食
-        <div class="bar"><div class="bar-food" id="bar-food" style="width:0%"></div></div>
-        <span id="val-food">—</span>
-      </div>
-      <div class="location-tag" id="location">—</div>
+    <div class="header-label" onclick="toggleStatusDetail()">
+      <span>現在</span>
+      <i class="ti ti-chevron-down" id="status-chevron"></i>
     </div>
-    <div class="fur-tag" id="fur-tag"></div>
+    <div class="status-detail" id="status-detail">
+      <div class="status-line"><span class="status-label">地點</span><span id="location">—</span></div>
+      <div class="status-line">
+        <span class="status-label">健康</span><span id="val-hp">—</span>
+        <span class="status-label">飽食</span><span id="val-food">—</span>
+      </div>
+      <div class="status-line" id="fur-line" style="display:none;"><span class="status-label">外觀</span><span id="fur-tag">—</span></div>
+    </div>
     <div class="shadow-active" id="shadow-tag"></div>
   </div>
   <div class="pagination">
@@ -78,20 +75,17 @@
           </div>
         </div>
       </div>
-    </div>
 
-    <div>
-      <div class="section-label">我的動態</div>
-      <div class="card">
-        <div class="card-row">
-          <div class="card-badge badge-activity"><i class="ti ti-activity"></i></div>
-          <div class="card-main activity-feed" id="activity-feed">
-            <div class="empty">還沒有動態。</div>
-          </div>
+      <div class="card-divider"></div>
+
+      <div class="card-row">
+        <div class="card-badge badge-activity">
+          <i class="ti ti-activity"></i>
+          <div class="badge-plus" id="compose-trigger" onclick="openCompose()" title="記錄一則動態"><i class="ti ti-plus"></i></div>
         </div>
-      </div>
-      <div class="compose-pill" id="compose-pill" onclick="openCompose()">
-        <i class="ti ti-plus"></i><span>記錄一則動態…</span>
+        <div class="card-main activity-feed" id="activity-feed">
+          <div class="empty">還沒有動態。</div>
+        </div>
       </div>
       <div class="compose-box" id="compose-box" style="display:none;">
         <textarea class="room-action-textarea" id="room-action-input" maxlength="50" placeholder=""></textarea>
@@ -133,26 +127,22 @@
     </div>
 
     <div>
-      <div class="switch-rows">
-        <div class="switch-row">
-          <div class="switch-tile" onclick="toggle('light_on')">
-            <div class="switch-icon-label"><i class="ti ti-bulb"></i><span>燈</span></div>
-            <div class="switch" id="it-light"><div class="switch-knob"></div></div>
-          </div>
-          <div class="switch-tile" onclick="toggle('toilet_open')">
-            <div class="switch-icon-label"><i class="ti ti-door"></i><span>廁所門</span></div>
-            <div class="switch" id="it-toilet"><div class="switch-knob"></div></div>
-          </div>
+      <div class="switch-grid">
+        <div class="switch-tile" onclick="toggle('light_on')">
+          <div class="switch-icon-label"><i class="ti ti-bulb"></i><span>燈</span></div>
+          <div class="switch" id="it-light"><div class="switch-knob"></div></div>
         </div>
-        <div class="switch-row">
-          <div class="switch-tile" onclick="toggle('window_open')">
-            <div class="switch-icon-label"><i class="ti ti-window"></i><span>窗戶</span></div>
-            <div class="switch" id="it-window"><div class="switch-knob"></div></div>
-          </div>
-          <div class="switch-tile" onclick="toggle('ac_on')">
-            <div class="switch-icon-label"><i class="ti ti-snowflake"></i><span>冷氣</span></div>
-            <div class="switch" id="it-ac"><div class="switch-knob"></div></div>
-          </div>
+        <div class="switch-tile" onclick="toggle('toilet_open')">
+          <div class="switch-icon-label"><i class="ti ti-door"></i><span>廁所門</span></div>
+          <div class="switch" id="it-toilet"><div class="switch-knob"></div></div>
+        </div>
+        <div class="switch-tile" onclick="toggle('window_open')">
+          <div class="switch-icon-label"><i class="ti ti-window"></i><span>窗戶</span></div>
+          <div class="switch" id="it-window"><div class="switch-knob"></div></div>
+        </div>
+        <div class="switch-tile" onclick="toggle('ac_on')">
+          <div class="switch-icon-label"><i class="ti ti-snowflake"></i><span>冷氣</span></div>
+          <div class="switch" id="it-ac"><div class="switch-knob"></div></div>
         </div>
       </div>
     </div>

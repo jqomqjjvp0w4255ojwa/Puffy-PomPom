@@ -25,6 +25,11 @@ function closePanel() {
   document.getElementById('overlay').classList.remove('open');
 }
 
+function toggleStatusDetail() {
+  document.getElementById('status-detail').classList.toggle('collapsed');
+  document.getElementById('status-chevron').classList.toggle('collapsed');
+}
+
 function getCleanDesc(v) {
   if (v >= 80) return '乾淨，小黑影沒什麼動靜';
   if (v >= 50) return '有些灰塵，角落開始積東西';
@@ -141,7 +146,7 @@ function cancelEnv() { envField.cancel(); }
 function submitEnv() { envField.submit(); }
 
 function openCompose() {
-  document.getElementById('compose-pill').style.display = 'none';
+  document.getElementById('compose-trigger').style.display = 'none';
   document.getElementById('compose-box').style.display = 'block';
   const inp = document.getElementById('room-action-input');
   inp.placeholder = randomPlaceholder();
@@ -149,7 +154,7 @@ function openCompose() {
 }
 function closeCompose() {
   document.getElementById('compose-box').style.display = 'none';
-  document.getElementById('compose-pill').style.display = 'flex';
+  document.getElementById('compose-trigger').style.display = 'flex';
   document.getElementById('room-action-input').value = '';
 }
 
@@ -348,12 +353,16 @@ async function load() {
     const world = data.world;
     const bt = world.characters.baituantuan;
 
-    document.getElementById('bar-hp').style.width = bt.hp + '%';
-    document.getElementById('bar-food').style.width = bt.food + '%';
     document.getElementById('val-hp').textContent = bt.hp + '%';
     document.getElementById('val-food').textContent = bt.food + '%';
     document.getElementById('location').textContent = bt.location;
-    document.getElementById('fur-tag').textContent = bt.fur && bt.fur !== '正常' ? bt.fur : '';
+    const furLine = document.getElementById('fur-line');
+    if (bt.fur && bt.fur !== '正常') {
+      document.getElementById('fur-tag').textContent = bt.fur;
+      furLine.style.display = 'flex';
+    } else {
+      furLine.style.display = 'none';
+    }
     document.getElementById('shadow-tag').textContent = world.characters.shadow.active ? '⚠ 小黑影出沒中' : '';
 
     const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Taipei' }));

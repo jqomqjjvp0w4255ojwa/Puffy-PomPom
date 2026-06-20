@@ -78,7 +78,7 @@ const SYSTEM_PROMPT = `你是白糰糰宇宙的世界引擎。根據當前世界
     "hp": 數字,
     "food": 數字,
     "location": "地點",
-    "fur": "正常或髒污或禿塊描述"
+    "fur": "正常，或簡短描述（4-8字內，例如：微髒、右耳禿一塊、毛打結）"
   },
   "shadow": {
     "active": true或false,
