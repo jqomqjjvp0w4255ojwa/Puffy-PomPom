@@ -1,4 +1,8 @@
-let roomState = { window_open: false, ac_on: false, light_on: true, toilet_open: false, cleanliness: 78 };
+let roomState = {
+  window_open: false,
+  ac: { on: false, mode: 'cool', temp: 22, fan: 'auto', sleep: false, broken: false },
+  light_on: true, toilet_open: false, cleanliness: 78
+};
 
 const ROOM_PLACEHOLDERS = [
   '也許該把桌上的東西整理一下...',
@@ -66,10 +70,123 @@ function updateCleanUI() {
 }
 
 function updateAllToggles() {
-  const map = { light_on:'it-light', toilet_open:'it-toilet', window_open:'it-window', ac_on:'it-ac' };
+  const map = { light_on:'it-light', toilet_open:'it-toilet', window_open:'it-window' };
   for (const [key, id] of Object.entries(map)) {
     document.getElementById(id).classList.toggle('on', !!roomState[key]);
   }
+  document.getElementById('it-ac').classList.toggle('on', !!roomState.ac.on);
+}
+
+// ===== 冷氣遙控 =====
+const AC_MODE_LABEL = { cool: '冷氣', heat: '暖氣', fan: '送風', dry: '除濕' };
+
+function openAcRemote() {
+  renderAcRemote();
+  document.getElementById('ac-overlay').classList.add('open');
+  document.getElementById('ac-remote').classList.add('open');
+}
+function closeAcRemote() {
+  document.getElementById('ac-overlay').classList.remove('open');
+  document.getElementById('ac-remote').classList.remove('open');
+}
+
+function renderAcRemote() {
+  const ac = roomState.ac;
+  const remote = document.getElementById('ac-remote');
+  remote.classList.toggle('power-on', !!ac.on);
+
+  document.getElementById('ac-power').classList.toggle('on', !!ac.on);
+  document.getElementById('ac-broken').style.display = (ac.on && ac.broken) ? 'block' : 'none';
+
+  // 讀數
+  document.getElementById('ac-readout-mode').textContent = ac.broken && ac.on ? '故障' : AC_MODE_LABEL[ac.mode];
+  const tempEl = document.getElementById('ac-readout-temp');
+  tempEl.innerHTML = ac.mode === 'fan' ? '送風' : ac.temp + '<small>℃</small>';
+
+  // 模式
+  document.querySelectorAll('.ac-mode-btn').forEach(b =>
+    b.classList.toggle('active', b.dataset.mode === ac.mode));
+
+  // 溫度（送風模式無溫度）
+  document.getElementById('ac-temp-val').textContent = ac.temp + '℃';
+  document.getElementById('ac-temp-section').classList.toggle('disabled', ac.mode === 'fan');
+
+  // 風速
+  document.querySelectorAll('.ac-fan-btn').forEach(b =>
+    b.classList.toggle('active', b.dataset.fan === ac.fan));
+
+  // 舒眠
+  document.getElementById('ac-sleep-switch').classList.toggle('on', !!ac.sleep);
+}
+
+function saveAc() {
+  renderAcRemote();
+  updateAllToggles();
+  return fetch('/api/room', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ac: roomState.ac })
+  });
+}
+
+// 重開修好的機率：房間越髒越難修；連續失敗會逐次提高（保底，不會卡死）。
+let acRepairFails = 0;
+function acRepairChance() {
+  const c = roomState.cleanliness;
+  let base = c >= 60 ? 0.7 : c >= 30 ? 0.5 : 0.3;
+  return Math.min(0.95, base + acRepairFails * 0.15);
+}
+
+let acBubbleTimer = null;
+function showAcRepairHint() {
+  const bubble = document.getElementById('ac-repair-bubble');
+  if (!bubble) return;
+  bubble.classList.add('show');
+  clearTimeout(acBubbleTimer);
+  acBubbleTimer = setTimeout(() => bubble.classList.remove('show'), 2600);
+}
+
+async function acTogglePower() {
+  const wasBroken = roomState.ac.broken;
+  const turningOn = !roomState.ac.on;
+  roomState.ac.on = turningOn;
+
+  if (turningOn && wasBroken) {
+    // 重新開機＝一次即時修理嘗試（不等 tick）
+    if (Math.random() < acRepairChance()) {
+      roomState.ac.broken = false;
+      acRepairFails = 0;
+    } else {
+      roomState.ac.broken = true;      // 還是壞的
+      acRepairFails++;
+      showAcRepairHint();
+      await saveAc();                   // 先把冷氣狀態寫好，再記動態，避免兩個寫入打架
+      await logPendingNote('是不是該找人來修......');
+      load();                            // 讓「我的動態」即時帶到這一句
+      return;
+    }
+  }
+  saveAc();
+}
+function acSetMode(mode) {
+  if (!roomState.ac.on) return;
+  roomState.ac.mode = mode;
+  saveAc();
+}
+function acAdjustTemp(d) {
+  if (!roomState.ac.on || roomState.ac.mode === 'fan') return;
+  roomState.ac.temp = Math.max(16, Math.min(30, roomState.ac.temp + d));
+  saveAc();
+}
+function acSetFan(fan) {
+  if (!roomState.ac.on) return;
+  roomState.ac.fan = fan;
+  saveAc();
+}
+function acToggleSleep() {
+  if (!roomState.ac.on) return;
+  roomState.ac.sleep = !roomState.ac.sleep;
+  saveAc();
 }
 
 async function toggle(key) {
@@ -306,6 +423,67 @@ async function deleteNote() {
   renderNoteDraft();
 }
 
+// ===== 黑影紙片 =====
+let currentFragmentPending = null;
+const fragmentActionsDefaultHTML = document.getElementById('fragment-card-actions').innerHTML;
+
+function openFragmentCard() {
+  document.getElementById('fragment-overlay').classList.add('open');
+  document.getElementById('fragment-card').classList.add('open');
+}
+function closeFragmentCard() {
+  document.getElementById('fragment-overlay').classList.remove('open');
+  document.getElementById('fragment-card').classList.remove('open');
+}
+
+function renderFragmentCard(pending) {
+  document.getElementById('fragment-card-source').textContent = pending.source || '';
+  document.getElementById('fragment-card-label').textContent = pending.label || '';
+  document.getElementById('fragment-card-text').textContent = pending.text || '';
+  document.getElementById('fragment-card-bonus').style.display = 'none';
+  document.getElementById('fragment-card-bonus').textContent = '';
+  document.getElementById('fragment-card-actions').innerHTML = fragmentActionsDefaultHTML;
+}
+
+function maybeShowFragmentCard(fragments) {
+  const pending = fragments && fragments.pending;
+  if (pending) {
+    if (!currentFragmentPending || currentFragmentPending.id !== pending.id) {
+      currentFragmentPending = pending;
+      renderFragmentCard(pending);
+      openFragmentCard();
+    }
+  } else if (currentFragmentPending) {
+    currentFragmentPending = null;
+    closeFragmentCard();
+  }
+}
+
+async function resolveFragment(action) {
+  if (!currentFragmentPending) return;
+  document.querySelectorAll('#fragment-card-actions .fragment-btn').forEach(b => b.disabled = true);
+  let data = {};
+  try {
+    const res = await fetch('/api/fragment', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action, id: currentFragmentPending.id })
+    });
+    data = await res.json();
+  } catch (e) {}
+
+  if (data.bonusHint) {
+    document.getElementById('fragment-card-bonus').style.display = 'block';
+    document.getElementById('fragment-card-bonus').textContent = data.bonusHint;
+    document.getElementById('fragment-card-actions').innerHTML =
+      '<button class="fragment-btn fragment-btn-keep" onclick="closeFragmentCard(); currentFragmentPending = null;">知道了</button>';
+  } else {
+    closeFragmentCard();
+    currentFragmentPending = null;
+  }
+  load();
+}
+
 function renderDiaryEntries(diary) {
   const container = document.getElementById('entries');
   if (!diary || diary.length === 0) {
@@ -374,29 +552,60 @@ function goNextDay() {
   }
 }
 
-function renderActivityFeed(pendingAction, ownerLog) {
-  const container = document.getElementById('activity-feed');
-  let html;
-  if (pendingAction) {
-    html = `<div class="feed-entry"><div class="feed-time">我的動態</div><div class="feed-text">${escapeHtml(pendingAction)}</div></div>`;
-  } else if (ownerLog && ownerLog.length > 0) {
-    const latest = ownerLog[ownerLog.length - 1];
-    html = `<div class="feed-entry"><div class="feed-time">${escapeHtml(latest.time)}</div><div class="feed-text">${escapeHtml(latest.action)}</div></div>`;
-  } else {
-    html = '<div class="empty">還沒有動態。</div>';
+// 第 1 張永遠是我編輯的那一則（owner_action），其餘是還沒被 tick 消化的系統提示（紙片、家電提示）。
+let feedIndex = 0;
+let feedCards = [{ text: '', editable: true }];
+
+function buildFeedCards(ownerAction, pendingNotes) {
+  const cards = [{ text: ownerAction || '', editable: true }];
+  for (const n of (pendingNotes || [])) {
+    if (n && n.text) cards.push({ time: n.time || '', text: n.text, editable: false });
   }
-  if (container.dataset.rendered !== html) {
-    container.dataset.rendered = html;
-    container.innerHTML = html;
+  return cards;
+}
+
+function renderFeedCard() {
+  const body = document.getElementById('feed-body');
+  const nav = document.getElementById('feed-nav');
+  const card = feedCards[feedIndex];
+  const html = (!card.text)
+    ? '<div class="empty">還沒有動態。</div>'
+    : `<div class="feed-entry"><div class="feed-time">${escapeHtml(card.editable ? '我的動態' : (card.time || ''))}</div><div class="feed-text">${escapeHtml(card.text)}</div></div>`;
+  if (body.dataset.rendered !== html) {
+    body.dataset.rendered = html;
+    body.innerHTML = html;
   }
+  nav.style.display = feedCards.length > 1 ? 'flex' : 'none';
+  document.getElementById('feed-count').textContent = `${feedIndex + 1}/${feedCards.length}`;
+  document.getElementById('feed-prev').disabled = feedIndex === 0;
+  document.getElementById('feed-next').disabled = feedIndex === feedCards.length - 1;
+}
+
+function feedPrev() {
+  if (feedIndex > 0) { feedIndex--; renderFeedCard(); }
+}
+function feedNext() {
+  if (feedIndex < feedCards.length - 1) { feedIndex++; renderFeedCard(); }
+}
+
+function renderActivityFeed(ownerAction, pendingNotes) {
+  feedCards = buildFeedCards(ownerAction, pendingNotes);
+  if (feedIndex >= feedCards.length) feedIndex = feedCards.length - 1;
+  renderFeedCard();
 }
 
 async function refreshTodayPanels(world) {
+  renderActivityFeed(world.owner_action || '', world.pending_notes || []);
+  refreshNoteWidget(world.visitor_messages || []);
+}
+
+async function logPendingNote(text) {
   try {
-    const res = await fetch('/api/day?t=' + Date.now());
-    const today = await res.json();
-    renderActivityFeed(world.owner_action || '', today.ownerLog || []);
-    refreshNoteWidget(world.visitor_messages || []);
+    await fetch('/api/activity', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text })
+    });
   } catch (e) {}
 }
 
@@ -436,11 +645,20 @@ async function load() {
     refreshWeather(world.weather);
 
     roomState.window_open = world.room.window_open;
-    roomState.ac_on = world.room.ac_on || false;
+    const acData = world.room.ac || {};
+    roomState.ac = {
+      on: acData.on !== undefined ? !!acData.on : !!world.room.ac_on,
+      mode: acData.mode || 'cool',
+      temp: typeof acData.temp === 'number' ? acData.temp : 22,
+      fan: acData.fan || 'auto',
+      sleep: !!acData.sleep,
+      broken: !!acData.broken
+    };
     roomState.light_on = world.room.light_on !== false;
     roomState.toilet_open = world.room.toilet_open || false;
     roomState.cleanliness = world.room.cleanliness;
     updateAllToggles();
+    if (document.getElementById('ac-remote').classList.contains('open')) renderAcRemote();
     updateCleanUI();
 
     const ownerStatus = world.owner_status || '';
@@ -457,6 +675,8 @@ async function load() {
     setAwayUI(ownerAway);
 
     document.getElementById('rent-overlay').style.display = world.for_rent ? 'flex' : 'none';
+
+    maybeShowFragmentCard(world.fragments);
 
     await refreshTodayPanels(world);
     await refreshDatesAndDay();

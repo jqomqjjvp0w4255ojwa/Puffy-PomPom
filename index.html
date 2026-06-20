@@ -97,8 +97,15 @@
           <i class="ti ti-activity"></i>
           <div class="badge-plus" id="compose-trigger" onclick="openCompose()" title="記錄一則動態"><i class="ti ti-plus"></i></div>
         </div>
-        <div class="card-main activity-feed" id="activity-feed">
-          <div class="empty">還沒有動態。</div>
+        <div class="card-main">
+          <div class="feed-body" id="feed-body">
+            <div class="empty">還沒有動態。</div>
+          </div>
+          <div class="feed-nav" id="feed-nav" style="display:none;">
+            <button class="feed-nav-btn" id="feed-prev" onclick="feedPrev()">‹</button>
+            <span class="feed-count" id="feed-count">1/1</span>
+            <button class="feed-nav-btn" id="feed-next" onclick="feedNext()">›</button>
+          </div>
         </div>
       </div>
       <div class="compose-box" id="compose-box" style="display:none;">
@@ -155,7 +162,7 @@
           <div class="switch-icon-label"><i class="ti ti-window"></i><span>窗戶</span></div>
           <div class="switch" id="it-window"><div class="switch-knob"></div></div>
         </div>
-        <div class="switch-tile" onclick="toggle('ac_on')">
+        <div class="switch-tile" onclick="openAcRemote()">
           <div class="switch-icon-label"><i class="ti ti-snowflake"></i><span>冷氣</span></div>
           <div class="switch" id="it-ac"><div class="switch-knob"></div></div>
         </div>
@@ -172,6 +179,52 @@
     </div>
   </div>
 
+</div>
+
+<div class="ac-overlay" id="ac-overlay" onclick="closeAcRemote()"></div>
+<div class="ac-remote" id="ac-remote">
+  <div class="ac-remote-head">
+    <span class="ac-remote-title">冷氣遙控</span>
+    <button class="ac-power" id="ac-power" onclick="acTogglePower()" aria-label="電源"><i class="ti ti-power"></i></button>
+  </div>
+  <div class="ac-readout" id="ac-readout">
+    <span class="ac-readout-temp" id="ac-readout-temp">22<small>℃</small></span>
+    <span class="ac-readout-mode" id="ac-readout-mode">冷氣</span>
+  </div>
+  <div class="ac-broken" id="ac-broken" style="display:none;"><i class="ti ti-alert-triangle"></i> 故障中・關機再開機看看</div>
+  <div class="ac-repair-bubble" id="ac-repair-bubble">是不是該找人來修......</div>
+  <div class="ac-body" id="ac-body">
+    <div class="ac-section">
+      <div class="ac-section-label">模式</div>
+      <div class="ac-modes">
+        <button class="ac-mode-btn" data-mode="cool" onclick="acSetMode('cool')"><i class="ti ti-snowflake"></i><span>冷氣</span></button>
+        <button class="ac-mode-btn" data-mode="heat" onclick="acSetMode('heat')"><i class="ti ti-flame"></i><span>暖氣</span></button>
+        <button class="ac-mode-btn" data-mode="fan" onclick="acSetMode('fan')"><i class="ti ti-wind"></i><span>送風</span></button>
+        <button class="ac-mode-btn" data-mode="dry" onclick="acSetMode('dry')"><i class="ti ti-droplet"></i><span>除濕</span></button>
+      </div>
+    </div>
+    <div class="ac-section" id="ac-temp-section">
+      <div class="ac-section-label">溫度</div>
+      <div class="ac-temp-control">
+        <button class="ac-temp-btn" onclick="acAdjustTemp(-1)">−</button>
+        <span class="ac-temp-val" id="ac-temp-val">22℃</span>
+        <button class="ac-temp-btn" onclick="acAdjustTemp(1)">＋</button>
+      </div>
+    </div>
+    <div class="ac-section">
+      <div class="ac-section-label">風速</div>
+      <div class="ac-fans">
+        <button class="ac-fan-btn" data-fan="auto" onclick="acSetFan('auto')">自動</button>
+        <button class="ac-fan-btn" data-fan="low" onclick="acSetFan('low')">弱</button>
+        <button class="ac-fan-btn" data-fan="mid" onclick="acSetFan('mid')">中</button>
+        <button class="ac-fan-btn" data-fan="high" onclick="acSetFan('high')">強</button>
+      </div>
+    </div>
+    <div class="ac-section ac-sleep-row">
+      <span class="ac-section-label">舒眠</span>
+      <div class="switch" id="ac-sleep-switch" onclick="acToggleSleep()"><div class="switch-knob"></div></div>
+    </div>
+  </div>
 </div>
 
 <div class="note-overlay" id="note-overlay" onclick="closeNote()"></div>
@@ -200,6 +253,18 @@
     <i class="ti ti-check" id="note-confirm-btn" onclick="confirmNote()"></i>
     <i class="ti ti-trash" id="note-delete-btn" onclick="deleteNote()" style="display:none;"></i>
     <i class="ti ti-pencil" id="note-new-btn" onclick="startNewNote()" title="寫新的" style="display:none;"></i>
+  </div>
+</div>
+
+<div class="fragment-overlay" id="fragment-overlay"></div>
+<div class="fragment-card" id="fragment-card">
+  <div class="fragment-card-source" id="fragment-card-source"></div>
+  <div class="fragment-card-label" id="fragment-card-label"></div>
+  <div class="fragment-card-text" id="fragment-card-text"></div>
+  <div class="fragment-card-bonus" id="fragment-card-bonus" style="display:none;"></div>
+  <div class="fragment-card-actions" id="fragment-card-actions">
+    <button class="fragment-btn fragment-btn-discard" onclick="resolveFragment('discard')"><i class="ti ti-trash"></i> 丟棄</button>
+    <button class="fragment-btn fragment-btn-keep" onclick="resolveFragment('keep')"><i class="ti ti-bookmark"></i> 收起</button>
   </div>
 </div>
 

@@ -2,6 +2,7 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const Anthropic = require('@anthropic-ai/sdk');
+const { FRAGMENTS, COLLECTION_HINTS, matchFragments } = require('./fragments');
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -116,7 +117,6 @@ const SYSTEM_PROMPT = `你是白糰糰宇宙的世界引擎。根據當前世界
   "room": {
     "cleanliness": 數字,
     "window_open": true或false,
-    "ac_on": false,
     "light_on": true,
     "toilet_open": false,
     "events_today": ["事件"]
@@ -143,6 +143,49 @@ function detectTriggeredEvent(bt, combinedPlayerText) {
   if (bt.hp <= 0 && bt.food <= 0) return 'shadowRevenge';
   if (/📺|觀察日誌|研究|旁白啟動/.test(combinedPlayerText)) return 'observation';
   return null;
+}
+
+// 冷氣狀態正規化：舊資料只有 ac_on 布林，補成完整物件。
+function normalizeAc(room) {
+  const a = (room && room.ac) || {};
+  return {
+    on: a.on !== undefined ? !!a.on : !!(room && room.ac_on),
+    mode: a.mode || 'cool',        // cool 冷氣 / heat 暖氣 / fan 送風 / dry 除濕
+    temp: typeof a.temp === 'number' ? a.temp : 22,
+    fan: a.fan || 'auto',          // auto / low / mid / high
+    sleep: !!a.sleep,
+    broken: !!a.broken
+  };
+}
+
+// 把冷氣模式/溫度/風速 + 戶外天氣 蒸餾成「室內體感」一行，只有這行進 AI。
+function distillClimate(room, weather) {
+  const ac = normalizeAc(room);
+  const outTemp = weather && typeof weather.temp === 'number' ? weather.temp : 24;
+  const outHum = weather && typeof weather.humidity === 'number' ? weather.humidity : 60;
+  let felt = outTemp, hum = outHum, windy = false, note = '';
+
+  if (ac.on && ac.broken) {
+    felt = outTemp + 5;
+    hum = Math.min(95, outHum + 10);
+    note = '冷氣故障，吹出與設定相反的悶熱怪風';
+  } else if (ac.on) {
+    if (ac.mode === 'cool') { felt = ac.temp; hum = Math.max(30, outHum - 15); note = `冷氣冷房設定${ac.temp}℃`; }
+    else if (ac.mode === 'heat') { felt = ac.temp; hum = Math.max(25, outHum - 20); note = `暖氣設定${ac.temp}℃`; }
+    else if (ac.mode === 'dry') { felt = outTemp - 2; hum = Math.max(18, outHum - 45); note = '除濕中、空氣偏乾'; }
+    else if (ac.mode === 'fan') { felt = outTemp; hum = outHum; windy = true; note = '送風、只吹風不調溫'; }
+    if (ac.fan === 'high') windy = true;
+    if (ac.sleep) note += '・舒眠柔風';
+  } else if (room.window_open) {
+    felt = outTemp; note = '窗開、接近戶外';
+  } else {
+    felt = outTemp + 2; hum = Math.min(95, outHum + 5); note = '門窗緊閉、略悶';
+  }
+
+  const tempWord = felt <= 18 ? '涼爽' : felt <= 26 ? '適中' : '偏熱';
+  const humWord = hum <= 40 ? '乾燥' : hum <= 70 ? '濕度適中' : '潮濕';
+  return `室內體感：${tempWord}約${Math.round(felt)}℃、${humWord}${windy ? '、有風流動' : ''}（${note}）。`
+    + `白糰糰適溫0~20℃：太熱絨毛蒸發變裸糰糰並躲藏、情緒過載變紅糰糰，涼爽則絨毛蓬鬆變涼糰糰；潮濕毛軟塌、乾燥易靜電炸毛。`;
 }
 
 function getRandomMinutes(min, max) {
@@ -238,7 +281,32 @@ function dayFilePath(dateKey) {
 }
 
 function emptyDay(dateKey) {
-  return { date: dateKey, diary: [], ownerLog: [], visitorLog: [] };
+  return { date: dateKey, diary: [], ownerLog: [], visitorLog: [], fragmentLog: [] };
+}
+
+// world.json 裡的 fragments 欄位可能是舊資料（不存在）或半成形，補齊成完整結構。
+function ensureFragmentsState(world) {
+  if (!world.fragments) world.fragments = { collected: [], pending: null, hintsShown: [] };
+  if (!Array.isArray(world.fragments.collected)) world.fragments.collected = [];
+  if (world.fragments.pending === undefined) world.fragments.pending = null;
+  if (!Array.isArray(world.fragments.hintsShown)) world.fragments.hintsShown = [];
+  return world.fragments;
+}
+
+const PENDING_NOTE_CAP = 6;
+// 未消化完的系統項目（紙片丟棄/收起、冷氣報修提示）暫存這裡，是「我的動態」第 1 張卡之後的卡片。
+// 下次 tick 產生「糰糰觀察紀錄」時，這些會被折進那一則日記、然後清空（＝消化）。
+// owner_action 不進這裡：它是第 1 張「我的動態」卡，消化後寫進 ownerLog 與場景本身。
+// 連續重複同一句（例如連按重開冷氣）只留一筆，避免洗版。
+function pushPendingNote(world, text, time) {
+  if (!text) return;
+  if (!Array.isArray(world.pending_notes)) world.pending_notes = [];
+  const last = world.pending_notes[world.pending_notes.length - 1];
+  if (last && last.text === text) return;
+  world.pending_notes.push({ time: time || getRealTime().display, text });
+  if (world.pending_notes.length > PENDING_NOTE_CAP) {
+    world.pending_notes = world.pending_notes.slice(-PENDING_NOTE_CAP);
+  }
 }
 
 function readDay(dateKey) {
@@ -427,6 +495,66 @@ const server = http.createServer((req, res) => {
       res.end('error');
     }
 
+  } else if (req.url.startsWith('/api/fragment')) {
+    try {
+      const body = [];
+      req.on('data', chunk => body.push(chunk));
+      req.on('end', () => {
+        const data = JSON.parse(Buffer.concat(body).toString());
+        const world = JSON.parse(fs.readFileSync(WORLD_FILE, 'utf8'));
+        const fragState = ensureFragmentsState(world);
+        const pending = fragState.pending;
+        let bonusHint = null;
+
+        if (pending && pending.id === data.id) {
+          const { display } = getRealTime();
+          if (data.action === 'keep') {
+            if (!fragState.collected.includes(pending.id)) fragState.collected.push(pending.id);
+            const sourceIds = FRAGMENTS.filter(f => f.source === pending.source).map(f => f.id);
+            const isComplete = sourceIds.length > 0 && sourceIds.every(id => fragState.collected.includes(id));
+            if (isComplete && COLLECTION_HINTS[pending.source] && !fragState.hintsShown.includes(pending.source)) {
+              bonusHint = COLLECTION_HINTS[pending.source];
+              fragState.hintsShown.push(pending.source);
+            }
+            pushPendingNote(world, `得到一紙片，上面寫著：${pending.text}`, display);
+          } else {
+            pushPendingNote(world, '剛剛丟了張怪紙片', display);
+          }
+          fragState.pending = null;
+          appendToDay(getTodayKey(), 'fragmentLog', [{
+            time: display, id: pending.id, source: pending.source, action: data.action,
+            text: data.action === 'keep' ? pending.text : null
+          }]);
+        }
+
+        world.fragments = fragState;
+        fs.writeFileSync(WORLD_FILE, JSON.stringify(world, null, 2));
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ ok: true, bonusHint }));
+      });
+    } catch (e) {
+      res.writeHead(500);
+      res.end('error');
+    }
+
+  } else if (req.url.startsWith('/api/activity')) {
+    try {
+      const body = [];
+      req.on('data', chunk => body.push(chunk));
+      req.on('end', () => {
+        const data = JSON.parse(Buffer.concat(body).toString());
+        const text = (data.text || '').trim().slice(0, 60);
+        const world = JSON.parse(fs.readFileSync(WORLD_FILE, 'utf8'));
+        pushPendingNote(world, text);
+        fs.writeFileSync(WORLD_FILE, JSON.stringify(world, null, 2));
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ ok: true }));
+      });
+    } catch (e) {
+      res.writeHead(500);
+      res.end('error');
+    }
+
   } else if (req.url.startsWith('/api/visitor/delete')) {
     try {
       const body = [];
@@ -527,6 +655,11 @@ async function tick() {
     ? '\n訪客留言：\n' + visitorMessages.map(m => `${m.name || '匿名訪客'}：${m.message}`).join('\n')
     : '';
 
+  const pendingNotes = world.pending_notes || [];
+  const pendingNotesInput = pendingNotes.length > 0
+    ? '\n尚未消化的系統紀錄（紙片、家電提示等，請自然融入或收尾這段動態，之後就會清空）：\n' + pendingNotes.map(n => `- ${n.text}`).join('\n')
+    : '';
+
   const combinedPlayerText = [world.owner_status, world.owner_action, ...visitorMessages.map(m => m.message)]
     .filter(Boolean).join(' ');
   const triggeredEvent = detectTriggeredEvent(bt, combinedPlayerText);
@@ -535,17 +668,30 @@ async function tick() {
 
   const weather = await fetchWeather() || world.weather || null;
   const weatherInput = weather
-    ? `\n戶外天氣（台北實況）：${weather.desc} ${weather.temp}℃ 濕度${weather.humidity}%（白糰糰適溫0~20℃，太熱絨毛蒸發會變裸糰糰並躲藏、情緒過載變紅糰糰；涼爽則絨毛蓬鬆變涼糰糰。室內冷氣/窗戶會調節體感。）`
+    ? `\n戶外天氣（台北實況）：${weather.desc} ${weather.temp}℃ 濕度${weather.humidity}%`
     : '';
+
+  // 冷氣偶發故障：開機中約 4% 機率壞掉，壞了維持到玩家重新開機（前端重開會清掉 broken）。
+  const acNow = normalizeAc(world.room);
+  if (acNow.on && !acNow.broken && Math.random() < 0.04) {
+    world.room.ac = { ...acNow, broken: true };
+    console.log('冷氣故障了。');
+  } else {
+    world.room.ac = acNow;
+  }
+  const climateInput = '\n' + distillClimate(world.room, weather);
+  const acLabel = acNow.on
+    ? `${acNow.broken ? '故障' : { cool: '冷氣', heat: '暖氣', fan: '送風', dry: '除濕' }[acNow.mode] || '冷氣'}${acNow.mode === 'fan' ? '' : acNow.temp + '℃'}`
+    : '關';
 
   const prompt = `當前時間：${display}
 白糰糰：健康${bt.hp} 飽食${bt.food} 毛況:${bt.fur || '正常'} 位置:${bt.location}
 小黑影：${world.characters.shadow.active ? '活躍' : '潛伏'} 位置:${world.characters.shadow.location} 灰塵:${world.characters.shadow.dust_count}
 房間清潔度：${world.room.cleanliness}
-窗戶：${world.room.window_open ? '開' : '關'} 冷氣：${world.room.ac_on ? '開' : '關'} 燈：${world.room.light_on ? '開' : '關'} 廁所門：${world.room.toilet_open ? '開' : '關'}
+窗戶：${world.room.window_open ? '開' : '關'} 冷氣：${acLabel} 燈：${world.room.light_on ? '開' : '關'} 廁所門：${world.room.toilet_open ? '開' : '關'}
 巨怪對房間環境的描述：${world.room.env_desc || '無'}
 今天已發生：${world.room.events_today.join('，') || '無'}
-近期記憶：${(bt.memory || []).slice(-3).join(' / ') || '無'}${weatherInput}${ownerInput}${awayInput}${visitorInput}${eventInput}
+近期記憶：${(bt.memory || []).slice(-3).join(' / ') || '無'}${weatherInput}${climateInput}${ownerInput}${awayInput}${visitorInput}${eventInput}${pendingNotesInput}
 
 生成這段時間白糰糰的動態。`;
 
@@ -578,6 +724,20 @@ async function tick() {
       room: { ...world.room, ...result.room }
     };
 
+    const fragState = ensureFragmentsState(world);
+    newWorld.fragments = { ...fragState };
+    if (!fragState.pending) {
+      const hits = matchFragments(result.scene, combinedPlayerText, fragState.collected);
+      if (hits.length > 0) {
+        const f = hits[0];
+        newWorld.fragments = {
+          ...fragState,
+          pending: { id: f.id, source: f.source, label: f.label || '', text: f.text, time: display }
+        };
+        console.log(`紙片掉落待領取：${f.id}`);
+      }
+    }
+
     const todayKey = getTodayKey();
 
     if (world.owner_action) {
@@ -592,6 +752,11 @@ async function tick() {
     if (visitorMessages.length > 0) {
       appendToDay(todayKey, 'visitorLog', visitorMessages);
       newWorld.visitor_messages = [];
+    }
+
+    // 未消化的系統紀錄已經被寫進這次的 prompt、融入 result.scene，消化完畢即清空。
+    if (pendingNotes.length > 0) {
+      newWorld.pending_notes = [];
     }
 
     fs.writeFileSync(WORLD_FILE, JSON.stringify(newWorld, null, 2));
