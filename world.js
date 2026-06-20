@@ -315,6 +315,16 @@ const server = http.createServer((req, res) => {
       res.end('error');
     }
 
+  } else if (req.url.startsWith('/api/weather')) {
+    // 直接抓即時天氣給前端顯示用，不經過 AI、不花 token。
+    fetchWeather().then(weather => {
+      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ weather }));
+    }).catch(() => {
+      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ weather: null }));
+    });
+
   } else if (req.url.startsWith('/api/day')) {
     try {
       const url = new URL(req.url, 'http://localhost');

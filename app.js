@@ -400,6 +400,16 @@ async function refreshTodayPanels(world) {
   } catch (e) {}
 }
 
+async function refreshWeather(fallback) {
+  let w = fallback;
+  try {
+    const res = await fetch('/api/weather?t=' + Date.now());
+    const data = await res.json();
+    if (data.weather) w = data.weather;
+  } catch (e) {}
+  document.getElementById('cover-weather').textContent = w ? `　·　${w.desc} ${w.temp}℃ 濕度${w.humidity}%` : '';
+}
+
 async function load() {
   try {
     const res = await fetch('/api/world?t=' + Date.now());
@@ -423,8 +433,7 @@ async function load() {
 
     const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Taipei' }));
     document.getElementById('cover-date').textContent = (now.getMonth()+1) + ' 月 ' + now.getDate() + ' 日';
-    const w = world.weather;
-    document.getElementById('cover-weather').textContent = w ? `　·　${w.desc} ${w.temp}℃ 濕度${w.humidity}%` : '';
+    refreshWeather(world.weather);
 
     roomState.window_open = world.room.window_open;
     roomState.ac_on = world.room.ac_on || false;
