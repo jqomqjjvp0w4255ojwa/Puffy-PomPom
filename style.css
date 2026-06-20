@@ -502,9 +502,9 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
 .sesame-print { display: inline-flex; gap: 1px; }
 .sesame-print i { display: block; width: 3px; height: 6px; border-radius: 50%; background: rgba(0,0,0,0.28); }
 .sesame-print i:nth-child(odd) { transform: translateY(-2px); }
-.note-read-mark .sesame-print:nth-child(1) { transform: rotate(-20deg); }
-.note-read-mark .sesame-print:nth-child(2) { transform: rotate(12deg) translateY(2px); }
-.note-read-mark .sesame-print:nth-child(3) { transform: rotate(-6deg); }
+.note-read-mark .sesame-print:nth-child(1) { transform: rotate(-22deg) translate(-2px, 4px); }
+.note-read-mark .sesame-print:nth-child(2) { transform: rotate(-30deg) translate(2px, -1px); }
+.note-read-mark .sesame-print:nth-child(3) { transform: rotate(-25deg) translate(-2px, -7px); }
 .note-read-mark .read-label { margin-left: 5px; letter-spacing: 0.05em; }
 
 .sticky-note-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 6px; }
