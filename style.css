@@ -172,7 +172,33 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
 .panel-away:hover { color: #8a7a6a; background: #f0ebe2; }
 .panel-away.away { color: #c07050; background: #f7e6dc; }
 
-.panel-content { display: flex; flex-direction: column; gap: 0.85rem; }
+.panel-content { display: flex; flex-direction: column; gap: 0.85rem; position: relative; }
+
+.panel-away-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(255,255,255,0.7);
+  backdrop-filter: blur(7px);
+  -webkit-backdrop-filter: blur(7px);
+  border-radius: 12px;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.panel-away-text {
+  display: flex;
+  gap: 16px;
+  writing-mode: vertical-rl;
+  font-size: 15px;
+  letter-spacing: 0.35em;
+  color: #8a7a6a;
+  font-family: 'Noto Serif TC', serif;
+}
+.panel-away-text span:nth-child(1) { transform: rotate(-7deg) translateY(-10px); }
+.panel-away-text span:nth-child(2) { transform: rotate(5deg) translateY(14px); }
+.panel-away-text span:nth-child(3) { transform: rotate(-4deg) translateY(-6px); }
+.panel-away-text span:nth-child(4) { transform: rotate(8deg) translateY(8px); }
 
 .section-label {
   font-size: 10px;

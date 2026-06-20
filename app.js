@@ -31,9 +31,13 @@ function toggleStatusDetail() {
 }
 
 let ownerAway = false;
+function setAwayUI(away) {
+  document.getElementById('away-btn').classList.toggle('away', away);
+  document.getElementById('panel-away-overlay').style.display = away ? 'flex' : 'none';
+}
 function toggleAway() {
   ownerAway = !ownerAway;
-  document.getElementById('away-btn').classList.toggle('away', ownerAway);
+  setAwayUI(ownerAway);
   fetch('/api/owner', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -446,7 +450,7 @@ async function load() {
     document.getElementById('panel-btn').classList.toggle('has-input', !!(ownerStatus || ownerAction));
 
     ownerAway = !!world.owner_away;
-    document.getElementById('away-btn').classList.toggle('away', ownerAway);
+    setAwayUI(ownerAway);
 
     document.getElementById('rent-overlay').style.display = world.for_rent ? 'flex' : 'none';
 
