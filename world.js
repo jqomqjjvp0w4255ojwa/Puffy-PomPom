@@ -293,6 +293,20 @@ function ensureFragmentsState(world) {
   return world.fragments;
 }
 
+const ACTIVITY_CAP = 8;
+// 「我的動態」統一進這個陣列：房間行為、紙片丟棄/收起、冷氣報修提示都丟這。
+// 連續重複同一句（例如連按重開冷氣）只留一筆，避免洗版。
+function pushActivity(world, text, time) {
+  if (!text) return;
+  if (!Array.isArray(world.activities)) world.activities = [];
+  const last = world.activities[world.activities.length - 1];
+  if (last && last.text === text) return;
+  world.activities.push({ time: time || getRealTime().display, text });
+  if (world.activities.length > ACTIVITY_CAP) {
+    world.activities = world.activities.slice(-ACTIVITY_CAP);
+  }
+}
+
 function readDay(dateKey) {
   const p = dayFilePath(dateKey);
   if (!fs.existsSync(p)) return emptyDay(dateKey);
@@ -500,9 +514,9 @@ const server = http.createServer((req, res) => {
               bonusHint = COLLECTION_HINTS[pending.source];
               fragState.hintsShown.push(pending.source);
             }
-            world.last_activity = { time: display, text: `得到一紙片，上面寫著：${pending.text}` };
+            pushActivity(world, `得到一紙片，上面寫著：${pending.text}`, display);
           } else {
-            world.last_activity = { time: display, text: '剛剛丟了張怪紙片' };
+            pushActivity(world, '剛剛丟了張怪紙片', display);
           }
           fragState.pending = null;
           appendToDay(getTodayKey(), 'fragmentLog', [{
@@ -515,6 +529,24 @@ const server = http.createServer((req, res) => {
         fs.writeFileSync(WORLD_FILE, JSON.stringify(world, null, 2));
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ ok: true, bonusHint }));
+      });
+    } catch (e) {
+      res.writeHead(500);
+      res.end('error');
+    }
+
+  } else if (req.url.startsWith('/api/activity')) {
+    try {
+      const body = [];
+      req.on('data', chunk => body.push(chunk));
+      req.on('end', () => {
+        const data = JSON.parse(Buffer.concat(body).toString());
+        const text = (data.text || '').trim().slice(0, 60);
+        const world = JSON.parse(fs.readFileSync(WORLD_FILE, 'utf8'));
+        pushActivity(world, text);
+        fs.writeFileSync(WORLD_FILE, JSON.stringify(world, null, 2));
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ ok: true }));
       });
     } catch (e) {
       res.writeHead(500);
@@ -707,8 +739,8 @@ async function tick() {
         status: world.owner_status || '',
         action: world.owner_action
       }]);
+      pushActivity(newWorld, world.owner_action, display);
       newWorld.owner_action = '';
-      newWorld.last_activity = { time: display, text: world.owner_action };
     }
 
     if (visitorMessages.length > 0) {

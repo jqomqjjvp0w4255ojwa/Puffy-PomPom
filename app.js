@@ -122,16 +122,50 @@ function renderAcRemote() {
 function saveAc() {
   renderAcRemote();
   updateAllToggles();
-  fetch('/api/room', {
+  return fetch('/api/room', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ ac: roomState.ac })
   });
 }
 
-function acTogglePower() {
-  roomState.ac.on = !roomState.ac.on;
-  if (roomState.ac.on) roomState.ac.broken = false; // 重新開機把故障清掉
+// 重開修好的機率：房間越髒越難修；連續失敗會逐次提高（保底，不會卡死）。
+let acRepairFails = 0;
+function acRepairChance() {
+  const c = roomState.cleanliness;
+  let base = c >= 60 ? 0.7 : c >= 30 ? 0.5 : 0.3;
+  return Math.min(0.95, base + acRepairFails * 0.15);
+}
+
+let acBubbleTimer = null;
+function showAcRepairHint() {
+  const bubble = document.getElementById('ac-repair-bubble');
+  if (!bubble) return;
+  bubble.classList.add('show');
+  clearTimeout(acBubbleTimer);
+  acBubbleTimer = setTimeout(() => bubble.classList.remove('show'), 2600);
+}
+
+async function acTogglePower() {
+  const wasBroken = roomState.ac.broken;
+  const turningOn = !roomState.ac.on;
+  roomState.ac.on = turningOn;
+
+  if (turningOn && wasBroken) {
+    // 重新開機＝一次即時修理嘗試（不等 tick）
+    if (Math.random() < acRepairChance()) {
+      roomState.ac.broken = false;
+      acRepairFails = 0;
+    } else {
+      roomState.ac.broken = true;      // 還是壞的
+      acRepairFails++;
+      showAcRepairHint();
+      await saveAc();                   // 先把冷氣狀態寫好，再記動態，避免兩個寫入打架
+      await logActivity('是不是該找人來修......');
+      load();                            // 讓「我的動態」即時帶到這一句
+      return;
+    }
+  }
   saveAc();
 }
 function acSetMode(mode) {
@@ -518,15 +552,22 @@ function goNextDay() {
   }
 }
 
-function renderActivityFeed(pendingAction, lastActivity) {
+const ACTIVITY_FEED_MAX = 5;
+function renderActivityFeed(pendingAction, activities) {
   const container = document.getElementById('activity-feed');
+  const items = [];
+  // 待送出的房間行為釘在最上面（tick 消化後才會變成 activities 的一筆）
+  if (pendingAction) items.push({ time: '我的動態', text: pendingAction });
+  for (const a of (activities || []).slice().reverse()) {
+    if (a && a.text) items.push({ time: a.time || '', text: a.text });
+  }
   let html;
-  if (pendingAction) {
-    html = `<div class="feed-entry"><div class="feed-time">我的動態</div><div class="feed-text">${escapeHtml(pendingAction)}</div></div>`;
-  } else if (lastActivity && lastActivity.text) {
-    html = `<div class="feed-entry"><div class="feed-time">${escapeHtml(lastActivity.time)}</div><div class="feed-text">${escapeHtml(lastActivity.text)}</div></div>`;
-  } else {
+  if (items.length === 0) {
     html = '<div class="empty">還沒有動態。</div>';
+  } else {
+    html = items.slice(0, ACTIVITY_FEED_MAX).map(it =>
+      `<div class="feed-entry"><div class="feed-time">${escapeHtml(it.time)}</div><div class="feed-text">${escapeHtml(it.text)}</div></div>`
+    ).join('');
   }
   if (container.dataset.rendered !== html) {
     container.dataset.rendered = html;
@@ -535,8 +576,18 @@ function renderActivityFeed(pendingAction, lastActivity) {
 }
 
 async function refreshTodayPanels(world) {
-  renderActivityFeed(world.owner_action || '', world.last_activity || null);
+  renderActivityFeed(world.owner_action || '', world.activities || []);
   refreshNoteWidget(world.visitor_messages || []);
+}
+
+async function logActivity(text) {
+  try {
+    await fetch('/api/activity', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text })
+    });
+  } catch (e) {}
 }
 
 async function refreshWeather(fallback) {
