@@ -20,12 +20,19 @@
   "room": {
     "cleanliness": 78,
     "window_open": false,
-    "ac_on": false,
+    "ac": {
+      "on": false,
+      "mode": "cool",
+      "temp": 22,
+      "fan": "auto",
+      "sleep": false,
+      "broken": false
+    },
     "light_on": true,
     "toilet_open": false,
     "events_today": []
   },
-   "owner_status": "",
+  "owner_status": "",
   "owner_action": "",
   "visitor_messages": [],
   "visitor_log": []

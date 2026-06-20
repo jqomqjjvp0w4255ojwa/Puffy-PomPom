@@ -116,7 +116,6 @@ const SYSTEM_PROMPT = `你是白糰糰宇宙的世界引擎。根據當前世界
   "room": {
     "cleanliness": 數字,
     "window_open": true或false,
-    "ac_on": false,
     "light_on": true,
     "toilet_open": false,
     "events_today": ["事件"]
@@ -143,6 +142,49 @@ function detectTriggeredEvent(bt, combinedPlayerText) {
   if (bt.hp <= 0 && bt.food <= 0) return 'shadowRevenge';
   if (/📺|觀察日誌|研究|旁白啟動/.test(combinedPlayerText)) return 'observation';
   return null;
+}
+
+// 冷氣狀態正規化：舊資料只有 ac_on 布林，補成完整物件。
+function normalizeAc(room) {
+  const a = (room && room.ac) || {};
+  return {
+    on: a.on !== undefined ? !!a.on : !!(room && room.ac_on),
+    mode: a.mode || 'cool',        // cool 冷氣 / heat 暖氣 / fan 送風 / dry 除濕
+    temp: typeof a.temp === 'number' ? a.temp : 22,
+    fan: a.fan || 'auto',          // auto / low / mid / high
+    sleep: !!a.sleep,
+    broken: !!a.broken
+  };
+}
+
+// 把冷氣模式/溫度/風速 + 戶外天氣 蒸餾成「室內體感」一行，只有這行進 AI。
+function distillClimate(room, weather) {
+  const ac = normalizeAc(room);
+  const outTemp = weather && typeof weather.temp === 'number' ? weather.temp : 24;
+  const outHum = weather && typeof weather.humidity === 'number' ? weather.humidity : 60;
+  let felt = outTemp, hum = outHum, windy = false, note = '';
+
+  if (ac.on && ac.broken) {
+    felt = outTemp + 5;
+    hum = Math.min(95, outHum + 10);
+    note = '冷氣故障，吹出與設定相反的悶熱怪風';
+  } else if (ac.on) {
+    if (ac.mode === 'cool') { felt = ac.temp; hum = Math.max(30, outHum - 15); note = `冷氣冷房設定${ac.temp}℃`; }
+    else if (ac.mode === 'heat') { felt = ac.temp; hum = Math.max(25, outHum - 20); note = `暖氣設定${ac.temp}℃`; }
+    else if (ac.mode === 'dry') { felt = outTemp - 2; hum = Math.max(18, outHum - 45); note = '除濕中、空氣偏乾'; }
+    else if (ac.mode === 'fan') { felt = outTemp; hum = outHum; windy = true; note = '送風、只吹風不調溫'; }
+    if (ac.fan === 'high') windy = true;
+    if (ac.sleep) note += '・舒眠柔風';
+  } else if (room.window_open) {
+    felt = outTemp; note = '窗開、接近戶外';
+  } else {
+    felt = outTemp + 2; hum = Math.min(95, outHum + 5); note = '門窗緊閉、略悶';
+  }
+
+  const tempWord = felt <= 18 ? '涼爽' : felt <= 26 ? '適中' : '偏熱';
+  const humWord = hum <= 40 ? '乾燥' : hum <= 70 ? '濕度適中' : '潮濕';
+  return `室內體感：${tempWord}約${Math.round(felt)}℃、${humWord}${windy ? '、有風流動' : ''}（${note}）。`
+    + `白糰糰適溫0~20℃：太熱絨毛蒸發變裸糰糰並躲藏、情緒過載變紅糰糰，涼爽則絨毛蓬鬆變涼糰糰；潮濕毛軟塌、乾燥易靜電炸毛。`;
 }
 
 function getRandomMinutes(min, max) {
@@ -535,17 +577,30 @@ async function tick() {
 
   const weather = await fetchWeather() || world.weather || null;
   const weatherInput = weather
-    ? `\n戶外天氣（台北實況）：${weather.desc} ${weather.temp}℃ 濕度${weather.humidity}%（白糰糰適溫0~20℃，太熱絨毛蒸發會變裸糰糰並躲藏、情緒過載變紅糰糰；涼爽則絨毛蓬鬆變涼糰糰。室內冷氣/窗戶會調節體感。）`
+    ? `\n戶外天氣（台北實況）：${weather.desc} ${weather.temp}℃ 濕度${weather.humidity}%`
     : '';
+
+  // 冷氣偶發故障：開機中約 4% 機率壞掉，壞了維持到玩家重新開機（前端重開會清掉 broken）。
+  const acNow = normalizeAc(world.room);
+  if (acNow.on && !acNow.broken && Math.random() < 0.04) {
+    world.room.ac = { ...acNow, broken: true };
+    console.log('冷氣故障了。');
+  } else {
+    world.room.ac = acNow;
+  }
+  const climateInput = '\n' + distillClimate(world.room, weather);
+  const acLabel = acNow.on
+    ? `${acNow.broken ? '故障' : { cool: '冷氣', heat: '暖氣', fan: '送風', dry: '除濕' }[acNow.mode] || '冷氣'}${acNow.mode === 'fan' ? '' : acNow.temp + '℃'}`
+    : '關';
 
   const prompt = `當前時間：${display}
 白糰糰：健康${bt.hp} 飽食${bt.food} 毛況:${bt.fur || '正常'} 位置:${bt.location}
 小黑影：${world.characters.shadow.active ? '活躍' : '潛伏'} 位置:${world.characters.shadow.location} 灰塵:${world.characters.shadow.dust_count}
 房間清潔度：${world.room.cleanliness}
-窗戶：${world.room.window_open ? '開' : '關'} 冷氣：${world.room.ac_on ? '開' : '關'} 燈：${world.room.light_on ? '開' : '關'} 廁所門：${world.room.toilet_open ? '開' : '關'}
+窗戶：${world.room.window_open ? '開' : '關'} 冷氣：${acLabel} 燈：${world.room.light_on ? '開' : '關'} 廁所門：${world.room.toilet_open ? '開' : '關'}
 巨怪對房間環境的描述：${world.room.env_desc || '無'}
 今天已發生：${world.room.events_today.join('，') || '無'}
-近期記憶：${(bt.memory || []).slice(-3).join(' / ') || '無'}${weatherInput}${ownerInput}${awayInput}${visitorInput}${eventInput}
+近期記憶：${(bt.memory || []).slice(-3).join(' / ') || '無'}${weatherInput}${climateInput}${ownerInput}${awayInput}${visitorInput}${eventInput}
 
 生成這段時間白糰糰的動態。`;
 

@@ -1,4 +1,8 @@
-let roomState = { window_open: false, ac_on: false, light_on: true, toilet_open: false, cleanliness: 78 };
+let roomState = {
+  window_open: false,
+  ac: { on: false, mode: 'cool', temp: 22, fan: 'auto', sleep: false, broken: false },
+  light_on: true, toilet_open: false, cleanliness: 78
+};
 
 const ROOM_PLACEHOLDERS = [
   '也許該把桌上的東西整理一下...',
@@ -66,10 +70,89 @@ function updateCleanUI() {
 }
 
 function updateAllToggles() {
-  const map = { light_on:'it-light', toilet_open:'it-toilet', window_open:'it-window', ac_on:'it-ac' };
+  const map = { light_on:'it-light', toilet_open:'it-toilet', window_open:'it-window' };
   for (const [key, id] of Object.entries(map)) {
     document.getElementById(id).classList.toggle('on', !!roomState[key]);
   }
+  document.getElementById('it-ac').classList.toggle('on', !!roomState.ac.on);
+}
+
+// ===== 冷氣遙控 =====
+const AC_MODE_LABEL = { cool: '冷氣', heat: '暖氣', fan: '送風', dry: '除濕' };
+
+function openAcRemote() {
+  renderAcRemote();
+  document.getElementById('ac-overlay').classList.add('open');
+  document.getElementById('ac-remote').classList.add('open');
+}
+function closeAcRemote() {
+  document.getElementById('ac-overlay').classList.remove('open');
+  document.getElementById('ac-remote').classList.remove('open');
+}
+
+function renderAcRemote() {
+  const ac = roomState.ac;
+  const remote = document.getElementById('ac-remote');
+  remote.classList.toggle('power-on', !!ac.on);
+
+  document.getElementById('ac-power').classList.toggle('on', !!ac.on);
+  document.getElementById('ac-broken').style.display = (ac.on && ac.broken) ? 'block' : 'none';
+
+  // 讀數
+  document.getElementById('ac-readout-mode').textContent = ac.broken && ac.on ? '故障' : AC_MODE_LABEL[ac.mode];
+  const tempEl = document.getElementById('ac-readout-temp');
+  tempEl.innerHTML = ac.mode === 'fan' ? '送風' : ac.temp + '<small>℃</small>';
+
+  // 模式
+  document.querySelectorAll('.ac-mode-btn').forEach(b =>
+    b.classList.toggle('active', b.dataset.mode === ac.mode));
+
+  // 溫度（送風模式無溫度）
+  document.getElementById('ac-temp-val').textContent = ac.temp + '℃';
+  document.getElementById('ac-temp-section').classList.toggle('disabled', ac.mode === 'fan');
+
+  // 風速
+  document.querySelectorAll('.ac-fan-btn').forEach(b =>
+    b.classList.toggle('active', b.dataset.fan === ac.fan));
+
+  // 舒眠
+  document.getElementById('ac-sleep-switch').classList.toggle('on', !!ac.sleep);
+}
+
+function saveAc() {
+  renderAcRemote();
+  updateAllToggles();
+  fetch('/api/room', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ac: roomState.ac })
+  });
+}
+
+function acTogglePower() {
+  roomState.ac.on = !roomState.ac.on;
+  if (roomState.ac.on) roomState.ac.broken = false; // 重新開機把故障清掉
+  saveAc();
+}
+function acSetMode(mode) {
+  if (!roomState.ac.on) return;
+  roomState.ac.mode = mode;
+  saveAc();
+}
+function acAdjustTemp(d) {
+  if (!roomState.ac.on || roomState.ac.mode === 'fan') return;
+  roomState.ac.temp = Math.max(16, Math.min(30, roomState.ac.temp + d));
+  saveAc();
+}
+function acSetFan(fan) {
+  if (!roomState.ac.on) return;
+  roomState.ac.fan = fan;
+  saveAc();
+}
+function acToggleSleep() {
+  if (!roomState.ac.on) return;
+  roomState.ac.sleep = !roomState.ac.sleep;
+  saveAc();
 }
 
 async function toggle(key) {
@@ -436,11 +519,20 @@ async function load() {
     refreshWeather(world.weather);
 
     roomState.window_open = world.room.window_open;
-    roomState.ac_on = world.room.ac_on || false;
+    const acData = world.room.ac || {};
+    roomState.ac = {
+      on: acData.on !== undefined ? !!acData.on : !!world.room.ac_on,
+      mode: acData.mode || 'cool',
+      temp: typeof acData.temp === 'number' ? acData.temp : 22,
+      fan: acData.fan || 'auto',
+      sleep: !!acData.sleep,
+      broken: !!acData.broken
+    };
     roomState.light_on = world.room.light_on !== false;
     roomState.toilet_open = world.room.toilet_open || false;
     roomState.cleanliness = world.room.cleanliness;
     updateAllToggles();
+    if (document.getElementById('ac-remote').classList.contains('open')) renderAcRemote();
     updateCleanUI();
 
     const ownerStatus = world.owner_status || '';

@@ -314,6 +314,96 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
 .switch-tile:has(.switch.on) { background: #fdf6e3; }
 .switch-tile:has(.switch.on) .switch-icon-label i { color: #e8a020; }
 
+/* 冷氣遙控 */
+.ac-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(40, 32, 24, 0.35);
+  z-index: 600;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s;
+}
+.ac-overlay.open { opacity: 1; pointer-events: all; }
+.ac-remote {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -48%) scale(0.96);
+  width: 280px;
+  max-width: calc(100vw - 2rem);
+  background: #f3ece0;
+  border-radius: 20px;
+  box-shadow: 0 14px 40px rgba(0,0,0,0.3);
+  padding: 1rem 1.1rem 1.2rem;
+  z-index: 601;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s, transform 0.2s;
+  font-family: 'Noto Serif TC', serif;
+}
+.ac-remote.open { opacity: 1; pointer-events: all; transform: translate(-50%, -50%) scale(1); }
+.ac-remote-head { display: flex; align-items: center; justify-content: space-between; }
+.ac-remote-title { font-size: 14px; color: #6a5a4a; letter-spacing: 0.05em; }
+.ac-power {
+  width: 34px; height: 34px;
+  border: none; border-radius: 50%;
+  background: #e0d8cc; color: #8a7a68;
+  cursor: pointer; font-size: 18px;
+  display: flex; align-items: center; justify-content: center;
+  transition: background 0.2s, color 0.2s;
+}
+.ac-power.on { background: #7ab87a; color: #fff; }
+.ac-readout {
+  display: flex; align-items: baseline; justify-content: center; gap: 8px;
+  margin: 10px 0 4px;
+  color: #4a3f33;
+}
+.ac-readout-temp { font-size: 40px; font-weight: 500; line-height: 1; }
+.ac-readout-temp small { font-size: 16px; }
+.ac-readout-mode { font-size: 13px; color: #8a7a68; }
+.ac-broken {
+  text-align: center; font-size: 11px; color: #c07050;
+  background: #f7e6df; border-radius: 8px; padding: 4px 8px; margin: 6px 0;
+}
+.ac-body { transition: opacity 0.2s; }
+.ac-remote:not(.power-on) .ac-body { opacity: 0.4; pointer-events: none; }
+.ac-remote:not(.power-on) .ac-readout { opacity: 0.4; }
+.ac-section { margin-top: 12px; }
+.ac-section-label { font-size: 11px; color: #9a8a78; margin-bottom: 5px; }
+.ac-modes { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; }
+.ac-mode-btn {
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+  border: none; background: #e8e0d4; border-radius: 10px; padding: 8px 2px;
+  cursor: pointer; color: #8a7a68; transition: background 0.2s, color 0.2s;
+  font-family: inherit;
+}
+.ac-mode-btn i { font-size: 16px; }
+.ac-mode-btn span { font-size: 10px; }
+.ac-mode-btn.active { background: #5a8fc0; color: #fff; }
+.ac-mode-btn[data-mode="heat"].active { background: #d08850; }
+.ac-mode-btn[data-mode="dry"].active { background: #6aa9b8; }
+.ac-mode-btn[data-mode="fan"].active { background: #8a9a8a; }
+.ac-temp-control { display: flex; align-items: center; justify-content: center; gap: 16px; }
+.ac-temp-btn {
+  width: 36px; height: 36px; border: none; border-radius: 50%;
+  background: #e8e0d4; color: #6a5a4a; font-size: 20px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: background 0.2s;
+}
+.ac-temp-btn:hover { background: #ded4c4; }
+.ac-temp-val { font-size: 22px; color: #4a3f33; min-width: 56px; text-align: center; }
+.ac-temp-section.disabled { opacity: 0.35; pointer-events: none; }
+.ac-fans { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; }
+.ac-fan-btn {
+  border: none; background: #e8e0d4; border-radius: 10px; padding: 8px 2px;
+  cursor: pointer; color: #8a7a68; font-size: 12px; font-family: inherit;
+  transition: background 0.2s, color 0.2s;
+}
+.ac-fan-btn.active { background: #c0a860; color: #fff; }
+.ac-sleep-row { display: flex; align-items: center; justify-content: space-between; }
+.ac-sleep-row .ac-section-label { margin-bottom: 0; }
+
 .owner-textarea {
   width: 100%;
   background: #fff;
