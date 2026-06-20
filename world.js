@@ -383,6 +383,17 @@ const server = http.createServer((req, res) => {
       res.writeHead(404);
       res.end('not found');
     }
+  } else if (req.url === '/style.css' || req.url === '/app.js') {
+    try {
+      const file = req.url.slice(1);
+      const type = file.endsWith('.css') ? 'text/css' : 'application/javascript';
+      const content = fs.readFileSync(file, 'utf8');
+      res.writeHead(200, { 'Content-Type': `${type}; charset=utf-8` });
+      res.end(content);
+    } catch (e) {
+      res.writeHead(404);
+      res.end('not found');
+    }
   } else {
     res.writeHead(404);
     res.end('not found');
