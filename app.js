@@ -378,7 +378,7 @@ function renderActivityFeed(pendingAction, ownerLog) {
   const container = document.getElementById('activity-feed');
   let html;
   if (pendingAction) {
-    html = `<div class="feed-entry"><div class="feed-time">等待白糰糰回應...</div><div class="feed-text">${escapeHtml(pendingAction)}</div></div>`;
+    html = `<div class="feed-entry"><div class="feed-time">我的動態</div><div class="feed-text">${escapeHtml(pendingAction)}</div></div>`;
   } else if (ownerLog && ownerLog.length > 0) {
     const latest = ownerLog[ownerLog.length - 1];
     html = `<div class="feed-entry"><div class="feed-time">${escapeHtml(latest.time)}</div><div class="feed-text">${escapeHtml(latest.action)}</div></div>`;

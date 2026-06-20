@@ -51,7 +51,7 @@
   </div>
 </div>
 
-<button class="panel-btn" id="panel-btn" onclick="openPanel()" aria-label="同居人面板">
+<button class="panel-btn" id="panel-btn" onclick="openPanel()" aria-label="巨怪面板">
   <i class="ti ti-user-circle"></i>
 </button>
 <button class="panel-btn" id="note-btn" onclick="toggleNote()" aria-label="便利貼">
@@ -76,7 +76,7 @@
         <div class="card-badge profile-avatar"><i class="ti ti-paw"></i></div>
         <div class="card-main">
           <div class="profile-name-row">
-            <span class="profile-name">同居人</span>
+            <span class="profile-name">巨怪</span>
             <span class="status-icons" id="status-icons">
               <i class="ti ti-pencil" onclick="editStatus()" title="編輯"></i>
             </span>
@@ -191,8 +191,10 @@
   <textarea class="sticky-note-textarea" id="sticky-note-textarea" maxlength="50" placeholder="想跟他說的話，他聽不懂，但可能會有反應..."></textarea>
   <div class="sticky-note-saved" id="sticky-note-saved" style="display:none;"></div>
   <div class="note-read-mark" id="note-read-mark" style="display:none;">
-    <i class="ti ti-paw-filled"></i><i class="ti ti-paw-filled"></i><i class="ti ti-paw-filled"></i>
-    <span>糰糰看過了</span>
+    <span class="sesame-print"><i></i><i></i><i></i><i></i></span>
+    <span class="sesame-print"><i></i><i></i><i></i><i></i></span>
+    <span class="sesame-print"><i></i><i></i><i></i><i></i></span>
+    <span class="read-label">糰糰看過了</span>
   </div>
   <div class="sticky-note-actions">
     <i class="ti ti-check" id="note-confirm-btn" onclick="confirmNote()"></i>
