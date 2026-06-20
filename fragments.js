@@ -239,16 +239,37 @@ function matchFragments(sceneText, playerText, collectedIds) {
   const scene = sceneText || '';
   const player = playerText || '';
   const collected = collectedIds || [];
-  const hits = [];
+
+  // 第一步：先收集「關鍵字命中」的候選紙片，這一步不擲骰。
+  const candidates = [];
   for (const f of FRAGMENTS) {
     if (!f.id || collected.includes(f.id)) continue;
     const sceneHit = (f.scene_keywords || []).some(k => k && scene.includes(k));
     const playerHit = (f.player_keywords || []).some(k => k && player.includes(k));
     const keywordHit = f.match === 'and' ? (sceneHit && playerHit) : (sceneHit || playerHit);
-    if (!keywordHit) continue;
-    if (Math.random() < (f.probability ?? 0)) hits.push(f);
+    if (keywordHit) candidates.push(f);
   }
-  return hits;
+  if (candidates.length === 0) return [];
+
+  // 第二步：整個回合只擲一次骰，避免「命中越多越容易掉」。
+  // 先依各紙片的 probability 當權重，隨機挑出「這回合若要掉，會是哪一張」，
+  // 再用那張自己的 probability 做唯一一次判定。
+  // → 這回合掉落機率最高就是候選裡的最高 probability（約 0.25~0.3），稀有紙片仍稀有。
+  const chosen = pickWeighted(candidates);
+  if (chosen && Math.random() < (chosen.probability ?? 0)) return [chosen];
+  return [];
+}
+
+// 依 probability 為權重隨機挑一張（高機率的紙片較常被選為「本回合候選」）。
+function pickWeighted(list) {
+  const total = list.reduce((s, f) => s + (f.probability ?? 0), 0);
+  if (total <= 0) return list[Math.floor(Math.random() * list.length)];
+  let r = Math.random() * total;
+  for (const f of list) {
+    r -= (f.probability ?? 0);
+    if (r < 0) return f;
+  }
+  return list[list.length - 1];
 }
 
 module.exports = { FRAGMENTS, COLLECTION_HINTS, matchFragments };
