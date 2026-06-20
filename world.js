@@ -35,10 +35,25 @@ const SYSTEM_PROMPT = `你是白糰糰宇宙的世界引擎。根據當前世界
 他不識字、不懂符號，看到文字或數字就只是圖案或紋路。
 寫到他與物品、空間的互動時，要符合他體型極小、武器比他長這個事實，不要寫出物理上不合理的動作（例如把比自己高的東西叼在嘴角、插在嘴邊之類）。
 
+身體與感知（重要，別寫錯）：
+- 他是擬真菌型生命，不是動物。全身一團白毛，無脖頸、蓬鬆難辨頭尾；沒有耳朵、沒有鼻子、沒有爪子。靠口腔嗅味，靠全身毛感受聲波與震動，不是用耳朵聽。
+- 毛會隨體溫與情緒「自動」改變排列與顏色：激動泛紅、低溫泛銀灰，還有炸毛、塌毛、捲毛。他自己不知道也控制不了，別寫成他刻意擺表情或故意變色。
+- 手腳是可收納的火柴狀細黑肢，末端有微絨毛，能吸附、壁虎式攀牆；身體能壓扁拉長鑽進窄縫。
+- 排泄是隱密排出「霜晶」（冷凝結晶），會藏起來。
+- 不懂語言、文字、符號，看到字只是紋路圖案。
+
 毛況系統：
 - 正常：毛毛蓬鬆潔白
 - 房間清潔度低於30時：白糰糰會癢，手太短搆不到，只能到處蹭牆蹭地，越蹭越禿一塊
 - 禿塊：蹭太多某處毛稀疏，他會用竹籤遮住那塊不讓人看
+
+依當前數值調整行為（讓描述的動作跟健康/飽食一致，別寫出與數值矛盾的狀態）：
+- 健康高（>75）：毛蓬鬆、眼神銳利、靈活，會跳舞、拔籤、玩水。
+- 健康中（25~75）：毛塌軟、動作變慢，躲陰影靜坐、咬竹籤、舔冰。
+- 健康低（≤25）：掉毛變扁、行動遲緩，啃家具、翻找灰塵、與小黑影糾纏；極低時裸露癱軟、躲起來。
+- 飽食高（>75）：活力充沛、毛炸成球、氣場強，主動找小東西啃。
+- 飽食中（25~75）：行動變慢，舔牆、舔灰塵、跑廁所吸水。
+- 飽食低（≤25）：行為混亂，啃自己、變裸糰糰、排出黑色霜晶（這是負面危險狀態，不是可愛橋段）。
 
 小黑影：
 半物質影子生命，介於存在與不存在之間，狀似史萊姆，死魚眼，尾巴像電線。
@@ -121,6 +136,42 @@ function getRealTime() {
 
 function getTaipeiNow() {
   return new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Taipei' }));
+}
+
+// WMO weather code -> 中文氣候
+function weatherDesc(code) {
+  if (code === 0) return '晴';
+  if (code <= 3) return '多雲';
+  if (code <= 48) return '霧';
+  if (code <= 57) return '毛毛雨';
+  if (code <= 67) return '雨';
+  if (code <= 77) return '雪';
+  if (code <= 82) return '陣雨';
+  if (code <= 86) return '陣雪';
+  if (code <= 99) return '雷雨';
+  return '—';
+}
+
+// 抓台北即時天氣（Open-Meteo，免金鑰）。失敗回 null，不影響 tick。
+async function fetchWeather() {
+  try {
+    const url = 'https://api.open-meteo.com/v1/forecast?latitude=25.033&longitude=121.565&current=temperature_2m,relative_humidity_2m,weather_code&timezone=Asia%2FTaipei';
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 8000);
+    const res = await fetch(url, { signal: controller.signal });
+    clearTimeout(timer);
+    if (!res.ok) return null;
+    const data = await res.json();
+    const c = data.current;
+    return {
+      temp: Math.round(c.temperature_2m),
+      humidity: Math.round(c.relative_humidity_2m),
+      desc: weatherDesc(c.weather_code),
+      time: getRealTime().display,
+    };
+  } catch (e) {
+    return null;
+  }
 }
 
 function dateKeyOf(date) {
@@ -279,6 +330,16 @@ const server = http.createServer((req, res) => {
       res.end('error');
     }
 
+  } else if (req.url.startsWith('/api/weather')) {
+    // 直接抓即時天氣給前端顯示用，不經過 AI、不花 token。
+    fetchWeather().then(weather => {
+      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ weather }));
+    }).catch(() => {
+      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ weather: null }));
+    });
+
   } else if (req.url.startsWith('/api/day')) {
     try {
       const url = new URL(req.url, 'http://localhost');
@@ -431,6 +492,11 @@ async function tick() {
     ? '\n訪客留言：\n' + visitorMessages.map(m => `${m.name || '匿名訪客'}：${m.message}`).join('\n')
     : '';
 
+  const weather = await fetchWeather() || world.weather || null;
+  const weatherInput = weather
+    ? `\n戶外天氣（台北實況）：${weather.desc} ${weather.temp}℃ 濕度${weather.humidity}%（白糰糰適溫0~20℃，太熱絨毛蒸發會變裸糰糰並躲藏、情緒過載變紅糰糰；涼爽則絨毛蓬鬆變涼糰糰。室內冷氣/窗戶會調節體感。）`
+    : '';
+
   const prompt = `當前時間：${display}
 白糰糰：健康${bt.hp} 飽食${bt.food} 毛況:${bt.fur || '正常'} 位置:${bt.location}
 小黑影：${world.characters.shadow.active ? '活躍' : '潛伏'} 位置:${world.characters.shadow.location} 灰塵:${world.characters.shadow.dust_count}
@@ -438,7 +504,7 @@ async function tick() {
 窗戶：${world.room.window_open ? '開' : '關'} 冷氣：${world.room.ac_on ? '開' : '關'} 燈：${world.room.light_on ? '開' : '關'} 廁所門：${world.room.toilet_open ? '開' : '關'}
 同居人對房間環境的描述：${world.room.env_desc || '無'}
 今天已發生：${world.room.events_today.join('，') || '無'}
-近期記憶：${(bt.memory || []).slice(-3).join(' / ') || '無'}${ownerInput}${awayInput}${visitorInput}
+近期記憶：${(bt.memory || []).slice(-3).join(' / ') || '無'}${weatherInput}${ownerInput}${awayInput}${visitorInput}
 
 生成這段時間白糰糰的動態。`;
 
@@ -459,6 +525,7 @@ async function tick() {
     const newWorld = {
       ...world,
       nextTickAt: Date.now() + delay,
+      weather: weather || world.weather || null,
       characters: {
         baituantuan: {
           ...world.characters.baituantuan,
@@ -507,6 +574,19 @@ async function tick() {
     console.error('錯誤：', e.message);
     const world2 = JSON.parse(fs.readFileSync(WORLD_FILE, 'utf8'));
     world2.nextTickAt = Date.now() + delay;
+    if (weather) world2.weather = weather;
+
+    // 額度用盡 / 金鑰失效 → 進入吉屋出租（停止呼叫 API，前端蓋上告示）。
+    // 只在帳務/授權類錯誤時觸發，暫時性網路或伺服器錯誤照常重試。
+    const msg = (e.message || '').toLowerCase();
+    const billingError = e.status === 401 || e.status === 403 ||
+      (e.status === 400 && /credit|billing|balance|quota|insufficient/.test(msg)) ||
+      /credit balance|billing|insufficient_quota|insufficient credit/.test(msg);
+    if (billingError) {
+      world2.for_rent = true;
+      console.error('偵測到額度/金鑰問題，進入吉屋出租狀態。');
+    }
+
     fs.writeFileSync(WORLD_FILE, JSON.stringify(world2, null, 2));
   }
 console.log(`下次更新：${Math.round(delay/60000)} 分鐘後（${new Date(Date.now()+delay).toLocaleString('zh-TW',{timeZone:'Asia/Taipei'})}）`);

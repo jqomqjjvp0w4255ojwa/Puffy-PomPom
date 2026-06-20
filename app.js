@@ -316,14 +316,7 @@ function renderDiaryEntries(diary) {
     <div class="entry">
       <div class="entry-time">${escapeHtml(e.time)}</div>
       <div class="entry-text">${escapeHtml(e.scene)}</div>
-      <div class="entry-stats">
-        <div class="entry-stat-line">
-          <span class="entry-stat-label">健康</span><span>${e.hp}</span>
-          <span class="entry-stat-label">飽食</span><span>${e.food}</span>
-        </div>
-        <div class="entry-stat-line"><span class="entry-stat-label">地點</span><span>${escapeHtml(e.location)}</span></div>
-        ${e.fur ? `<div class="entry-stat-line"><span class="entry-stat-label">外觀</span><span>${escapeHtml(e.fur)}</span></div>` : ''}
-      </div>
+      <div class="entry-stats">健康 ${e.hp} · 飽食 ${e.food} · ${escapeHtml(e.location)}${e.fur ? ` · ${escapeHtml(e.fur)}` : ''}</div>
       ${e.shadowActive ? '<div class="entry-shadow">⚠ 小黑影出沒中</div>' : ''}
     </div>
   `).join('');
@@ -407,6 +400,16 @@ async function refreshTodayPanels(world) {
   } catch (e) {}
 }
 
+async function refreshWeather(fallback) {
+  let w = fallback;
+  try {
+    const res = await fetch('/api/weather?t=' + Date.now());
+    const data = await res.json();
+    if (data.weather) w = data.weather;
+  } catch (e) {}
+  document.getElementById('cover-weather').textContent = w ? `　·　${w.desc} ${w.temp}℃ 濕度${w.humidity}%` : '';
+}
+
 async function load() {
   try {
     const res = await fetch('/api/world?t=' + Date.now());
@@ -430,6 +433,7 @@ async function load() {
 
     const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Taipei' }));
     document.getElementById('cover-date').textContent = (now.getMonth()+1) + ' 月 ' + now.getDate() + ' 日';
+    refreshWeather(world.weather);
 
     roomState.window_open = world.room.window_open;
     roomState.ac_on = world.room.ac_on || false;
