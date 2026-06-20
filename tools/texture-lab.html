@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>糰糰質地實驗室</title>
+<style>
+  body {
+    font-family: 'Noto Serif TC', 'PingFang TC', sans-serif;
+    background: #f5f0e8;
+    color: #4a3a2a;
+    margin: 0;
+    padding: 20px;
+  }
+  h1 { font-size: 18px; margin: 0 0 4px; }
+  .sub { font-size: 12px; color: #8a7a6a; margin-bottom: 20px; }
+  .layout { display: flex; gap: 24px; flex-wrap: wrap; align-items: flex-start; }
+  .panel {
+    background: #fff;
+    border: 1px solid #e8c8b0;
+    border-radius: 10px;
+    padding: 16px;
+  }
+  .preview-panel { width: 260px; }
+  .preview-name {
+    font-size: 26px;
+    text-align: center;
+    padding: 16px 8px;
+    background: #fdf6ee;
+    border-radius: 8px;
+    border: 1px dashed #e8c8b0;
+    margin-bottom: 16px;
+    min-height: 1.2em;
+  }
+  .slider-row { margin-bottom: 16px; }
+  .slider-row label { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px; }
+  .slider-row input[type=range] { width: 100%; }
+  .band-tag { font-size: 11px; color: #b07a4a; }
+  .grid-wrap { overflow: auto; max-width: 100%; }
+  table.grid { border-collapse: collapse; font-size: 11px; }
+  table.grid th, table.grid td {
+    border: 1px solid #e8c8b0;
+    padding: 0;
+    text-align: center;
+  }
+  table.grid th {
+    background: #f0e4d4;
+    padding: 4px;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+  table.grid th.corner { background: #e8d8c4; }
+  table.grid td input {
+    width: 78px;
+    height: 36px;
+    border: none;
+    text-align: center;
+    font-size: 11px;
+    font-family: inherit;
+    background: transparent;
+    color: #4a3a2a;
+  }
+  table.grid td input:focus { background: #fff3e0; outline: 1px solid #e8a070; }
+  table.grid td.active { background: #ffe8c8; }
+  .toolbar { margin: 16px 0; display: flex; gap: 8px; flex-wrap: wrap; }
+  button {
+    font-family: inherit;
+    font-size: 12px;
+    background: #8a5a3a;
+    color: #f5f0e8;
+    border: none;
+    border-radius: 6px;
+    padding: 8px 14px;
+    cursor: pointer;
+  }
+  button.secondary { background: #c0a888; }
+  button:active { opacity: 0.85; }
+  input[type=file] { display: none; }
+  .hint { font-size: 11px; color: #a08868; margin-top: 8px; line-height: 1.6; }
+</style>
+</head>
+<body>
+
+<h1>糰糰質地實驗室</h1>
+<div class="sub">形狀（方↔圓） × 硬度（堅硬↔柔軟） 7×7 對照表 —— 用來定義糰糰對你長期累積的「觸感印象」（蹦蹦/刺刺/滑滑/木木...）</div>
+
+<div class="toolbar">
+  <button onclick="document.getElementById('file-input').click()">匯入 CSV</button>
+  <button onclick="exportCSV()">匯出 CSV</button>
+  <button class="secondary" onclick="fillSample()">填入範例質地</button>
+  <button class="secondary" onclick="clearAll()">清空全部</button>
+  <input type="file" id="file-input" accept=".csv" onchange="importCSV(event)">
+</div>
+
+<div class="layout">
+  <div class="panel preview-panel">
+    <div class="preview-name" id="preview-name">—</div>
+    <div class="slider-row">
+      <label><span>形狀（0=方方的 ↔ 100=圓圓的）</span><span><span id="shape-val">50</span> <span class="band-tag" id="shape-band"></span></span></label>
+      <input type="range" id="shape-slider" min="0" max="100" value="50" oninput="updatePreview()">
+    </div>
+    <div class="slider-row">
+      <label><span>硬度（0=堅硬 ↔ 100=柔軟）</span><span><span id="hard-val">50</span> <span class="band-tag" id="hard-band"></span></span></label>
+      <input type="range" id="hard-slider" min="0" max="100" value="50" oninput="updatePreview()">
+    </div>
+    <div class="hint">拉桿對應的格子會在右側表格高亮，目前命中的質地會顯示在上方。這層完全隱藏、不顯示給玩家，只用來計算 note 風味文字或未來監視窗視覺。</div>
+  </div>
+
+  <div class="panel">
+    <div class="grid-wrap">
+      <table class="grid" id="grid-table"></table>
+    </div>
+    <div class="hint">橫軸＝硬度區段（左堅硬右柔軟），縱軸＝形狀區段（上方方下圓圓）。每格直接輸入質地詞，例如蹦蹦的/刺刺的/滑滑的/木木的，也可以自創。</div>
+  </div>
+</div>
+
+<script>
+const BANDS = 7;
+const EDGES = [];
+for (let i = 0; i <= BANDS; i++) EDGES.push(Math.round(i * 100 / BANDS));
+
+function bandIndex(value) {
+  for (let i = 0; i < BANDS; i++) {
+    if (value <= EDGES[i + 1] || i === BANDS - 1) return i;
+  }
+  return BANDS - 1;
+}
+function bandLabel(i) {
+  return `${EDGES[i]}–${EDGES[i + 1]}`;
+}
+
+// grid[shapeBand][hardBand] = texture
+let grid = Array.from({ length: BANDS }, () => Array.from({ length: BANDS }, () => ''));
+
+function buildTable() {
+  const table = document.getElementById('grid-table');
+  table.innerHTML = '';
+  const headRow = document.createElement('tr');
+  headRow.innerHTML = `<th class="corner">形狀 ＼ 硬度</th>` +
+    Array.from({ length: BANDS }, (_, j) => `<th>${bandLabel(j)}</th>`).join('');
+  table.appendChild(headRow);
+
+  for (let i = 0; i < BANDS; i++) {
+    const row = document.createElement('tr');
+    const th = document.createElement('th');
+    th.textContent = bandLabel(i);
+    row.appendChild(th);
+    for (let j = 0; j < BANDS; j++) {
+      const td = document.createElement('td');
+      td.id = `cell-${i}-${j}`;
+      const input = document.createElement('input');
+      input.value = grid[i][j];
+      input.placeholder = '質地';
+      input.oninput = () => { grid[i][j] = input.value; updatePreview(); };
+      td.appendChild(input);
+      row.appendChild(td);
+    }
+    table.appendChild(row);
+  }
+}
+
+function updatePreview() {
+  const shape = Number(document.getElementById('shape-slider').value);
+  const hard = Number(document.getElementById('hard-slider').value);
+  document.getElementById('shape-val').textContent = shape;
+  document.getElementById('hard-val').textContent = hard;
+
+  const si = bandIndex(shape);
+  const hj = bandIndex(hard);
+  document.getElementById('shape-band').textContent = `(${bandLabel(si)})`;
+  document.getElementById('hard-band').textContent = `(${bandLabel(hj)})`;
+
+  document.querySelectorAll('td.active').forEach(td => td.classList.remove('active'));
+  const cell = document.getElementById(`cell-${si}-${hj}`);
+  if (cell) cell.classList.add('active');
+
+  const name = grid[si][hj];
+  document.getElementById('preview-name').textContent = name || '（這格還沒填）';
+}
+
+function exportCSV() {
+  const rows = [];
+  rows.push(['形狀區段', '硬度區段', '質地'].join(','));
+  for (let i = 0; i < BANDS; i++) {
+    for (let j = 0; j < BANDS; j++) {
+      const val = grid[i][j] || '';
+      rows.push([`"${bandLabel(i)}"`, `"${bandLabel(j)}"`, `"${val.replace(/"/g, '""')}"`].join(','));
+    }
+  }
+  const csv = rows.join('\n');
+  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'texture-table.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function importCSV(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    const text = reader.result.replace(/^﻿/, '');
+    const lines = text.split(/\r?\n/).filter(l => l.trim());
+    lines.shift();
+    lines.forEach(line => {
+      const cols = line.match(/"([^"]*)"/g);
+      if (!cols || cols.length < 3) return;
+      const clean = cols.map(c => c.slice(1, -1).replace(/""/g, '"'));
+      const shapeLabel = clean[0], hardLabel = clean[1], val = clean[2];
+      for (let i = 0; i < BANDS; i++) if (bandLabel(i) === shapeLabel)
+        for (let j = 0; j < BANDS; j++) if (bandLabel(j) === hardLabel)
+          grid[i][j] = val;
+    });
+    buildTable();
+    updatePreview();
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+}
+
+function clearAll() {
+  if (!confirm('確定清空所有質地？')) return;
+  grid = Array.from({ length: BANDS }, () => Array.from({ length: BANDS }, () => ''));
+  buildTable();
+  updatePreview();
+}
+
+function fillSample() {
+  // 範例：上方方/堅硬 → 木木的、刺刺的；下圓圓/柔軟 → 滑滑的、蹦蹦的，純粹示範，可全部改掉
+  const samples = [
+    ['木木的','木木的','刺刺的','刺刺的','刺刺的','滑滑的','滑滑的'],
+    ['木木的','刺刺的','刺刺的','刺刺的','滑滑的','滑滑的','蹦蹦的'],
+    ['刺刺的','刺刺的','刺刺的','滑滑的','滑滑的','蹦蹦的','蹦蹦的'],
+    ['刺刺的','刺刺的','滑滑的','滑滑的','蹦蹦的','蹦蹦的','蹦蹦的'],
+    ['刺刺的','滑滑的','滑滑的','蹦蹦的','蹦蹦的','蹦蹦的','蹦蹦的'],
+    ['滑滑的','滑滑的','蹦蹦的','蹦蹦的','蹦蹦的','蹦蹦的','蹦蹦的'],
+    ['滑滑的','蹦蹦的','蹦蹦的','蹦蹦的','蹦蹦的','蹦蹦的','蹦蹦的'],
+  ];
+  grid = samples;
+  buildTable();
+  updatePreview();
+}
+
+buildTable();
+updatePreview();
+</script>
+
+</body>
+</html>

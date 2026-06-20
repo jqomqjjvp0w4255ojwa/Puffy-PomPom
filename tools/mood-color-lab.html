@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>糰糰心情色彩實驗室</title>
+<style>
+  body {
+    font-family: 'Noto Serif TC', 'PingFang TC', sans-serif;
+    background: #f5f0e8;
+    color: #4a3a2a;
+    margin: 0;
+    padding: 20px;
+  }
+  h1 { font-size: 18px; margin: 0 0 4px; }
+  .sub { font-size: 12px; color: #8a7a6a; margin-bottom: 20px; }
+  .layout { display: flex; gap: 24px; flex-wrap: wrap; align-items: flex-start; }
+  .panel {
+    background: #fff;
+    border: 1px solid #e8c8b0;
+    border-radius: 10px;
+    padding: 16px;
+  }
+  .preview-panel { width: 280px; }
+  .swatch {
+    width: 100%;
+    height: 90px;
+    border-radius: 8px;
+    border: 1px solid #e8c8b0;
+    margin-bottom: 10px;
+    transition: background-color 0.15s;
+  }
+  .preview-name {
+    font-size: 22px;
+    text-align: center;
+    padding: 10px 8px;
+    background: #fdf6ee;
+    border-radius: 8px;
+    border: 1px dashed #e8c8b0;
+    margin-bottom: 16px;
+    min-height: 1.2em;
+  }
+  .slider-row { margin-bottom: 16px; }
+  .slider-row label { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px; }
+  .slider-row input[type=range] { width: 100%; }
+  .band-tag { font-size: 11px; color: #b07a4a; }
+  .band-list { display: flex; flex-direction: column; gap: 8px; min-width: 360px; }
+  .band-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border: 1px solid #e8c8b0;
+    border-radius: 8px;
+    padding: 8px 10px;
+    background: #fdf6ee;
+  }
+  .band-row.active { background: #ffe8c8; border-color: #e8a070; }
+  .band-row .range-label { font-size: 11px; color: #8a7a6a; width: 70px; flex-shrink: 0; }
+  .band-row input[type=text] { flex: 1; font-family: inherit; font-size: 12px; border: 1px solid #e8c8b0; border-radius: 6px; padding: 6px 8px; }
+  .band-row input[type=color] { width: 36px; height: 36px; border: none; border-radius: 6px; padding: 0; cursor: pointer; }
+  .toolbar { margin: 16px 0; display: flex; gap: 8px; flex-wrap: wrap; }
+  button {
+    font-family: inherit;
+    font-size: 12px;
+    background: #8a5a3a;
+    color: #f5f0e8;
+    border: none;
+    border-radius: 6px;
+    padding: 8px 14px;
+    cursor: pointer;
+  }
+  button.secondary { background: #c0a888; }
+  button:active { opacity: 0.85; }
+  input[type=file] { display: none; }
+  .hint { font-size: 11px; color: #a08868; margin-top: 8px; line-height: 1.6; }
+</style>
+</head>
+<body>
+
+<h1>糰糰心情色彩實驗室</h1>
+<div class="sub">心情值（0~100）→ 顏色 對照表 —— 沿用既有設定（快樂=螢光黃、寂寞=漂浮灰、憤怒=刺刺紅、謊言=臭臭黑），可自行增減分段</div>
+
+<div class="toolbar">
+  <button onclick="document.getElementById('file-input').click()">匯入 CSV</button>
+  <button onclick="exportCSV()">匯出 CSV</button>
+  <button class="secondary" onclick="fillSample()">填入既有設定範例</button>
+  <button class="secondary" onclick="addBand()">新增一段</button>
+  <input type="file" id="file-input" accept=".csv" onchange="importCSV(event)">
+</div>
+
+<div class="layout">
+  <div class="panel preview-panel">
+    <div class="swatch" id="swatch"></div>
+    <div class="preview-name" id="preview-name">—</div>
+    <div class="slider-row">
+      <label><span>心情值</span><span><span id="mood-val">50</span></span></label>
+      <input type="range" id="mood-slider" min="0" max="100" value="50" oninput="updatePreview()">
+    </div>
+    <div class="hint">拖動拉桿即時看當下心情值會對到哪個顏色與名稱。心情值短期波動、會慢慢回到中性。</div>
+  </div>
+
+  <div class="panel">
+    <div class="band-list" id="band-list"></div>
+    <div class="hint">每段填「最低值～最高值」「顏色名稱」「實際顏色」，可任意新增/刪除分段，順序依最低值自動排列；匯出CSV後交給開發端轉成程式判斷。</div>
+  </div>
+</div>
+
+<script>
+// bands: [{ min, max, name, color }]
+let bands = [];
+
+function addBand(min = 0, max = 100, name = '', color = '#cccccc') {
+  bands.push({ min, max, name, color });
+  bands.sort((a, b) => a.min - b.min);
+  renderBands();
+  updatePreview();
+}
+
+function renderBands() {
+  const list = document.getElementById('band-list');
+  list.innerHTML = '';
+  bands.forEach((b, idx) => {
+    const row = document.createElement('div');
+    row.className = 'band-row';
+    row.id = `band-${idx}`;
+    row.innerHTML = `
+      <input type="number" class="range-label" value="${b.min}" min="0" max="100" style="width:42px" />
+      <span>～</span>
+      <input type="number" class="range-label" value="${b.max}" min="0" max="100" style="width:42px" />
+      <input type="text" value="${b.name}" placeholder="例如：螢光黃" />
+      <input type="color" value="${b.color}" />
+      <button class="secondary" style="padding:6px 10px;">刪除</button>
+    `;
+    const [minInput, maxInput, nameInput, colorInput] = row.querySelectorAll('input');
+    const delBtn = row.querySelector('button');
+    minInput.oninput = () => { bands[idx].min = Number(minInput.value); updatePreview(); };
+    maxInput.oninput = () => { bands[idx].max = Number(maxInput.value); updatePreview(); };
+    nameInput.oninput = () => { bands[idx].name = nameInput.value; updatePreview(); };
+    colorInput.oninput = () => { bands[idx].color = colorInput.value; updatePreview(); };
+    delBtn.onclick = () => { bands.splice(idx, 1); renderBands(); updatePreview(); };
+    list.appendChild(row);
+  });
+}
+
+function findBand(value) {
+  return bands.find(b => value >= b.min && value <= b.max) || null;
+}
+
+function updatePreview() {
+  const mood = Number(document.getElementById('mood-slider').value);
+  document.getElementById('mood-val').textContent = mood;
+
+  document.querySelectorAll('.band-row.active').forEach(r => r.classList.remove('active'));
+  const band = findBand(mood);
+  const idx = bands.indexOf(band);
+  if (idx >= 0) document.getElementById(`band-${idx}`).classList.add('active');
+
+  document.getElementById('swatch').style.backgroundColor = band ? band.color : '#fdf6ee';
+  document.getElementById('preview-name').textContent = band ? band.name || '（這段還沒命名）' : '（沒有對應分段）';
+}
+
+function exportCSV() {
+  const rows = [];
+  rows.push(['最低值', '最高值', '名稱', '色碼'].join(','));
+  bands.forEach(b => {
+    rows.push([b.min, b.max, `"${(b.name || '').replace(/"/g, '""')}"`, b.color].join(','));
+  });
+  const csv = rows.join('\n');
+  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'mood-color-table.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function importCSV(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    const text = reader.result.replace(/^﻿/, '');
+    const lines = text.split(/\r?\n/).filter(l => l.trim());
+    lines.shift();
+    bands = lines.map(line => {
+      const m = line.match(/^(\d+),(\d+),"((?:[^"]|"")*)",(#[0-9a-fA-F]{6})$/);
+      if (!m) return null;
+      return { min: Number(m[1]), max: Number(m[2]), name: m[3].replace(/""/g, '"'), color: m[4] };
+    }).filter(Boolean);
+    bands.sort((a, b) => a.min - b.min);
+    renderBands();
+    updatePreview();
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+}
+
+function fillSample() {
+  bands = [
+    { min: 0, max: 24, name: '漂浮灰（寂寞）', color: '#b0b0b0' },
+    { min: 25, max: 49, name: '臭臭黑（不安）', color: '#3a3530' },
+    { min: 50, max: 74, name: '未完成磁斑（平靜/思念）', color: '#9aa8c0' },
+    { min: 75, max: 100, name: '螢光黃（快樂）', color: '#f0e040' },
+  ];
+  renderBands();
+  updatePreview();
+}
+
+fillSample();
+updatePreview();
+</script>
+
+</body>
+</html>
