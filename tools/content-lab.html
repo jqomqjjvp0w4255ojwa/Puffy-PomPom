@@ -315,6 +315,29 @@
       <div class="trait-hint">每段填「最低值～最高值」「名稱」「實際顏色」，可任意新增/刪除分段。</div>
     </div>
 
+    <div class="subtab-panel" data-group="trait" data-sub="stat">
+      <div class="trait-toolbar">
+        <button class="secondary" onclick="statFillSample()">填入範例描述</button>
+        <button class="secondary" onclick="statClearAll()">清空全部</button>
+      </div>
+      <div class="trait-layout">
+        <div class="trait-panel trait-preview">
+          <div class="preview-name" id="stat-preview-name" contenteditable="true" placeholder="點擊編輯描述或直接填格子">—</div>
+          <div class="slider-row">
+            <label><span>飽食度</span><span><span id="stat-food-val">50</span> <span class="band-tag" id="stat-food-band"></span></span></label>
+            <input type="range" id="stat-food-slider" min="0" max="100" value="50" oninput="statUpdatePreview()">
+          </div>
+          <div class="slider-row">
+            <label><span>健康度</span><span><span id="stat-hp-val">50</span> <span class="band-tag" id="stat-hp-band"></span></span></label>
+            <input type="range" id="stat-hp-slider" min="0" max="100" value="50" oninput="statUpdatePreview()">
+          </div>
+          <div class="trait-hint">填了這格，AI在該數值區段時就只會讀到這句描述，不會再用內建的自動生成句子。空格仍會用內建句子當備援。</div>
+        </div>
+        <div class="trait-panel grid-wrap"><table class="grid" id="stat-grid-table"></table></div>
+      </div>
+      <div class="trait-hint">橫軸＝飽食度區段（左低右高），縱軸＝健康度區段（上低下高）。例：飽食30/健康10可填「搖搖晃晃看什麼都想咬一下」。</div>
+    </div>
+
     <div class="status-line off" id="trait-status"></div>
   </div>
 
@@ -742,7 +765,8 @@ function collectBalanceData() {
 const TRAIT_GROUPS = [
   { key: 'nickname', label: '暱稱實驗室' },
   { key: 'texture', label: '質地實驗室' },
-  { key: 'mood', label: '心情色彩實驗室' }
+  { key: 'mood', label: '心情色彩實驗室' },
+  { key: 'stat', label: '狀態象限實驗室' }
 ];
 const BANDS = 7;
 const FAM_BANDS = 7;
@@ -762,13 +786,16 @@ function makeBandHelper(min, max, bands) {
     label(i) { return `${edges[i]}–${edges[i + 1]}`; }
   };
 }
+const STAT_BANDS = 7;
 const FAM = makeBandHelper(0, 100, FAM_BANDS);
 const AFF = makeBandHelper(-100, 100, AFF_BANDS);
 const UNIT = makeBandHelper(0, 100, UNIT_BANDS);
+const STAT = makeBandHelper(0, 100, STAT_BANDS);
 
 let nicknameGrid = Array.from({ length: FAM_BANDS }, () => Array.from({ length: AFF_BANDS }, () => ''));
 let textureGrid = Array.from({ length: UNIT_BANDS }, () => Array.from({ length: UNIT_BANDS }, () => ''));
 let moodBands = [];
+let statGrid = Array.from({ length: STAT_BANDS }, () => Array.from({ length: STAT_BANDS }, () => ''));
 
 function nicknameBuildTable() {
   const table = document.getElementById('nickname-grid-table');
@@ -889,6 +916,68 @@ function textureFillSample() {
   textureBuildTable(); textureUpdatePreview(); saveLocal();
 }
 
+function statBuildTable() {
+  const table = document.getElementById('stat-grid-table');
+  table.innerHTML = '';
+  const headRow = document.createElement('tr');
+  headRow.innerHTML = `<th class="corner">健康度 ＼ 飽食度</th>` +
+    Array.from({ length: STAT_BANDS }, (_, j) => `<th>${STAT.label(j)}</th>`).join('');
+  table.appendChild(headRow);
+  for (let i = 0; i < STAT_BANDS; i++) {
+    const row = document.createElement('tr');
+    const th = document.createElement('th');
+    th.textContent = STAT.label(i);
+    row.appendChild(th);
+    for (let j = 0; j < STAT_BANDS; j++) {
+      const td = document.createElement('td');
+      td.id = `stat-cell-${i}-${j}`;
+      const input = document.createElement('input');
+      input.value = statGrid[i][j];
+      input.placeholder = '描述';
+      input.oninput = () => { statGrid[i][j] = input.value; statUpdatePreview(); saveLocal(); };
+      td.appendChild(input);
+      row.appendChild(td);
+    }
+    table.appendChild(row);
+  }
+}
+function statUpdatePreview() {
+  const food = Number(document.getElementById('stat-food-slider').value);
+  const hp = Number(document.getElementById('stat-hp-slider').value);
+  document.getElementById('stat-food-val').textContent = food;
+  document.getElementById('stat-hp-val').textContent = hp;
+  const fj = STAT.index(food), hi = STAT.index(hp);
+  document.getElementById('stat-food-band').textContent = `(${STAT.label(fj)})`;
+  document.getElementById('stat-hp-band').textContent = `(${STAT.label(hi)})`;
+  document.querySelectorAll('#panel-trait td.active').forEach(td => td.classList.remove('active'));
+  const cell = document.getElementById(`stat-cell-${hi}-${fj}`);
+  if (cell) cell.classList.add('active');
+  const previewEl = document.getElementById('stat-preview-name');
+  const previewText = previewEl.textContent.trim();
+  if (previewText && previewText !== '—' && previewText !== '（這格還沒填，會用內建自動句子備援）') {
+    statGrid[hi][fj] = previewText;
+  } else {
+    previewEl.textContent = statGrid[hi][fj] || '（這格還沒填，會用內建自動句子備援）';
+  }
+}
+function statClearAll() {
+  if (!confirm('確定清空所有狀態描述？這會清掉已經填的內容，請先確定要重填。')) return;
+  statGrid = Array.from({ length: STAT_BANDS }, () => Array.from({ length: STAT_BANDS }, () => ''));
+  statBuildTable(); statUpdatePreview(); saveLocal();
+}
+function statFillSample() {
+  statGrid = [
+    ['極度飢餓、奄奄一息、無力動彈','極度飢餓、行為混亂、啃自己','飢餓、動作遲緩找東西啃','略餓、動作變慢','飽足、主動找小東西啃','飽足、舔冰舔竹籤','活力充沛、毛炸成球跳舞玩水'],
+    ['瀕臨崩潰、絨毛蒸發','健康危急、行為混亂','健康亮紅燈、掉毛變扁','搖搖晃晃看什麼都想咬一下','偏好躲陰影靜坐','動作平穩略顯疲態','健康飽滿、眼神銳利'],
+    ['','','','','','',''],
+    ['','','','','','',''],
+    ['','','','','','',''],
+    ['','','','','','',''],
+    ['','','','','','',''],
+  ];
+  statBuildTable(); statUpdatePreview(); saveLocal();
+}
+
 function moodAddBand(min = 0, max = 100, name = '', color = '#cccccc') {
   moodBands.push({ min, max, name, color });
   moodBands.sort((a, b) => a.min - b.min);
@@ -948,16 +1037,19 @@ function applyTraitData(data) {
   nicknameGrid = (data.nicknameGrid && data.nicknameGrid.length === FAM_BANDS) ? data.nicknameGrid : nicknameGrid;
   textureGrid = (data.textureGrid && data.textureGrid.length === UNIT_BANDS) ? data.textureGrid : textureGrid;
   moodBands = Array.isArray(data.moodBands) && data.moodBands.length ? data.moodBands : moodBands;
+  statGrid = (data.statGrid && data.statGrid.length === STAT_BANDS) ? data.statGrid : statGrid;
   nicknameBuildTable(); nicknameUpdatePreview();
   textureBuildTable(); textureUpdatePreview();
   moodRenderBands(); moodUpdatePreview();
+  statBuildTable(); statUpdatePreview();
 }
 function collectTraitData() {
   return {
     fam: { min: 0, max: 100, bands: FAM_BANDS },
     aff: { min: -100, max: 100, bands: AFF_BANDS },
     unit: { min: 0, max: 100, bands: UNIT_BANDS },
-    nicknameGrid, textureGrid, moodBands
+    stat: { min: 0, max: 100, bands: STAT_BANDS },
+    nicknameGrid, textureGrid, moodBands, statGrid
   };
 }
 
@@ -1214,6 +1306,8 @@ nicknameBuildTable(); nicknameUpdatePreview();
 document.getElementById('nickname-preview-name').onblur = () => { nicknameUpdatePreview(); saveLocal(); };
 textureBuildTable(); textureUpdatePreview();
 if (!moodBands.length) moodFillSample(); else { moodRenderBands(); moodUpdatePreview(); }
+statBuildTable(); statUpdatePreview();
+document.getElementById('stat-preview-name').onblur = () => { statUpdatePreview(); saveLocal(); };
 renderFragments();
 buildEventFields();
 

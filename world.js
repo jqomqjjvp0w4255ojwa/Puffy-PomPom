@@ -283,7 +283,7 @@ function loadHiddenStats() {
   try {
     hiddenStatsCache = JSON.parse(fs.readFileSync(HIDDEN_STATS_FILE, 'utf8'));
   } catch (err) {
-    hiddenStatsCache = { fam: { min: 0, max: 100, bands: 7 }, aff: { min: -100, max: 100, bands: 7 }, unit: { min: 0, max: 100, bands: 7 }, nicknameGrid: [], textureGrid: [], moodBands: [] };
+    hiddenStatsCache = { fam: { min: 0, max: 100, bands: 7 }, aff: { min: -100, max: 100, bands: 7 }, unit: { min: 0, max: 100, bands: 7 }, stat: { min: 0, max: 100, bands: 7 }, nicknameGrid: [], textureGrid: [], moodBands: [], statGrid: [] };
   }
   return hiddenStatsCache;
 }
@@ -313,6 +313,16 @@ function getTextureFor(shape, hardness) {
   if (!grid || !grid.length) return null;
   const i = bandIndex(shape, stats.unit);
   const j = bandIndex(hardness, stats.unit);
+  return (grid[i] && grid[i][j]) || null;
+}
+
+function getStatBandFor(food, hp) {
+  const stats = loadHiddenStats();
+  const grid = stats.statGrid;
+  if (!grid || !grid.length) return null;
+  const statAxis = stats.stat || { min: 0, max: 100, bands: 7 };
+  const i = bandIndex(hp, statAxis);
+  const j = bandIndex(food, statAxis);
   return (grid[i] && grid[i][j]) || null;
 }
 
@@ -917,7 +927,9 @@ async function tick() {
   // 只透過一句簡短狀態描述去理解該怎麼寫，避免被硬數值門檻卡住敘述。
   // 注意：vitalLine 必須用「觸發當下」的真實數值（例如歸零瀕死）來描述，讓AI寫出對應的危急/狂喜場景；
   // 強制值是給「這次事件結束後」的重生/復原狀態存檔用，順序顛倒會讓AI同時收到矛盾訊號（叙述死亡又被告知健康穩定）。
-  const vitalLine = describeVital(bt.hp, bt.food);
+  // 觸發特殊事件時一律用內建的危急/狂喜句子（statGrid 是給日常波動用的，事件需要更強烈的固定敘述）。
+  const customVitalLine = triggeredEvent ? null : getStatBandFor(bt.food, bt.hp);
+  const vitalLine = customVitalLine || describeVital(bt.hp, bt.food);
   if (triggeredEvent === 'ascension') {
     world.characters.baituantuan = { ...bt, food: 50, hp: 120 };
     bt = world.characters.baituantuan;
