@@ -21,7 +21,7 @@
   header h1 { font-size: 16px; margin: 0; }
   header button {
     background: rgba(255,255,255,0.15); color: #fdf6ee; border: 1px solid rgba(255,255,255,0.4);
-    border-radius: 6px; padding: 6px 10px; font-size: 12px; cursor: pointer;
+    border-radius: 6px; padding: 7px 12px; font-size: 12px; cursor: pointer;
   }
   header button.danger { background: rgba(200,60,40,0.35); border-color: rgba(255,200,180,0.6); }
 
@@ -32,87 +32,134 @@
   .gh-panel.open { display: block; }
   .gh-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 8px; }
   .gh-row label { font-size: 12px; color: #6a4a2a; flex: 0 0 90px; }
-  .gh-row input { flex: 1; min-width: 160px; font-family: inherit; font-size: 12px; border: 1px solid #e8c8b0; border-radius: 6px; padding: 7px 9px; }
+  .gh-row input { flex: 1; min-width: 160px; font-family: inherit; font-size: 12px; border: 1px solid #e8c8b0; border-radius: 6px; padding: 8px 10px; }
 
-  main { padding: 16px; max-width: 760px; margin: 0 auto; }
+  main { padding: 16px; max-width: 800px; margin: 0 auto; }
 
   .tabs { display: flex; gap: 4px; margin-bottom: 4px; border-bottom: 1px solid #e8c8b0; overflow-x: auto; }
   .tab-btn {
     font-family: inherit; font-size: 13px; background: none; border: none;
-    padding: 10px 12px; cursor: pointer; color: #8a7a6a; border-bottom: 2px solid transparent; white-space: nowrap;
+    padding: 11px 13px; cursor: pointer; color: #8a7a6a; border-bottom: 2px solid transparent; white-space: nowrap;
   }
   .tab-btn.active { color: #8a5a3a; border-bottom-color: #8a5a3a; font-weight: 500; }
   .tab-panel { display: none; padding-top: 12px; }
   .tab-panel.active { display: block; }
 
+  .subtabs { display: flex; gap: 6px; margin-bottom: 14px; flex-wrap: wrap; }
+  .subtab-btn {
+    font-family: inherit; font-size: 12px; background: #fff; color: #8a7a6a;
+    border: 1px solid #e8c8b0; border-radius: 999px; padding: 7px 14px; cursor: pointer;
+  }
+  .subtab-btn.active { background: #8a5a3a; color: #fdf6ee; border-color: #8a5a3a; font-weight: 500; }
+  .subtab-panel { display: none; }
+  .subtab-panel.active { display: block; }
+
   .panel-head {
     display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap;
-    margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px dashed #e8c8b0;
+    margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px dashed #e8c8b0;
   }
   .panel-head .desc { font-size: 12px; color: #8a7a6a; line-height: 1.5; flex: 1 1 100%; }
   .panel-head .actions { display: flex; gap: 6px; align-items: center; }
 
-  .field { margin-bottom: 14px; }
-  .field label { display: block; font-size: 13px; font-weight: 500; margin-bottom: 4px; color: #6a4a2a; }
-  .field .field-desc { font-size: 11px; color: #a08868; margin-bottom: 6px; line-height: 1.5; }
+  .field { margin-bottom: 18px; }
+  .field label { display: block; font-size: 13px; font-weight: 500; margin-bottom: 5px; color: #6a4a2a; }
+  .field .field-desc { font-size: 11px; color: #a08868; margin-bottom: 7px; line-height: 1.5; }
   textarea {
-    width: 100%; font-family: inherit; font-size: 13px;
-    line-height: 1.6; border: 1px solid #e8c8b0; border-radius: 8px; padding: 10px;
-    background: #fff; color: #4a3a2a; resize: vertical;
+    width: 100%; font-family: inherit; font-size: 14px;
+    line-height: 1.8; border: 1px solid #e8c8b0; border-radius: 8px; padding: 12px 14px;
+    background: #fff; color: #4a3a2a; resize: vertical; min-height: 52px;
   }
-  textarea:focus { outline: 1px solid #e8a070; background: #fffdf8; }
+  textarea:focus { outline: 2px solid #e8a070; background: #fffdf8; }
 
   input[type=text], input[type=number], input[type=password], select {
     font-family: inherit; font-size: 13px; border: 1px solid #e8c8b0; border-radius: 6px;
-    padding: 7px 9px; background: #fff; color: #4a3a2a;
+    padding: 8px 10px; background: #fff; color: #4a3a2a;
   }
+  input:focus, select:focus { outline: 2px solid #e8a070; }
 
   .num-grid { display: grid; grid-template-columns: 1fr; gap: 10px; }
   @media (min-width: 520px) { .num-grid { grid-template-columns: 1fr 1fr; } }
-  .num-card { background: #fff; border: 1px solid #e8c8b0; border-radius: 10px; padding: 10px 12px; }
+  .num-card { background: #fff; border: 1px solid #e8c8b0; border-radius: 10px; padding: 12px 14px; }
   .num-card label { display: block; font-size: 12px; color: #6a4a2a; margin-bottom: 3px; }
-  .num-card .field-desc { font-size: 11px; color: #a08868; margin: 2px 0 6px; line-height: 1.4; }
-  .num-card input { width: 100%; }
-  .adv-block { margin-top: 14px; background: #fff; border: 1px solid #e8c8b0; border-radius: 10px; padding: 4px 12px 12px; }
-  .adv-block summary { cursor: pointer; font-size: 13px; color: #8a5a3a; padding: 8px 0; font-weight: 500; }
-  .adv-desc { font-size: 11px; color: #a08868; line-height: 1.5; margin: 4px 0 10px; }
+  .num-card .field-desc { font-size: 11px; color: #a08868; margin: 2px 0 8px; line-height: 1.4; }
+  .num-card input { width: 100%; padding: 9px 10px; font-size: 14px; }
 
   .frag-search-row { display: flex; gap: 8px; margin-bottom: 10px; }
-  .frag-search-row input { flex: 1; }
+  .frag-search-row input { flex: 1; padding: 9px 10px; }
   .frag-search-row button { white-space: nowrap; }
 
   .frag-card { background: #fff; border: 1px solid #e8c8b0; border-radius: 10px; margin-bottom: 8px; overflow: hidden; }
   .frag-summary {
-    display: flex; align-items: center; gap: 8px; padding: 10px 12px; cursor: pointer; user-select: none;
+    display: flex; align-items: center; gap: 8px; padding: 12px 14px; cursor: pointer; user-select: none;
   }
   .frag-summary .idx { font-size: 11px; color: #b07a4a; flex: 0 0 28px; }
   .frag-summary .preview { flex: 1; font-size: 12px; color: #4a3a2a; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .frag-summary .preview .src { color: #a08868; }
   .frag-summary .chevron { font-size: 11px; color: #a08868; transition: transform 0.15s; }
   .frag-card.expanded .chevron { transform: rotate(90deg); }
-  .frag-body { display: none; padding: 0 12px 12px; border-top: 1px solid #f0e4d4; }
-  .frag-card.expanded .frag-body { display: block; padding-top: 10px; }
-  .frag-body .row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+  .frag-body { display: none; padding: 0 14px 14px; border-top: 1px solid #f0e4d4; }
+  .frag-card.expanded .frag-body { display: block; padding-top: 12px; }
+  .frag-body .row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
   .frag-body .row > div { flex: 1; min-width: 130px; }
-  .frag-body label { display: block; font-size: 11px; color: #8a7a6a; margin-bottom: 2px; }
-  .frag-body input, .frag-body select, .frag-body textarea { width: 100%; font-size: 12px; padding: 6px 8px; }
-  .frag-body .del { background: #c05a3a; color: #fff; border: none; border-radius: 6px; padding: 6px 12px; cursor: pointer; font-family: inherit; font-size: 12px; }
+  .frag-body label { display: block; font-size: 11px; color: #8a7a6a; margin-bottom: 3px; }
+  .frag-body input, .frag-body select, .frag-body textarea { width: 100%; font-size: 13px; padding: 8px 9px; }
+  .frag-body .del { background: #c05a3a; color: #fff; border: none; border-radius: 6px; padding: 8px 14px; cursor: pointer; font-family: inherit; font-size: 12px; }
 
   button.primary, .panel-head button.primary {
     font-family: inherit; font-size: 12px; background: #8a5a3a; color: #f5f0e8;
-    border: none; border-radius: 6px; padding: 8px 14px; cursor: pointer;
+    border: none; border-radius: 6px; padding: 9px 16px; cursor: pointer;
   }
   button.ghost {
     font-family: inherit; font-size: 12px; background: #fff; color: #8a5a3a;
-    border: 1px solid #e8c8b0; border-radius: 6px; padding: 8px 12px; cursor: pointer;
+    border: 1px solid #e8c8b0; border-radius: 6px; padding: 9px 14px; cursor: pointer;
+  }
+  button.secondary {
+    font-family: inherit; font-size: 12px; background: #c0a888; color: #fff;
+    border: none; border-radius: 6px; padding: 9px 14px; cursor: pointer;
   }
   button:active { opacity: 0.85; }
 
-  .status-line { font-size: 11px; margin-top: 8px; min-height: 1.4em; }
+  .status-line { font-size: 11px; margin-top: 10px; min-height: 1.4em; }
   .status-line.ok { color: #5a8a4a; }
   .status-line.fail { color: #c05a3a; }
   .status-line.busy { color: #b07a4a; }
   .status-line.off { color: #a08868; }
+
+  /* ===== 暱稱/質地/心情實驗室 ===== */
+  .trait-layout { display: flex; gap: 20px; flex-wrap: wrap; align-items: flex-start; }
+  .trait-panel { background: #fff; border: 1px solid #e8c8b0; border-radius: 10px; padding: 16px; }
+  .trait-preview { width: 100%; max-width: 280px; }
+  .preview-name {
+    font-size: 24px; text-align: center; padding: 16px 8px; background: #fdf6ee;
+    border-radius: 8px; border: 1px dashed #e8c8b0; margin-bottom: 16px; min-height: 1.2em;
+  }
+  .swatch { width: 100%; height: 80px; border-radius: 8px; border: 1px solid #e8c8b0; margin-bottom: 10px; }
+  .slider-row { margin-bottom: 16px; }
+  .slider-row label { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 5px; }
+  .slider-row input[type=range] { width: 100%; height: 28px; }
+  .band-tag { font-size: 11px; color: #b07a4a; }
+  .grid-wrap { overflow: auto; max-width: 100%; flex: 1; min-width: 0; }
+  table.grid { border-collapse: collapse; font-size: 11px; }
+  table.grid th, table.grid td { border: 1px solid #e8c8b0; padding: 0; text-align: center; }
+  table.grid th { background: #f0e4d4; padding: 6px 4px; font-weight: 500; white-space: nowrap; }
+  table.grid th.corner { background: #e8d8c4; }
+  table.grid td input {
+    width: 92px; height: 46px; border: none; text-align: center;
+    font-size: 12px; font-family: inherit; background: transparent; color: #4a3a2a;
+  }
+  table.grid td input:focus { background: #fff3e0; outline: 2px solid #e8a070; }
+  table.grid td.active { background: #ffe8c8; }
+  .band-list { display: flex; flex-direction: column; gap: 10px; }
+  .band-row {
+    display: flex; align-items: center; gap: 10px; border: 1px solid #e8c8b0;
+    border-radius: 8px; padding: 10px 12px; background: #fdf6ee; flex-wrap: wrap;
+  }
+  .band-row.active { background: #ffe8c8; border-color: #e8a070; }
+  .band-row input[type=number] { font-size: 12px; padding: 8px; width: 56px; }
+  .band-row input[type=text] { flex: 1; min-width: 100px; font-family: inherit; font-size: 12px; padding: 8px 10px; }
+  .band-row input[type=color] { width: 40px; height: 40px; border: none; border-radius: 6px; padding: 0; cursor: pointer; }
+  .trait-toolbar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+  .trait-hint { font-size: 11px; color: #a08868; margin-top: 8px; line-height: 1.6; }
 </style>
 </head>
 <body>
@@ -140,6 +187,7 @@
   <div class="tabs">
     <button class="tab-btn active" data-tab="prompt" onclick="switchTab('prompt')">性格設定</button>
     <button class="tab-btn" data-tab="balance" onclick="switchTab('balance')">數值平衡</button>
+    <button class="tab-btn" data-tab="trait" onclick="switchTab('trait')">暱稱實驗室</button>
     <button class="tab-btn" data-tab="frag" onclick="switchTab('frag')">紙片碎片</button>
     <button class="tab-btn" data-tab="event" onclick="switchTab('event')">特殊事件</button>
   </div>
@@ -153,6 +201,7 @@
         <button class="primary" onclick="uploadJSON('data/system-prompt.json', collectPromptData(), 'system-status')">上傳</button>
       </div>
     </div>
+    <div class="subtabs" id="prompt-subtabs"></div>
     <div id="prompt-fields"></div>
     <div class="status-line off" id="system-status"></div>
   </div>
@@ -160,19 +209,97 @@
   <!-- ============ 數值平衡 ============ -->
   <div class="tab-panel" id="panel-balance">
     <div class="panel-head">
-      <div class="desc">控制健康/飽食每次世界更新的機械式增減，純數字、不經過 AI，跟「性格設定」是分開的兩層。</div>
+      <div class="desc">控制健康/飽食每次世界更新的機械式增減與更新頻率，純數字、不經過 AI，跟「性格設定」是分開的兩層。</div>
       <div class="actions">
         <button class="ghost" onclick="loadFromServer('balance', applyBalanceData)">↻ 拉取最新</button>
         <button class="primary" onclick="uploadJSON('data/balance.json', collectBalanceData(), 'balance-status')">上傳</button>
       </div>
     </div>
-    <div class="num-grid" id="balance-fields"></div>
-    <details class="adv-block">
-      <summary>進階：隱藏數值累積速度（熟悉度／好感度／心情／質地）</summary>
-      <div class="adv-desc">控制糰糰對巨怪的暱稱與心情怎麼隨互動變化。數字越大變化越快。互動＝巨怪當回合對房間有新動作；照顧良好＝飽食高於充足門檻且健康&gt;60；受苦＝飽食或健康過低。</div>
-      <div class="num-grid" id="balance-adv-fields"></div>
-    </details>
+    <div class="subtabs" id="balance-subtabs"></div>
+    <div id="balance-fields-wrap"></div>
     <div class="status-line off" id="balance-status"></div>
+  </div>
+
+  <!-- ============ 暱稱實驗室（隱藏數值對照表） ============ -->
+  <div class="tab-panel" id="panel-trait">
+    <div class="panel-head">
+      <div class="desc">熟悉度×好感度→暱稱、形狀×硬度→質地、心情值→顏色，三張對照表會自動依互動累積的隱藏數值即時套用，不經過 AI。</div>
+      <div class="actions">
+        <button class="ghost" onclick="loadFromServer('hidden-stats', applyTraitData)">↻ 拉取最新</button>
+        <button class="primary" onclick="uploadJSON('data/hidden-stats.json', collectTraitData(), 'trait-status')">上傳</button>
+      </div>
+    </div>
+    <div class="subtabs" id="trait-subtabs"></div>
+
+    <div class="subtab-panel active" data-group="trait" data-sub="nickname">
+      <div class="trait-toolbar">
+        <button class="secondary" onclick="nicknameFillSample()">填入範例暱稱</button>
+        <button class="secondary" onclick="nicknameClearAll()">清空全部</button>
+      </div>
+      <div class="trait-layout">
+        <div class="trait-panel trait-preview">
+          <div class="preview-name" id="nickname-preview-name">—</div>
+          <div class="slider-row">
+            <label><span>熟悉度</span><span><span id="nickname-fam-val">50</span> <span class="band-tag" id="nickname-fam-band"></span></span></label>
+            <input type="range" id="nickname-fam-slider" min="0" max="100" value="50" oninput="nicknameUpdatePreview()">
+          </div>
+          <div class="slider-row">
+            <label><span>好感度（負數＝反感，0＝中立）</span><span><span id="nickname-aff-val">0</span> <span class="band-tag" id="nickname-aff-band"></span></span></label>
+            <input type="range" id="nickname-aff-slider" min="-100" max="100" value="0" oninput="nicknameUpdatePreview()">
+          </div>
+          <div class="trait-hint">拉桿對應的格子會在右側表格高亮。</div>
+        </div>
+        <div class="trait-panel grid-wrap"><table class="grid" id="nickname-grid-table"></table></div>
+      </div>
+      <div class="trait-hint">橫軸＝好感度區段（左低右高），縱軸＝熟悉度區段（上低下高）。</div>
+    </div>
+
+    <div class="subtab-panel" data-group="trait" data-sub="texture">
+      <div class="trait-toolbar">
+        <button class="secondary" onclick="textureFillSample()">填入範例質地</button>
+        <button class="secondary" onclick="textureClearAll()">清空全部</button>
+      </div>
+      <div class="trait-layout">
+        <div class="trait-panel trait-preview">
+          <div class="preview-name" id="texture-preview-name">—</div>
+          <div class="slider-row">
+            <label><span>形狀（0=方方的 ↔ 100=圓圓的）</span><span><span id="texture-shape-val">50</span> <span class="band-tag" id="texture-shape-band"></span></span></label>
+            <input type="range" id="texture-shape-slider" min="0" max="100" value="50" oninput="textureUpdatePreview()">
+          </div>
+          <div class="slider-row">
+            <label><span>硬度（0=堅硬 ↔ 100=柔軟）</span><span><span id="texture-hard-val">50</span> <span class="band-tag" id="texture-hard-band"></span></span></label>
+            <input type="range" id="texture-hard-slider" min="0" max="100" value="50" oninput="textureUpdatePreview()">
+          </div>
+          <div class="trait-hint">這層完全隱藏、不顯示給玩家，只會微妙影響動態語氣。</div>
+        </div>
+        <div class="trait-panel grid-wrap"><table class="grid" id="texture-grid-table"></table></div>
+      </div>
+      <div class="trait-hint">橫軸＝硬度區段（左堅硬右柔軟），縱軸＝形狀區段（上方方下圓圓）。</div>
+    </div>
+
+    <div class="subtab-panel" data-group="trait" data-sub="mood">
+      <div class="trait-toolbar">
+        <button class="secondary" onclick="moodFillSample()">填入既有設定範例</button>
+        <button class="secondary" onclick="moodAddBand()">新增一段</button>
+      </div>
+      <div class="trait-layout">
+        <div class="trait-panel trait-preview">
+          <div class="swatch" id="mood-swatch"></div>
+          <div class="preview-name" id="mood-preview-name">—</div>
+          <div class="slider-row">
+            <label><span>心情值（負數＝低落，0＝中性）</span><span><span id="mood-val">0</span></span></label>
+            <input type="range" id="mood-slider" min="-100" max="100" value="0" oninput="moodUpdatePreview()">
+          </div>
+          <div class="trait-hint">心情值短期波動、會慢慢回到中性，畫面上會顯示對應色點。</div>
+        </div>
+        <div class="trait-panel" style="flex:1;min-width:280px;">
+          <div class="band-list" id="mood-band-list"></div>
+        </div>
+      </div>
+      <div class="trait-hint">每段填「最低值～最高值」「名稱」「實際顏色」，可任意新增/刪除分段。</div>
+    </div>
+
+    <div class="status-line off" id="trait-status"></div>
   </div>
 
   <!-- ============ 紙片碎片 ============ -->
@@ -201,6 +328,7 @@
         <button class="primary" onclick="uploadJSON('data/events.json', collectEventData(), 'event-status')">上傳</button>
       </div>
     </div>
+    <div class="subtabs" id="event-subtabs"></div>
     <div id="event-fields"></div>
     <div class="status-line off" id="event-status"></div>
   </div>
@@ -213,30 +341,65 @@ function switchTab(name) {
 }
 function toggleGhPanel() { document.getElementById('gh-panel').classList.toggle('open'); }
 
+// ===================== 共用：第二層分頁 =====================
+function buildSubtabs(box, group, subs, activeIndex) {
+  box.innerHTML = '';
+  subs.forEach((s, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'subtab-btn' + (i === activeIndex ? ' active' : '');
+    btn.textContent = s.label;
+    btn.onclick = () => switchSubTab(group, s.key);
+    box.appendChild(btn);
+  });
+}
+function switchSubTab(group, sub) {
+  document.querySelectorAll(`#${group}-subtabs .subtab-btn`).forEach(b => b.classList.toggle('active', b.textContent === subLabel(group, sub)));
+  document.querySelectorAll(`.subtab-panel[data-group="${group}"]`).forEach(p => p.classList.toggle('active', p.dataset.sub === sub));
+}
+function subLabel(group, key) {
+  const map = { prompt: PROMPT_GROUPS, balance: BALANCE_GROUPS, event: EVENT_GROUPS, trait: TRAIT_GROUPS };
+  const found = (map[group] || []).find(g => g.key === key);
+  return found ? found.label : '';
+}
+
 // ===================== 性格設定 =====================
+const PROMPT_GROUPS = [
+  { key: 'basic', label: '基本設定' },
+  { key: 'body', label: '身體與毛況' },
+  { key: 'rules', label: '互動規則' }
+];
 const PROMPT_SECTIONS = [
-  { key: 'identity', label: '白糰糰是誰', rows: 4 },
-  { key: 'sizeCognition', label: '尺寸與認知', rows: 4 },
-  { key: 'personality', label: '性格與信念', rows: 5 },
-  { key: 'body', label: '身體與感知（重要，別寫錯）', rows: 7 },
-  { key: 'furSystem', label: '毛況系統', rows: 3 },
-  { key: 'statBands', label: '依當前數值調整行為（健康/飽食分級）', rows: 9, desc: '糰糰的求生反應就在這段，低數值要寫出明顯危機感。' },
-  { key: 'shadow', label: '小黑影', rows: 8 },
-  { key: 'visitors', label: '訪客留言', rows: 4 },
-  { key: 'foodSource', label: '食物來源邏輯', rows: 6 },
-  { key: 'rules', label: '規則', rows: 6 }
+  { key: 'identity', label: '白糰糰是誰', rows: 4, group: 'basic' },
+  { key: 'sizeCognition', label: '尺寸與認知', rows: 4, group: 'basic' },
+  { key: 'personality', label: '性格與信念', rows: 5, group: 'basic' },
+  { key: 'body', label: '身體與感知（重要，別寫錯）', rows: 7, group: 'body' },
+  { key: 'furSystem', label: '毛況系統', rows: 3, group: 'body' },
+  { key: 'statBands', label: '依當前數值調整行為（健康/飽食分級）', rows: 9, group: 'body', desc: '糰糰的求生反應就在這段，低數值要寫出明顯危機感。' },
+  { key: 'shadow', label: '小黑影', rows: 8, group: 'rules' },
+  { key: 'visitors', label: '訪客留言', rows: 4, group: 'rules' },
+  { key: 'foodSource', label: '食物來源邏輯', rows: 6, group: 'rules' },
+  { key: 'rules', label: '規則', rows: 6, group: 'rules' }
 ];
 let promptData = {};
+let promptActiveGroup = 'basic';
 function buildPromptFields() {
+  buildSubtabs(document.getElementById('prompt-subtabs'), 'prompt', PROMPT_GROUPS, PROMPT_GROUPS.findIndex(g => g.key === promptActiveGroup));
   const box = document.getElementById('prompt-fields');
   box.innerHTML = '';
-  PROMPT_SECTIONS.forEach(sec => {
-    const div = document.createElement('div');
-    div.className = 'field';
-    div.innerHTML = `<label>${sec.label}</label>${sec.desc ? `<div class="field-desc">${sec.desc}</div>` : ''}<textarea id="prompt-${sec.key}" rows="${sec.rows}"></textarea>`;
-    box.appendChild(div);
-    div.querySelector('textarea').value = promptData[sec.key] || '';
-    div.querySelector('textarea').oninput = e => { promptData[sec.key] = e.target.value; saveLocal(); };
+  PROMPT_GROUPS.forEach(g => {
+    const groupBox = document.createElement('div');
+    groupBox.className = 'subtab-panel' + (g.key === promptActiveGroup ? ' active' : '');
+    groupBox.dataset.group = 'prompt';
+    groupBox.dataset.sub = g.key;
+    PROMPT_SECTIONS.filter(sec => sec.group === g.key).forEach(sec => {
+      const div = document.createElement('div');
+      div.className = 'field';
+      div.innerHTML = `<label>${sec.label}</label>${sec.desc ? `<div class="field-desc">${sec.desc}</div>` : ''}<textarea id="prompt-${sec.key}" rows="${sec.rows}"></textarea>`;
+      groupBox.appendChild(div);
+      div.querySelector('textarea').value = promptData[sec.key] || '';
+      div.querySelector('textarea').oninput = e => { promptData[sec.key] = e.target.value; saveLocal(); };
+    });
+    box.appendChild(groupBox);
   });
 }
 function applyPromptData(data) { promptData = data || {}; buildPromptFields(); }
@@ -247,35 +410,40 @@ function collectPromptData() {
 }
 
 // ===================== 數值平衡 =====================
+const BALANCE_GROUPS = [
+  { key: 'basic', label: '基礎衰減' },
+  { key: 'adv', label: '隱藏數值累積／回覆頻率' }
+];
 const BALANCE_FIELDS = [
-  { key: 'foodDeltaWindowOpen', label: '飽食變化／窗開', desc: '每次更新增減值，通常是負數' },
-  { key: 'foodDeltaWindowClosed', label: '飽食變化／窗關', desc: '窗關通常掉更快' },
-  { key: 'lowFoodThreshold', label: '飽食過低門檻', desc: '低於這個值會開始扣健康' },
-  { key: 'lowFoodHpDelta', label: '低飽食時健康變化', desc: '通常是負數' },
-  { key: 'highFoodThreshold', label: '飽食充足門檻', desc: '高於這個值健康會緩慢回復' },
-  { key: 'highFoodHpDelta', label: '高飽食時健康變化', desc: '通常是正數' }
+  { key: 'foodDeltaWindowOpen', label: '飽食變化／窗開', desc: '每次更新增減值，通常是負數', group: 'basic' },
+  { key: 'foodDeltaWindowClosed', label: '飽食變化／窗關', desc: '窗關通常掉更快', group: 'basic' },
+  { key: 'lowFoodThreshold', label: '飽食過低門檻', desc: '低於這個值會開始扣健康', group: 'basic' },
+  { key: 'lowFoodHpDelta', label: '低飽食時健康變化', desc: '通常是負數', group: 'basic' },
+  { key: 'highFoodThreshold', label: '飽食充足門檻', desc: '高於這個值健康會緩慢回復', group: 'basic' },
+  { key: 'highFoodHpDelta', label: '高飽食時健康變化', desc: '通常是正數', group: 'basic' }
 ];
 const BALANCE_ADV_FIELDS = [
-  { key: 'familiarityPresent', label: '熟悉度／巨怪在場', desc: '巨怪沒外出時每回合加', step: 1 },
-  { key: 'familiarityInteract', label: '熟悉度／有互動加成', desc: '當回合有新動作時額外加', step: 1 },
-  { key: 'familiarityAwayDecay', label: '熟悉度／外出變化', desc: '外出時的增減，預設0（不倒退）', step: 1 },
-  { key: 'affectionInteract', label: '好感度／有互動', desc: '當回合有新動作時加', step: 1 },
-  { key: 'affectionWellCared', label: '好感度／照顧良好', desc: '飽食足且健康好時加', step: 1 },
-  { key: 'affectionAway', label: '好感度／外出冷落', desc: '外出時的變化，通常負數', step: 1 },
-  { key: 'affectionNeglect', label: '好感度／受苦', desc: '飽食或健康過低時，通常負數', step: 1 },
-  { key: 'moodDecay', label: '心情回歸速度 0~1', desc: '每回合朝中性回歸的比例', step: 0.05 },
-  { key: 'moodInteract', label: '心情／有互動', desc: '當回合有新動作時加', step: 1 },
-  { key: 'moodWellCared', label: '心情／照顧良好', desc: '飽食足且健康好時加', step: 1 },
-  { key: 'moodCrisis', label: '心情／受苦', desc: '飽食或健康過低時，通常負數', step: 1 },
-  { key: 'moodAway', label: '心情／外出', desc: '外出時的變化，通常負數', step: 1 },
-  { key: 'moodVisitor', label: '心情／有訪客', desc: '當回合有訪客留言時加', step: 1 },
-  { key: 'textureEase', label: '質地靠近速度 0~1', desc: '形狀/硬度朝目標靠近的比例', step: 0.01 },
-  { key: 'tickDayMinMin', label: '回覆頻率／白天最短(分)', desc: '06:00~22:00 之間，每次更新間隔下限', step: 1 },
-  { key: 'tickDayMaxMin', label: '回覆頻率／白天最長(分)', desc: '06:00~22:00 之間，每次更新間隔上限', step: 1 },
-  { key: 'tickNightMinMin', label: '回覆頻率／夜間最短(分)', desc: '22:00~06:00 之間，每次更新間隔下限', step: 1 },
-  { key: 'tickNightMaxMin', label: '回覆頻率／夜間最長(分)', desc: '22:00~06:00 之間，每次更新間隔上限', step: 1 }
+  { key: 'familiarityPresent', label: '熟悉度／巨怪在場', desc: '巨怪沒外出時每回合加', step: 1, group: 'adv' },
+  { key: 'familiarityInteract', label: '熟悉度／有互動加成', desc: '當回合有新動作時額外加', step: 1, group: 'adv' },
+  { key: 'familiarityAwayDecay', label: '熟悉度／外出變化', desc: '外出時的增減，預設0（不倒退）', step: 1, group: 'adv' },
+  { key: 'affectionInteract', label: '好感度／有互動', desc: '當回合有新動作時加', step: 1, group: 'adv' },
+  { key: 'affectionWellCared', label: '好感度／照顧良好', desc: '飽食足且健康好時加', step: 1, group: 'adv' },
+  { key: 'affectionAway', label: '好感度／外出冷落', desc: '外出時的變化，通常負數', step: 1, group: 'adv' },
+  { key: 'affectionNeglect', label: '好感度／受苦', desc: '飽食或健康過低時，通常負數', step: 1, group: 'adv' },
+  { key: 'moodDecay', label: '心情回歸速度 0~1', desc: '每回合朝中性回歸的比例', step: 0.05, group: 'adv' },
+  { key: 'moodInteract', label: '心情／有互動', desc: '當回合有新動作時加', step: 1, group: 'adv' },
+  { key: 'moodWellCared', label: '心情／照顧良好', desc: '飽食足且健康好時加', step: 1, group: 'adv' },
+  { key: 'moodCrisis', label: '心情／受苦', desc: '飽食或健康過低時，通常負數', step: 1, group: 'adv' },
+  { key: 'moodAway', label: '心情／外出', desc: '外出時的變化，通常負數', step: 1, group: 'adv' },
+  { key: 'moodVisitor', label: '心情／有訪客', desc: '當回合有訪客留言時加', step: 1, group: 'adv' },
+  { key: 'textureEase', label: '質地靠近速度 0~1', desc: '形狀/硬度朝目標靠近的比例', step: 0.01, group: 'adv' },
+  { key: 'tickDayMinMin', label: '回覆頻率／白天最短(分)', desc: '06:00~22:00 之間，每次更新間隔下限', step: 1, group: 'adv' },
+  { key: 'tickDayMaxMin', label: '回覆頻率／白天最長(分)', desc: '06:00~22:00 之間，每次更新間隔上限', step: 1, group: 'adv' },
+  { key: 'tickNightMinMin', label: '回覆頻率／夜間最短(分)', desc: '22:00~06:00 之間，每次更新間隔下限', step: 1, group: 'adv' },
+  { key: 'tickNightMaxMin', label: '回覆頻率／夜間最長(分)', desc: '22:00~06:00 之間，每次更新間隔上限', step: 1, group: 'adv' }
 ];
 let balanceData = {};
+let balanceActiveGroup = 'basic';
 function buildBalanceCards(box, fields) {
   box.innerHTML = '';
   fields.forEach(f => {
@@ -288,14 +456,238 @@ function buildBalanceCards(box, fields) {
   });
 }
 function buildBalanceFields() {
-  buildBalanceCards(document.getElementById('balance-fields'), BALANCE_FIELDS);
-  buildBalanceCards(document.getElementById('balance-adv-fields'), BALANCE_ADV_FIELDS);
+  buildSubtabs(document.getElementById('balance-subtabs'), 'balance', BALANCE_GROUPS, BALANCE_GROUPS.findIndex(g => g.key === balanceActiveGroup));
+  const wrap = document.getElementById('balance-fields-wrap');
+  wrap.innerHTML = '';
+  const basicBox = document.createElement('div');
+  basicBox.className = 'subtab-panel num-grid' + (balanceActiveGroup === 'basic' ? ' active' : '');
+  basicBox.dataset.group = 'balance'; basicBox.dataset.sub = 'basic';
+  const advBox = document.createElement('div');
+  advBox.className = 'subtab-panel num-grid' + (balanceActiveGroup === 'adv' ? ' active' : '');
+  advBox.dataset.group = 'balance'; advBox.dataset.sub = 'adv';
+  wrap.appendChild(basicBox);
+  wrap.appendChild(advBox);
+  buildBalanceCards(basicBox, BALANCE_FIELDS);
+  buildBalanceCards(advBox, BALANCE_ADV_FIELDS);
 }
 function applyBalanceData(data) { balanceData = data || {}; buildBalanceFields(); }
 function collectBalanceData() {
   const out = {};
   [...BALANCE_FIELDS, ...BALANCE_ADV_FIELDS].forEach(f => { out[f.key] = Number(document.getElementById(`balance-${f.key}`).value); });
   return out;
+}
+
+// ===================== 暱稱實驗室（暱稱/質地/心情色彩） =====================
+const TRAIT_GROUPS = [
+  { key: 'nickname', label: '暱稱實驗室' },
+  { key: 'texture', label: '質地實驗室' },
+  { key: 'mood', label: '心情色彩實驗室' }
+];
+const BANDS = 7;
+function makeBandHelper(min, max, bands) {
+  const edges = [];
+  for (let i = 0; i <= bands; i++) edges.push(Math.round(min + i * (max - min) / bands));
+  return {
+    edges,
+    index(value) {
+      for (let i = 0; i < bands; i++) {
+        if (value <= edges[i + 1] || i === bands - 1) return i;
+      }
+      return bands - 1;
+    },
+    label(i) { return `${edges[i]}–${edges[i + 1]}`; }
+  };
+}
+const FAM = makeBandHelper(0, 100, BANDS);
+const AFF = makeBandHelper(-100, 100, BANDS);
+const UNIT = makeBandHelper(0, 100, BANDS);
+
+let nicknameGrid = Array.from({ length: BANDS }, () => Array.from({ length: BANDS }, () => ''));
+let textureGrid = Array.from({ length: BANDS }, () => Array.from({ length: BANDS }, () => ''));
+let moodBands = [];
+
+function nicknameBuildTable() {
+  const table = document.getElementById('nickname-grid-table');
+  table.innerHTML = '';
+  const headRow = document.createElement('tr');
+  headRow.innerHTML = `<th class="corner">熟悉度 ＼ 好感度</th>` +
+    Array.from({ length: BANDS }, (_, j) => `<th>${AFF.label(j)}</th>`).join('');
+  table.appendChild(headRow);
+  for (let i = 0; i < BANDS; i++) {
+    const row = document.createElement('tr');
+    const th = document.createElement('th');
+    th.textContent = FAM.label(i);
+    row.appendChild(th);
+    for (let j = 0; j < BANDS; j++) {
+      const td = document.createElement('td');
+      td.id = `nickname-cell-${i}-${j}`;
+      const input = document.createElement('input');
+      input.value = nicknameGrid[i][j];
+      input.placeholder = '暱稱';
+      input.oninput = () => { nicknameGrid[i][j] = input.value; nicknameUpdatePreview(); saveLocal(); };
+      td.appendChild(input);
+      row.appendChild(td);
+    }
+    table.appendChild(row);
+  }
+}
+function nicknameUpdatePreview() {
+  const fam = Number(document.getElementById('nickname-fam-slider').value);
+  const aff = Number(document.getElementById('nickname-aff-slider').value);
+  document.getElementById('nickname-fam-val').textContent = fam;
+  document.getElementById('nickname-aff-val').textContent = aff;
+  const fi = FAM.index(fam), aj = AFF.index(aff);
+  document.getElementById('nickname-fam-band').textContent = `(${FAM.label(fi)})`;
+  document.getElementById('nickname-aff-band').textContent = `(${AFF.label(aj)})`;
+  document.querySelectorAll('#panel-trait td.active').forEach(td => td.classList.remove('active'));
+  const cell = document.getElementById(`nickname-cell-${fi}-${aj}`);
+  if (cell) cell.classList.add('active');
+  document.getElementById('nickname-preview-name').textContent = nicknameGrid[fi][aj] || '（這格還沒填）';
+}
+function nicknameClearAll() {
+  if (!confirm('確定清空所有暱稱？這會清掉已經填的內容，請先確定要重填。')) return;
+  nicknameGrid = Array.from({ length: BANDS }, () => Array.from({ length: BANDS }, () => ''));
+  nicknameBuildTable(); nicknameUpdatePreview(); saveLocal();
+}
+function nicknameFillSample() {
+  nicknameGrid = [
+    ['巨怪','巨怪','無毛柱','無毛柱','竿子','竿子','裸糰'],
+    ['巨怪','無毛柱','無毛柱','竿子','竿子','裸糰','裸糰'],
+    ['無毛柱','無毛柱','竿子','竿子','裸糰','裸糰','大毛巢'],
+    ['無毛柱','竿子','竿子','裸糰','裸糰','大毛巢','大毛巢'],
+    ['竿子','竿子','裸糰','裸糰','大毛巢','大毛巢','暖窩主'],
+    ['竿子','裸糰','裸糰','大毛巢','大毛巢','暖窩主','暖窩主'],
+    ['裸糰','裸糰','大毛巢','大毛巢','暖窩主','暖窩主','毛家人'],
+  ];
+  nicknameBuildTable(); nicknameUpdatePreview(); saveLocal();
+}
+
+function textureBuildTable() {
+  const table = document.getElementById('texture-grid-table');
+  table.innerHTML = '';
+  const headRow = document.createElement('tr');
+  headRow.innerHTML = `<th class="corner">形狀 ＼ 硬度</th>` +
+    Array.from({ length: BANDS }, (_, j) => `<th>${UNIT.label(j)}</th>`).join('');
+  table.appendChild(headRow);
+  for (let i = 0; i < BANDS; i++) {
+    const row = document.createElement('tr');
+    const th = document.createElement('th');
+    th.textContent = UNIT.label(i);
+    row.appendChild(th);
+    for (let j = 0; j < BANDS; j++) {
+      const td = document.createElement('td');
+      td.id = `texture-cell-${i}-${j}`;
+      const input = document.createElement('input');
+      input.value = textureGrid[i][j];
+      input.placeholder = '質地';
+      input.oninput = () => { textureGrid[i][j] = input.value; textureUpdatePreview(); saveLocal(); };
+      td.appendChild(input);
+      row.appendChild(td);
+    }
+    table.appendChild(row);
+  }
+}
+function textureUpdatePreview() {
+  const shape = Number(document.getElementById('texture-shape-slider').value);
+  const hard = Number(document.getElementById('texture-hard-slider').value);
+  document.getElementById('texture-shape-val').textContent = shape;
+  document.getElementById('texture-hard-val').textContent = hard;
+  const si = UNIT.index(shape), hj = UNIT.index(hard);
+  document.getElementById('texture-shape-band').textContent = `(${UNIT.label(si)})`;
+  document.getElementById('texture-hard-band').textContent = `(${UNIT.label(hj)})`;
+  document.querySelectorAll('#panel-trait td.active').forEach(td => td.classList.remove('active'));
+  const cell = document.getElementById(`texture-cell-${si}-${hj}`);
+  if (cell) cell.classList.add('active');
+  document.getElementById('texture-preview-name').textContent = textureGrid[si][hj] || '（這格還沒填）';
+}
+function textureClearAll() {
+  if (!confirm('確定清空所有質地？這會清掉已經填的內容，請先確定要重填。')) return;
+  textureGrid = Array.from({ length: BANDS }, () => Array.from({ length: BANDS }, () => ''));
+  textureBuildTable(); textureUpdatePreview(); saveLocal();
+}
+function textureFillSample() {
+  textureGrid = [
+    ['木木的','木木的','刺刺的','刺刺的','刺刺的','滑滑的','滑滑的'],
+    ['木木的','刺刺的','刺刺的','刺刺的','滑滑的','滑滑的','蹦蹦的'],
+    ['刺刺的','刺刺的','刺刺的','滑滑的','滑滑的','蹦蹦的','蹦蹦的'],
+    ['刺刺的','刺刺的','滑滑的','滑滑的','蹦蹦的','蹦蹦的','蹦蹦的'],
+    ['刺刺的','滑滑的','滑滑的','蹦蹦的','蹦蹦的','蹦蹦的','蹦蹦的'],
+    ['滑滑的','滑滑的','蹦蹦的','蹦蹦的','蹦蹦的','蹦蹦的','蹦蹦的'],
+    ['滑滑的','蹦蹦的','蹦蹦的','蹦蹦的','蹦蹦的','蹦蹦的','蹦蹦的'],
+  ];
+  textureBuildTable(); textureUpdatePreview(); saveLocal();
+}
+
+function moodAddBand(min = 0, max = 100, name = '', color = '#cccccc') {
+  moodBands.push({ min, max, name, color });
+  moodBands.sort((a, b) => a.min - b.min);
+  moodRenderBands(); moodUpdatePreview(); saveLocal();
+}
+function moodRenderBands() {
+  const list = document.getElementById('mood-band-list');
+  list.innerHTML = '';
+  moodBands.forEach((b, idx) => {
+    const row = document.createElement('div');
+    row.className = 'band-row';
+    row.id = `mood-band-${idx}`;
+    row.innerHTML = `
+      <input type="number" value="${b.min}" min="-100" max="100" />
+      <span>～</span>
+      <input type="number" value="${b.max}" min="-100" max="100" />
+      <input type="text" value="${b.name}" placeholder="例如：螢光黃" />
+      <input type="color" value="${b.color}" />
+      <button class="ghost" style="padding:8px 12px;">刪除</button>
+    `;
+    const [minInput, maxInput, nameInput, colorInput] = row.querySelectorAll('input');
+    const delBtn = row.querySelector('button');
+    minInput.oninput = () => { moodBands[idx].min = Number(minInput.value); moodUpdatePreview(); saveLocal(); };
+    maxInput.oninput = () => { moodBands[idx].max = Number(maxInput.value); moodUpdatePreview(); saveLocal(); };
+    nameInput.oninput = () => { moodBands[idx].name = nameInput.value; moodUpdatePreview(); saveLocal(); };
+    colorInput.oninput = () => { moodBands[idx].color = colorInput.value; moodUpdatePreview(); saveLocal(); };
+    delBtn.onclick = () => {
+      if (!confirm(`確定刪除「${moodBands[idx].name || '這段'}」？`)) return;
+      moodBands.splice(idx, 1); moodRenderBands(); moodUpdatePreview(); saveLocal();
+    };
+    list.appendChild(row);
+  });
+}
+function moodFindBand(value) { return moodBands.find(b => value >= b.min && value <= b.max) || null; }
+function moodUpdatePreview() {
+  const mood = Number(document.getElementById('mood-slider').value);
+  document.getElementById('mood-val').textContent = mood;
+  document.querySelectorAll('#panel-trait .band-row.active').forEach(r => r.classList.remove('active'));
+  const band = moodFindBand(mood);
+  const idx = moodBands.indexOf(band);
+  if (idx >= 0) document.getElementById(`mood-band-${idx}`).classList.add('active');
+  document.getElementById('mood-swatch').style.backgroundColor = band ? band.color : '#fdf6ee';
+  document.getElementById('mood-preview-name').textContent = band ? (band.name || '（這段還沒命名）') : '（沒有對應分段）';
+}
+function moodFillSample() {
+  moodBands = [
+    { min: -100, max: -50, name: '臭臭黑（不安）', color: '#3a3530' },
+    { min: -49, max: -1, name: '漂浮灰（寂寞）', color: '#b0b0b0' },
+    { min: 0, max: 49, name: '未完成磁斑（平靜/思念）', color: '#9aa8c0' },
+    { min: 50, max: 100, name: '螢光黃（快樂）', color: '#f0e040' },
+  ];
+  moodRenderBands(); moodUpdatePreview(); saveLocal();
+}
+
+function applyTraitData(data) {
+  if (!data) data = {};
+  nicknameGrid = (data.nicknameGrid && data.nicknameGrid.length === BANDS) ? data.nicknameGrid : nicknameGrid;
+  textureGrid = (data.textureGrid && data.textureGrid.length === BANDS) ? data.textureGrid : textureGrid;
+  moodBands = Array.isArray(data.moodBands) && data.moodBands.length ? data.moodBands : moodBands;
+  nicknameBuildTable(); nicknameUpdatePreview();
+  textureBuildTable(); textureUpdatePreview();
+  moodRenderBands(); moodUpdatePreview();
+}
+function collectTraitData() {
+  return {
+    fam: { min: 0, max: 100, bands: BANDS },
+    aff: { min: -100, max: 100, bands: BANDS },
+    unit: { min: 0, max: 100, bands: BANDS },
+    nicknameGrid, textureGrid, moodBands
+  };
 }
 
 // ===================== 紙片碎片 =====================
@@ -379,22 +771,36 @@ function collectFragData() { return fragData; }
 function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
 
 // ===================== 特殊事件文案 =====================
+const EVENT_GROUPS = [
+  { key: 'ascension', label: '飛升篇' },
+  { key: 'shadowRevenge', label: '冥影與霜解篇' },
+  { key: 'observation', label: '觀察篇' }
+];
 const EVENT_FIELDS = [
-  { key: 'ascension', label: '飛升篇（健康＋飽食同時滿值）', rows: 7 },
-  { key: 'shadowRevenge', label: '冥影與霜解篇（健康＋飽食同時歸零）', rows: 5 },
-  { key: 'observation', label: '觀察篇（玩家輸入觸發旁白）', rows: 3 }
+  { key: 'ascension', label: '飛升篇（健康＋飽食同時滿值）', rows: 9, group: 'ascension' },
+  { key: 'shadowRevenge', label: '冥影與霜解篇（健康＋飽食同時歸零）', rows: 7, group: 'shadowRevenge' },
+  { key: 'observation', label: '觀察篇（玩家輸入觸發旁白）', rows: 5, group: 'observation' }
 ];
 let eventData = {};
+let eventActiveGroup = 'ascension';
 function buildEventFields() {
+  buildSubtabs(document.getElementById('event-subtabs'), 'event', EVENT_GROUPS, EVENT_GROUPS.findIndex(g => g.key === eventActiveGroup));
   const box = document.getElementById('event-fields');
   box.innerHTML = '';
-  EVENT_FIELDS.forEach(ev => {
-    const div = document.createElement('div');
-    div.className = 'field';
-    div.innerHTML = `<label>${ev.label}</label><textarea id="event-${ev.key}" rows="${ev.rows}"></textarea>`;
-    box.appendChild(div);
-    div.querySelector('textarea').value = eventData[ev.key] || '';
-    div.querySelector('textarea').oninput = e => { eventData[ev.key] = e.target.value; saveLocal(); };
+  EVENT_GROUPS.forEach(g => {
+    const groupBox = document.createElement('div');
+    groupBox.className = 'subtab-panel' + (g.key === eventActiveGroup ? ' active' : '');
+    groupBox.dataset.group = 'event';
+    groupBox.dataset.sub = g.key;
+    EVENT_FIELDS.filter(ev => ev.group === g.key).forEach(ev => {
+      const div = document.createElement('div');
+      div.className = 'field';
+      div.innerHTML = `<label>${ev.label}</label><textarea id="event-${ev.key}" rows="${ev.rows}"></textarea>`;
+      groupBox.appendChild(div);
+      div.querySelector('textarea').value = eventData[ev.key] || '';
+      div.querySelector('textarea').oninput = e => { eventData[ev.key] = e.target.value; saveLocal(); };
+    });
+    box.appendChild(groupBox);
   });
 }
 function applyEventData(data) { eventData = data || {}; buildEventFields(); }
@@ -405,9 +811,14 @@ function collectEventData() {
 }
 
 // ===================== 本地暫存（localStorage） =====================
-const STORAGE_KEY = 'puffy-content-lab-v2';
+const STORAGE_KEY = 'puffy-content-lab-v3';
 function saveLocal() {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify({ promptData: collectPromptData(), balanceData: collectBalanceData(), fragData, eventData: collectEventData() })); } catch (e) {}
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      promptData: collectPromptData(), balanceData: collectBalanceData(),
+      fragData, eventData: collectEventData(), traitData: collectTraitData()
+    }));
+  } catch (e) {}
 }
 function loadLocal() {
   try {
@@ -418,6 +829,11 @@ function loadLocal() {
     if (d.balanceData) balanceData = d.balanceData;
     if (d.fragData) fragData = d.fragData;
     if (d.eventData) eventData = d.eventData;
+    if (d.traitData) {
+      if (d.traitData.nicknameGrid) nicknameGrid = d.traitData.nicknameGrid;
+      if (d.traitData.textureGrid) textureGrid = d.traitData.textureGrid;
+      if (d.traitData.moodBands) moodBands = d.traitData.moodBands;
+    }
     return true;
   } catch (e) { return false; }
 }
@@ -503,6 +919,10 @@ setStatus('gh-status', localStorage.getItem(GH_TOKEN_KEY) ? 'ok' : 'off', localS
 const restored = loadLocal();
 buildPromptFields();
 buildBalanceFields();
+buildSubtabs(document.getElementById('trait-subtabs'), 'trait', TRAIT_GROUPS, 0);
+nicknameBuildTable(); nicknameUpdatePreview();
+textureBuildTable(); textureUpdatePreview();
+if (!moodBands.length) moodFillSample(); else { moodRenderBands(); moodUpdatePreview(); }
 renderFragments();
 buildEventFields();
 
@@ -511,6 +931,7 @@ if (!restored) {
   loadFromServer('balance', applyBalanceData);
   loadFromServer('fragments', applyFragData);
   loadFromServer('events', applyEventData);
+  loadFromServer('hidden-stats', applyTraitData);
 }
 </script>
 
