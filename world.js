@@ -915,6 +915,9 @@ async function tick() {
 
   // 健康/飽食完全由機制決定（衰減、餵食加成、特殊事件強制值），AI不再直接控制這兩個數字，
   // 只透過一句簡短狀態描述去理解該怎麼寫，避免被硬數值門檻卡住敘述。
+  // 注意：vitalLine 必須用「觸發當下」的真實數值（例如歸零瀕死）來描述，讓AI寫出對應的危急/狂喜場景；
+  // 強制值是給「這次事件結束後」的重生/復原狀態存檔用，順序顛倒會讓AI同時收到矛盾訊號（叙述死亡又被告知健康穩定）。
+  const vitalLine = describeVital(bt.hp, bt.food);
   if (triggeredEvent === 'ascension') {
     world.characters.baituantuan = { ...bt, food: 50, hp: 120 };
     bt = world.characters.baituantuan;
@@ -922,7 +925,6 @@ async function tick() {
     world.characters.baituantuan = { ...bt, food: 60, hp: 60 };
     bt = world.characters.baituantuan;
   }
-  const vitalLine = describeVital(bt.hp, bt.food);
 
   const weather = await fetchWeather() || world.weather || null;
   const weatherInput = weather

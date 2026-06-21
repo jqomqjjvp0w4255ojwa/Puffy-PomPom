@@ -745,6 +745,9 @@ const TRAIT_GROUPS = [
   { key: 'mood', label: '心情色彩實驗室' }
 ];
 const BANDS = 7;
+const FAM_BANDS = 7;
+const AFF_BANDS = 9; // 好感度含負值（反感~中立~喜愛），格數比熟悉度多，避免正負分到的格子太粗
+const UNIT_BANDS = 7;
 function makeBandHelper(min, max, bands) {
   const edges = [];
   for (let i = 0; i <= bands; i++) edges.push(Math.round(min + i * (max - min) / bands));
@@ -759,12 +762,12 @@ function makeBandHelper(min, max, bands) {
     label(i) { return `${edges[i]}–${edges[i + 1]}`; }
   };
 }
-const FAM = makeBandHelper(0, 100, BANDS);
-const AFF = makeBandHelper(-100, 100, BANDS);
-const UNIT = makeBandHelper(0, 100, BANDS);
+const FAM = makeBandHelper(0, 100, FAM_BANDS);
+const AFF = makeBandHelper(-100, 100, AFF_BANDS);
+const UNIT = makeBandHelper(0, 100, UNIT_BANDS);
 
-let nicknameGrid = Array.from({ length: BANDS }, () => Array.from({ length: BANDS }, () => ''));
-let textureGrid = Array.from({ length: BANDS }, () => Array.from({ length: BANDS }, () => ''));
+let nicknameGrid = Array.from({ length: FAM_BANDS }, () => Array.from({ length: AFF_BANDS }, () => ''));
+let textureGrid = Array.from({ length: UNIT_BANDS }, () => Array.from({ length: UNIT_BANDS }, () => ''));
 let moodBands = [];
 
 function nicknameBuildTable() {
@@ -772,14 +775,14 @@ function nicknameBuildTable() {
   table.innerHTML = '';
   const headRow = document.createElement('tr');
   headRow.innerHTML = `<th class="corner">熟悉度 ＼ 好感度</th>` +
-    Array.from({ length: BANDS }, (_, j) => `<th>${AFF.label(j)}</th>`).join('');
+    Array.from({ length: AFF_BANDS }, (_, j) => `<th>${AFF.label(j)}</th>`).join('');
   table.appendChild(headRow);
-  for (let i = 0; i < BANDS; i++) {
+  for (let i = 0; i < FAM_BANDS; i++) {
     const row = document.createElement('tr');
     const th = document.createElement('th');
     th.textContent = FAM.label(i);
     row.appendChild(th);
-    for (let j = 0; j < BANDS; j++) {
+    for (let j = 0; j < AFF_BANDS; j++) {
       const td = document.createElement('td');
       td.id = `nickname-cell-${i}-${j}`;
       const input = document.createElement('input');
@@ -814,18 +817,18 @@ function nicknameUpdatePreview() {
 }
 function nicknameClearAll() {
   if (!confirm('確定清空所有暱稱？這會清掉已經填的內容，請先確定要重填。')) return;
-  nicknameGrid = Array.from({ length: BANDS }, () => Array.from({ length: BANDS }, () => ''));
+  nicknameGrid = Array.from({ length: FAM_BANDS }, () => Array.from({ length: AFF_BANDS }, () => ''));
   nicknameBuildTable(); nicknameUpdatePreview(); saveLocal();
 }
 function nicknameFillSample() {
   nicknameGrid = [
-    ['巨怪','巨怪','無毛柱','無毛柱','竿子','竿子','裸糰'],
-    ['巨怪','無毛柱','無毛柱','竿子','竿子','裸糰','裸糰'],
-    ['無毛柱','無毛柱','竿子','竿子','裸糰','裸糰','大毛巢'],
-    ['無毛柱','竿子','竿子','裸糰','裸糰','大毛巢','大毛巢'],
-    ['竿子','竿子','裸糰','裸糰','大毛巢','大毛巢','暖窩主'],
-    ['竿子','裸糰','裸糰','大毛巢','大毛巢','暖窩主','暖窩主'],
-    ['裸糰','裸糰','大毛巢','大毛巢','暖窩主','暖窩主','毛家人'],
+    ['巨怪','巨怪','巨怪','無毛柱','無毛柱','竿子','竿子','裸糰','裸糰'],
+    ['巨怪','巨怪','無毛柱','無毛柱','竿子','竿子','裸糰','裸糰','大毛巢'],
+    ['巨怪','無毛柱','無毛柱','竿子','竿子','裸糰','裸糰','大毛巢','大毛巢'],
+    ['無毛柱','無毛柱','竿子','竿子','裸糰','裸糰','大毛巢','大毛巢','暖窩主'],
+    ['無毛柱','竿子','竿子','裸糰','裸糰','大毛巢','大毛巢','暖窩主','暖窩主'],
+    ['竿子','竿子','裸糰','裸糰','大毛巢','大毛巢','暖窩主','暖窩主','毛家人'],
+    ['竿子','裸糰','裸糰','大毛巢','大毛巢','暖窩主','暖窩主','毛家人','毛家人'],
   ];
   nicknameBuildTable(); nicknameUpdatePreview(); saveLocal();
 }
@@ -942,8 +945,8 @@ function moodFillSample() {
 
 function applyTraitData(data) {
   if (!data) data = {};
-  nicknameGrid = (data.nicknameGrid && data.nicknameGrid.length === BANDS) ? data.nicknameGrid : nicknameGrid;
-  textureGrid = (data.textureGrid && data.textureGrid.length === BANDS) ? data.textureGrid : textureGrid;
+  nicknameGrid = (data.nicknameGrid && data.nicknameGrid.length === FAM_BANDS) ? data.nicknameGrid : nicknameGrid;
+  textureGrid = (data.textureGrid && data.textureGrid.length === UNIT_BANDS) ? data.textureGrid : textureGrid;
   moodBands = Array.isArray(data.moodBands) && data.moodBands.length ? data.moodBands : moodBands;
   nicknameBuildTable(); nicknameUpdatePreview();
   textureBuildTable(); textureUpdatePreview();
@@ -951,9 +954,9 @@ function applyTraitData(data) {
 }
 function collectTraitData() {
   return {
-    fam: { min: 0, max: 100, bands: BANDS },
-    aff: { min: -100, max: 100, bands: BANDS },
-    unit: { min: 0, max: 100, bands: BANDS },
+    fam: { min: 0, max: 100, bands: FAM_BANDS },
+    aff: { min: -100, max: 100, bands: AFF_BANDS },
+    unit: { min: 0, max: 100, bands: UNIT_BANDS },
     nicknameGrid, textureGrid, moodBands
   };
 }
