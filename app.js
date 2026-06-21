@@ -663,6 +663,25 @@ async function load() {
     } else {
       furLine.style.display = 'none';
     }
+
+    // 糰糰對巨怪的稱呼（隨熟悉度/好感度變化）
+    const nickLine = document.getElementById('nick-line');
+    if (bt.nickname) {
+      document.getElementById('nick-tag').textContent = bt.nickname;
+      nickLine.style.display = 'flex';
+    } else {
+      nickLine.style.display = 'none';
+    }
+
+    // 心情色彩
+    const moodLine = document.getElementById('mood-line');
+    if (bt.mood_color && bt.mood_color.name) {
+      document.getElementById('mood-dot').style.backgroundColor = bt.mood_color.color || '#ccc';
+      document.getElementById('mood-tag').textContent = bt.mood_color.name;
+      moodLine.style.display = 'flex';
+    } else {
+      moodLine.style.display = 'none';
+    }
     document.getElementById('shadow-tag').textContent = world.characters.shadow.active ? '⚠ 小黑影出沒中' : '';
 
     const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Taipei' }));

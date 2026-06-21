@@ -312,6 +312,60 @@ function getMoodColorFor(moodValue) {
   return band || null;
 }
 
+function clampStat(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+
+// 依本回合訊號自動推進五個隱藏數值（熟悉度／好感度／形狀／硬度／心情），純程式碼、不經 AI。
+// signals: { interacted, away, hasVisitor, food, hp }
+function computeHiddenStats(bt, signals, bal) {
+  const cur = {
+    familiarity: typeof bt.familiarity === 'number' ? bt.familiarity : 0,
+    affection: typeof bt.affection === 'number' ? bt.affection : 0,
+    shape: typeof bt.shape === 'number' ? bt.shape : 50,
+    hardness: typeof bt.hardness === 'number' ? bt.hardness : 50,
+    mood: typeof bt.mood === 'number' ? bt.mood : 0
+  };
+  const wellCared = signals.food > bal.highFoodThreshold && signals.hp > 60;
+  const crisis = signals.food < bal.lowFoodThreshold || signals.hp < 25;
+
+  // 熟悉度：在場累積、互動加成，預設外出不倒退（單調成長）
+  let familiarity = cur.familiarity;
+  if (!signals.away) familiarity += bal.familiarityPresent;
+  if (signals.interacted) familiarity += bal.familiarityInteract;
+  if (signals.away) familiarity += bal.familiarityAwayDecay;
+  familiarity = clampStat(familiarity, 0, 100);
+
+  // 好感度：互動／被好好照顧會升，外出冷落／受苦會降
+  let affection = cur.affection;
+  if (signals.interacted) affection += bal.affectionInteract;
+  if (wellCared) affection += bal.affectionWellCared;
+  if (signals.away) affection += bal.affectionAway;
+  if (crisis) affection += bal.affectionNeglect;
+  affection = clampStat(affection, -100, 100);
+
+  // 心情：短期情緒，每回合先朝中性回歸，再疊加本回合事件
+  let mood = cur.mood * (1 - bal.moodDecay);
+  if (signals.interacted) mood += bal.moodInteract;
+  if (wellCared) mood += bal.moodWellCared;
+  if (crisis) mood += bal.moodCrisis;
+  if (signals.away) mood += bal.moodAway;
+  if (signals.hasVisitor) mood += bal.moodVisitor;
+  mood = clampStat(Math.round(mood), -100, 100);
+
+  // 質地（觸感印象）：朝由好感／熟悉推出的長期目標緩慢靠近
+  const targetShape = clampStat(50 + affection * 0.4, 0, 100);
+  const targetHardness = clampStat(50 + affection * 0.3 + (familiarity - 50) * 0.2, 0, 100);
+  const shape = clampStat(cur.shape + (targetShape - cur.shape) * bal.textureEase, 0, 100);
+  const hardness = clampStat(cur.hardness + (targetHardness - cur.hardness) * bal.textureEase, 0, 100);
+
+  return {
+    familiarity: Math.round(familiarity),
+    affection: Math.round(affection),
+    shape: Math.round(shape),
+    hardness: Math.round(hardness),
+    mood
+  };
+}
+
 function ensureFragmentsState(world) {
   if (!world.fragments) world.fragments = { collected: [], pending: null, hintsShown: [] };
   if (!Array.isArray(world.fragments.collected)) world.fragments.collected = [];
@@ -429,7 +483,21 @@ const BALANCE_BUILTIN = {
   lowFoodThreshold: 25,
   lowFoodHpDelta: -3,
   highFoodThreshold: 60,
-  highFoodHpDelta: 1
+  highFoodHpDelta: 1,
+  familiarityPresent: 1,
+  familiarityInteract: 2,
+  familiarityAwayDecay: 0,
+  affectionInteract: 2,
+  affectionWellCared: 1,
+  affectionAway: -1,
+  affectionNeglect: -3,
+  moodDecay: 0.3,
+  moodInteract: 15,
+  moodWellCared: 5,
+  moodCrisis: -20,
+  moodAway: -5,
+  moodVisitor: 8,
+  textureEase: 0.05
 };
 function loadBalance() {
   try {
@@ -744,6 +812,24 @@ async function tick() {
       pendingNotes.map(n => `- ${n.text}${n.quote ? `「${n.quote}」` : ''}`).join('\n')
     : '';
 
+  // 隱藏數值（熟悉度／好感度／質地／心情）自動推進，並算出本回合的暱稱／心情色彩／質地。
+  const balance = loadBalance();
+  const hidden = computeHiddenStats(bt, {
+    interacted: ownerActionUnread,
+    away: !!world.owner_away,
+    hasVisitor: visitorMessages.length > 0,
+    food: bt.food,
+    hp: bt.hp
+  }, balance);
+  const nickname = getNicknameFor(hidden.familiarity, hidden.affection) || '';
+  const texture = getTextureFor(hidden.shape, hidden.hardness) || '';
+  const moodColor = getMoodColorFor(hidden.mood);
+  const hiddenInput = [
+    nickname ? `\n白糰糰此刻心裡如何看待巨怪：以「${nickname}」相稱（這是他熟悉與好感程度的體現，請讓動態自然流露這份態度；他不會說話，這只是敘述者的稱呼語氣）` : '',
+    moodColor ? `\n白糰糰當前心情：${moodColor.name}（心情值${hidden.mood}），請讓這段動態的氣氛與之相符` : '',
+    texture ? `\n白糰糰對巨怪長期累積的觸感印象：${texture}（隱藏設定，可微妙影響他靠近或迴避的方式，不要直接把這幾個字寫進動態）` : ''
+  ].join('');
+
   const combinedPlayerText = [world.owner_status, ownerActionUnread ? world.owner_action : null, ...visitorMessages.map(m => m.message)]
     .filter(Boolean).join(' ');
   const triggeredEvent = detectTriggeredEvent(bt, combinedPlayerText);
@@ -775,7 +861,7 @@ async function tick() {
 窗戶：${world.room.window_open ? '開' : '關'} 冷氣：${acLabel} 燈：${world.room.light_on ? '開' : '關'} 廁所門：${world.room.toilet_open ? '開' : '關'}
 巨怪對房間環境的描述：${world.room.env_desc || '無'}
 今天已發生：${world.room.events_today.join('，') || '無'}
-近期記憶：${(bt.memory || []).slice(-3).join(' / ') || '無'}${weatherInput}${climateInput}${ownerInput}${awayInput}${visitorInput}${eventInput}${pendingNotesInput}
+近期記憶：${(bt.memory || []).slice(-3).join(' / ') || '無'}${weatherInput}${climateInput}${ownerInput}${awayInput}${visitorInput}${eventInput}${pendingNotesInput}${hiddenInput}
 
 生成這段時間白糰糰的動態。`;
 
@@ -801,6 +887,10 @@ async function tick() {
         baituantuan: {
           ...world.characters.baituantuan,
           ...result.baituantuan,
+          ...hidden,
+          nickname,
+          texture,
+          mood_color: moodColor ? { name: moodColor.name, color: moodColor.color } : null,
           memory: [...(bt.memory || []).slice(-10), result.scene]
         },
         shadow: { ...world.characters.shadow, ...result.shadow }
