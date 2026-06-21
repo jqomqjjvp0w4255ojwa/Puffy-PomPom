@@ -261,7 +261,8 @@ async function fetchWeather() {
 
 // ===== Gemini（電視頻道專用，獨立於主世界的 Claude 呼叫）=====
 // 玩家主動點頻道才觸發，回傳一段短文字，不改世界數值、不佔 tick 預算。
-const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.0-flash';
+// gemini-2.5-flash 在免費層有自己的配額；把 thinking 關掉避免思考吃光 token 回空白。
+const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
 
 async function callGemini(prompt, maxTokens = 400) {
   const key = process.env.GEMINI_API_KEY;
@@ -275,7 +276,7 @@ async function callGemini(prompt, maxTokens = 400) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 1.0, maxOutputTokens: maxTokens }
+        generationConfig: { temperature: 1.0, maxOutputTokens: maxTokens, thinkingConfig: { thinkingBudget: 0 } }
       }),
       signal: controller.signal
     });
@@ -728,7 +729,7 @@ const server = http.createServer((req, res) => {
         const data = JSON.parse(Buffer.concat(body).toString() || '{}');
         const channel = ['nature', 'news', 'shopping'].includes(data.channel) ? data.channel : 'nature';
         const ctx = buildTvContext();
-        const result = await callGemini(buildTvPrompt(channel, ctx), 900);
+        const result = await callGemini(buildTvPrompt(channel, ctx), 500);
         res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
         if (result.error) {
           res.end(JSON.stringify({ ok: false, error: result.error, detail: result.detail || '' }));

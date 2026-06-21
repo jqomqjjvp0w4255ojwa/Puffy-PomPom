@@ -89,7 +89,7 @@
   .tile-desc { font-size: 11px; color: #b0a298; margin-top: 1px; }
   .tile-adjust { display: flex; align-items: center; justify-content: flex-start; gap: 8px; }
   .adjust-label { font-size: 12px; color: #8a766a; width: 65px; }
-  .input-control { width: 45px; padding: 3px 5px; border: 1px solid #e8c8b0; border-radius: 4px; text-align: right; font-family: monospace; background: #faf9f6; font-size: 12px; color: #4a3a2a; }
+  .input-control { width: 52px; padding: 3px 6px; border: 1px solid #e8c8b0; border-radius: 4px; text-align: right; font-family: monospace; background: #faf9f6; font-size: 13px; color: #4a3a2a; }
   .input-control:focus { outline: 2px solid #e8a070; background: #fff; }
 
   .dev-section { background: #fff; border: 1px solid #e8c8b0; border-radius: 10px; padding: 14px 16px; margin-bottom: 14px; }
@@ -834,16 +834,20 @@ function buildBalanceFields() {
   buildSubtabs(document.getElementById('balance-subtabs'), 'balance', BALANCE_GROUPS, BALANCE_GROUPS.findIndex(g => g.key === balanceActiveGroup));
   const wrap = document.getElementById('balance-fields-wrap');
   wrap.innerHTML = '';
-  const basicBox = document.createElement('div');
-  basicBox.className = 'subtab-panel num-grid' + (balanceActiveGroup === 'basic' ? ' active' : '');
-  basicBox.dataset.group = 'balance'; basicBox.dataset.sub = 'basic';
-  const advBox = document.createElement('div');
-  advBox.className = 'subtab-panel num-grid' + (balanceActiveGroup === 'adv' ? ' active' : '');
-  advBox.dataset.group = 'balance'; advBox.dataset.sub = 'adv';
-  wrap.appendChild(basicBox);
-  wrap.appendChild(advBox);
-  buildBalanceCards(basicBox, BALANCE_BASIC_GROUPS);
-  buildBalanceCards(advBox, BALANCE_ADV_GROUPS);
+  // 面板只負責顯示/隱藏（subtab-panel），格線排版交給內層的 num-grid，避免兩個單類別
+  // 選擇器在同一元素上互相蓋掉 display（active 變 block、inactive 反而變 grid 的 bug）。
+  const makePanel = (sub, active) => {
+    const panel = document.createElement('div');
+    panel.className = 'subtab-panel' + (active ? ' active' : '');
+    panel.dataset.group = 'balance'; panel.dataset.sub = sub;
+    const grid = document.createElement('div');
+    grid.className = 'num-grid';
+    panel.appendChild(grid);
+    wrap.appendChild(panel);
+    return grid;
+  };
+  buildBalanceCards(makePanel('basic', balanceActiveGroup === 'basic'), BALANCE_BASIC_GROUPS);
+  buildBalanceCards(makePanel('adv', balanceActiveGroup === 'adv'), BALANCE_ADV_GROUPS);
 }
 function applyBalanceData(data) { balanceData = data || {}; buildBalanceFields(); }
 function collectBalanceData() {

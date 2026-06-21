@@ -159,6 +159,8 @@ function renderAcRemote() {
 // ===== 電視（接 Gemini，獨立小請求） =====
 const TV_CHANNEL_LABEL = { nature: '生物頻道', news: '新聞頻道', shopping: '購物頻道' };
 let tvLoading = false;
+const TV_COOLDOWN_MS = 8000; // 轉台冷卻：免費層有每分鐘請求上限，連點容易撞到 429
+let tvCooldownUntil = 0;
 
 function openTv() {
   document.getElementById('tv-overlay').classList.add('open');
@@ -171,10 +173,15 @@ function closeTv() {
 
 async function playChannel(channel) {
   if (tvLoading) return;
+  const screen = document.getElementById('tv-screen');
+  const wait = Math.ceil((tvCooldownUntil - Date.now()) / 1000);
+  if (wait > 0) {
+    screen.innerHTML = `<div class="tv-screen-static">轉台太快了，再等 ${wait} 秒…</div>`;
+    return;
+  }
   tvLoading = true;
   document.querySelectorAll('.tv-channel-btn').forEach(b =>
     b.classList.toggle('active', b.dataset.channel === channel));
-  const screen = document.getElementById('tv-screen');
   screen.innerHTML = `<div class="tv-screen-static">${TV_CHANNEL_LABEL[channel]}・訊號接收中…</div>`;
   try {
     const res = await fetch('/api/tv', {
@@ -186,7 +193,9 @@ async function playChannel(channel) {
     if (data.ok) {
       screen.innerHTML = `<div class="tv-program">${data.text.replace(/</g, '&lt;')}</div>`;
     } else {
-      const msg = data.error === 'no_key' ? '訊號中斷（電視台還沒設定）' : '訊號不穩，稍後再轉台看看…';
+      let msg = '訊號不穩，稍後再轉台看看…';
+      if (data.error === 'no_key') msg = '訊號中斷（電視台還沒設定）';
+      else if (data.error === 'http_429') msg = '電視台訊號過載，免費額度暫時用滿了，等一下再轉台…';
       const detail = data.detail ? `<div class="tv-screen-detail">${String(data.detail).replace(/</g, '&lt;')}</div>` : '';
       screen.innerHTML = `<div class="tv-screen-static">${msg}${detail}</div>`;
     }
@@ -194,6 +203,7 @@ async function playChannel(channel) {
     screen.innerHTML = `<div class="tv-screen-static">收訊失敗，雪花一片…</div>`;
   } finally {
     tvLoading = false;
+    tvCooldownUntil = Date.now() + TV_COOLDOWN_MS;
   }
 }
 
