@@ -423,14 +423,31 @@ function migrateLegacyLogs() {
   console.log(`已將舊資料轉檔成 ${Object.keys(buckets).length} 個每日檔案（logs/）`);
 }
 
+const BALANCE_BUILTIN = {
+  foodDeltaWindowOpen: -3,
+  foodDeltaWindowClosed: -5,
+  lowFoodThreshold: 25,
+  lowFoodHpDelta: -3,
+  highFoodThreshold: 60,
+  highFoodHpDelta: 1
+};
+function loadBalance() {
+  try {
+    return { ...BALANCE_BUILTIN, ...JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'balance.json'), 'utf8')) };
+  } catch (err) {
+    return BALANCE_BUILTIN;
+  }
+}
+
 function applyNaturalDecay(world) {
   const bt = world.characters.baituantuan;
   const windowOpen = world.room.window_open;
-  let foodDelta = windowOpen ? -3 : -5;
+  const bal = loadBalance();
+  let foodDelta = windowOpen ? bal.foodDeltaWindowOpen : bal.foodDeltaWindowClosed;
   let newFood = Math.max(0, bt.food + foodDelta);
   let newHp = bt.hp;
-  if (newFood < 25) newHp = Math.max(0, newHp - 3);
-  else if (newFood > 60) newHp = Math.min(100, newHp + 1);
+  if (newFood < bal.lowFoodThreshold) newHp = Math.max(0, newHp + bal.lowFoodHpDelta);
+  else if (newFood > bal.highFoodThreshold) newHp = Math.min(100, newHp + bal.highFoodHpDelta);
   return {
     ...world,
     characters: {
@@ -662,7 +679,7 @@ const server = http.createServer((req, res) => {
     // 給 content-lab 讀目前線上的 data/*.json，方便手機開頁面時帶出最新內容。
     try {
       const name = req.url.split('/')[3].split('?')[0];
-      const allow = { 'system-prompt': 'system-prompt.json', 'fragments': 'fragments.json', 'events': 'events.json' };
+      const allow = { 'system-prompt': 'system-prompt.json', 'fragments': 'fragments.json', 'events': 'events.json', 'balance': 'balance.json' };
       if (!allow[name]) { res.writeHead(404); res.end('not found'); return; }
       const content = fs.readFileSync(path.join(__dirname, 'data', allow[name]), 'utf8');
       res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
