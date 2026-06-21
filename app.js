@@ -187,7 +187,8 @@ async function playChannel(channel) {
       screen.innerHTML = `<div class="tv-program">${data.text.replace(/</g, '&lt;')}</div>`;
     } else {
       const msg = data.error === 'no_key' ? '訊號中斷（電視台還沒設定）' : '訊號不穩，稍後再轉台看看…';
-      screen.innerHTML = `<div class="tv-screen-static">${msg}</div>`;
+      const detail = data.detail ? `<div class="tv-screen-detail">${String(data.detail).replace(/</g, '&lt;')}</div>` : '';
+      screen.innerHTML = `<div class="tv-screen-static">${msg}${detail}</div>`;
     }
   } catch (e) {
     screen.innerHTML = `<div class="tv-screen-static">收訊失敗，雪花一片…</div>`;

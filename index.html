@@ -50,13 +50,6 @@
     </div>
   </div>
 
-  <div class="rent-overlay" id="pause-overlay" style="display:none;">
-    <div class="rent-note">
-      <div class="rent-note-title">時間停止</div>
-      <div class="rent-note-text">這一刻被你按下了暫停。<br>白糰糰靜止在此，等你回來。</div>
-    </div>
-  </div>
-
   <div class="death-overlay" id="death-overlay" style="display:none;">
     <div class="death-note">
       <div class="death-note-title">冥影・霜解</div>
@@ -84,10 +77,14 @@
     <button class="panel-close" onclick="closePanel()">
       <i class="ti ti-chevron-right"></i> 收合
     </button>
-    <button class="panel-away" id="pause-btn" onclick="togglePause()" title="時間停止（暫停生成）">
-      <i class="ti ti-player-pause"></i>
-    </button>
-    <button class="panel-away" id="away-btn" onclick="toggleAway()" title="外出中">
+    <div class="panel-header-actions">
+      <button class="panel-away" id="away-btn" onclick="toggleAway()" title="外出中">
+        <i class="ti ti-door-exit"></i>
+      </button>
+      <button class="panel-away" id="pause-btn" onclick="togglePause()" title="時間停止（暫停生成）">
+        <i class="ti ti-player-pause"></i>
+      </button>
+    </div>
       <i class="ti ti-door-exit"></i>
     </button>
   </div>
@@ -276,6 +273,11 @@
     <button class="tv-channel-btn" data-channel="news" onclick="playChannel('news')"><i class="ti ti-broadcast"></i><span>新聞頻道</span></button>
     <button class="tv-channel-btn" data-channel="shopping" onclick="playChannel('shopping')"><i class="ti ti-shopping-cart"></i><span>購物頻道</span></button>
   </div>
+</div>
+
+<div class="pause-overlay" id="pause-overlay" style="display:none;">
+  <div class="pause-mark"><i class="ti ti-player-pause-filled"></i></div>
+  <div class="pause-label">時間暫停</div>
 </div>
 
 <div class="note-overlay" id="note-overlay" onclick="closeNote()"></div>
