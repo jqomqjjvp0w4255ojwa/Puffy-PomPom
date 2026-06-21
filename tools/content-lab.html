@@ -214,6 +214,7 @@
     <button class="tab-btn" data-tab="system" onclick="switchTab('system')">系統規則</button>
     <button class="tab-btn" data-tab="balance" onclick="switchTab('balance')">數值平衡</button>
     <button class="tab-btn" data-tab="frag" onclick="switchTab('frag')">紙片碎片</button>
+    <button class="tab-btn" data-tab="lore" onclick="switchTab('lore')">世界書</button>
     <button class="tab-btn" data-tab="event" onclick="switchTab('event')">特殊事件</button>
     <button class="tab-btn" data-tab="dev" onclick="switchTab('dev')">開發者專區</button>
   </div>
@@ -394,6 +395,23 @@
     <div class="status-line off" id="frag-status"></div>
   </div>
 
+  <!-- ============ 世界書（lorebook） ============ -->
+  <div class="tab-panel" id="panel-lore">
+    <div class="panel-head">
+      <div class="desc">每張卡＝關鍵字＋補充設定文字。關鍵字命中玩家輸入或最近動態時，「內容」欄有寫東西才會被夾進當次prompt（給主世界AI與電視台共用），空白的卡不會送出，可以先建好條目慢慢補內容。</div>
+      <div class="actions">
+        <button class="ghost" onclick="loadFromServer('lorebook', applyLoreData)">↻ 拉取最新</button>
+        <button class="primary" onclick="uploadJSON('data/lorebook.json', collectLoreData(), 'lore-status')">上傳</button>
+      </div>
+    </div>
+    <div class="frag-search-row">
+      <input type="text" id="lore-search" placeholder="搜尋標題／關鍵字／內容…" oninput="renderLorebook()">
+      <button class="ghost" onclick="addLoreEntry()">＋ 新增</button>
+    </div>
+    <div id="lore-list"></div>
+    <div class="status-line off" id="lore-status"></div>
+  </div>
+
   <!-- ============ 特殊事件文案 ============ -->
   <div class="tab-panel" id="panel-event">
     <div class="panel-head">
@@ -491,11 +509,39 @@ const SYS_PROMPT_LABELS = {
   social:'社交與情感', body:'身體與感知', furSystem:'毛況系統', statBands:'狀態描述',
   shadow:'小黑影', visitors:'訪客留言', habits:'生活習性', rules:'規則'
 };
-// 每回合動態世界狀態（時間/狀態/房間/天氣/隱藏數值）的概估，非特殊事件時的典型值。
-const PERTICK_WORLD_EST = 320;   // tokens，當回合 user prompt 的世界狀態描述
-const OUTPUT_EST = 320;          // tokens，scene 2-4 句的典型輸出
+// 每回合動態世界狀態的概估，作為抓不到即時 world.json 時的備援值（非特殊事件時的典型值）。
+const PERTICK_WORLD_EST_FALLBACK = 320;   // tokens，當回合 user prompt 的世界狀態描述
+const OUTPUT_EST_FALLBACK = 320;          // tokens，scene 2-4 句的典型輸出
+
+// 用目前 world.json 的實際資料（近期記憶等）估算當回合 user prompt 的動態部分大小。
+// 比固定猜測值準，因為記憶會隨遊戲進行越寫越長，固定值不會跟著變。
+function estimatePerTickFromWorld(world) {
+  const bt = (world.characters && world.characters.baituantuan) || {};
+  const room = world.room || {};
+  const memory = (bt.memory || []).slice(-5);
+  const memoryTok = memory.reduce((sum, m) => sum + estimateTokens(m), 0);
+  // 其餘隨回合變化的輸入：時間/狀態數值行、房間描述、天氣、今天事件、訪客留言、隱藏數值、世界書命中等。
+  const otherDynamic = estimateTokens(room.env_desc || '') + estimateTokens((room.events_today || []).join('，')) +
+    estimateTokens(((world.visitor_messages || []).map(m => m.message).join(' '))) + 80; // 80 = 數值行/天氣等固定格式開銷的粗估
+  const outputSample = memory.length ? memory[memory.length - 1] : '';
+  return {
+    inEst: memoryTok + otherDynamic,
+    outEst: outputSample ? estimateTokens(outputSample) : OUTPUT_EST_FALLBACK,
+    memoryTok, otherDynamic, sampleCount: memory.length
+  };
+}
 
 function refreshDevStats() {
+  fetch('/api/world').then(r => r.json()).then(({ world }) => {
+    refreshDevStatsWithWorld(estimatePerTickFromWorld(world));
+  }).catch(() => {
+    refreshDevStatsWithWorld({ inEst: PERTICK_WORLD_EST_FALLBACK, outEst: OUTPUT_EST_FALLBACK, memoryTok: 0, otherDynamic: PERTICK_WORLD_EST_FALLBACK, sampleCount: 0 });
+  });
+}
+
+function refreshDevStatsWithWorld(est) {
+  const PERTICK_WORLD_EST = est.inEst || PERTICK_WORLD_EST_FALLBACK;
+  const OUTPUT_EST = est.outEst || OUTPUT_EST_FALLBACK;
   // ① system prompt 逐段
   const scaffoldTok = estimateTokens(SYS_SCAFFOLD);
   let sysTotal = scaffoldTok;
@@ -516,9 +562,9 @@ function refreshDevStats() {
   const inPerTick = sysTotal + PERTICK_WORLD_EST;
   const p2 = [`<tr><th>項目</th><th>估 token</th><th>說明</th></tr>`];
   p2.push(`<tr><td>system prompt（固定）</td><td class="num">${sysTotal}</td><td>每次更新都完整送出</td></tr>`);
-  p2.push(`<tr><td>當回合世界狀態</td><td class="num">${PERTICK_WORLD_EST}</td><td>時間/狀態/房間/天氣/隱藏數值，估計值</td></tr>`);
+  p2.push(`<tr><td>當回合世界狀態（含近期記憶）</td><td class="num">${PERTICK_WORLD_EST}</td><td>近期記憶 ${est.memoryTok} + 其他動態欄位 ${est.otherDynamic}，依目前 world.json 第 ${est.sampleCount} 則記憶實測估算</td></tr>`);
   p2.push(`<tr class="total"><td>input 小計</td><td class="num">${inPerTick}</td><td>＝送進 API 的輸入</td></tr>`);
-  p2.push(`<tr><td>output（scene 輸出）</td><td class="num">${OUTPUT_EST}</td><td>2-4 句的典型輸出，估計值</td></tr>`);
+  p2.push(`<tr><td>output（scene 輸出）</td><td class="num">${OUTPUT_EST}</td><td>取最近一則 scene 實際字數估算</td></tr>`);
   document.getElementById('dev-pertick-table').innerHTML = p2.join('');
 
   // ③ 費用預測（依數值平衡的更新頻率推算每天 tick 次數）
@@ -1271,19 +1317,90 @@ function renderFragments() {
 function collectFragData() { return fragData; }
 function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
 
+// ===================== 世界書（lorebook） =====================
+// 條目＝{ id, title, keywords[], content }。content 空白＝草稿、不會送進prompt（即使關鍵字命中）。
+let loreData = [];
+let loreExpanded = new Set();
+function addLoreEntry() {
+  const id = 'lore-' + Date.now();
+  loreData.unshift({ id, title: '', keywords: [], content: '' });
+  loreExpanded.add(id);
+  renderLorebook();
+}
+function applyLoreData(data) {
+  loreData = Array.isArray(data) ? data : [];
+  loreExpanded = new Set();
+  renderLorebook();
+}
+function collectLoreData() { return loreData; }
+function renderLorebook() {
+  const list = document.getElementById('lore-list');
+  const q = (document.getElementById('lore-search').value || '').trim().toLowerCase();
+  list.innerHTML = '';
+  loreData.forEach((e, idx) => {
+    const hay = `${e.title} ${(e.keywords||[]).join(',')} ${e.content}`.toLowerCase();
+    if (q && !hay.includes(q)) return;
+    const isOpen = loreExpanded.has(e.id);
+    const card = document.createElement('div');
+    card.className = 'frag-card' + (isOpen ? ' expanded' : '');
+    card.innerHTML = `
+      <div class="frag-summary">
+        <span class="idx">#${idx + 1}</span>
+        <span class="preview">${e.content ? '' : '（草稿，未送出）｜'}<span class="src">${esc(e.title || '未命名')}</span> ｜ ${esc(e.content || '（內容空白）')}</span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="frag-body">
+        <div class="row">
+          <div><label>標題（方便辨識，不會送進prompt）</label><input data-k="title" value="${esc(e.title)}"></div>
+          <div><label>關鍵字（逗號分隔，命中玩家輸入或最近動態）</label><input data-k="keywords" value="${esc((e.keywords||[]).join(','))}"></div>
+        </div>
+        <div class="row"><div style="flex-basis:100%"><label>補充設定內容（空白＝草稿不送出）</label><textarea data-k="content" rows="3">${esc(e.content)}</textarea></div></div>
+        <div class="row"><div style="flex:0 0 auto"><button class="del">刪除這條</button></div></div>
+      </div>`;
+    card.querySelector('.frag-summary').onclick = () => {
+      if (isOpen) loreExpanded.delete(e.id); else loreExpanded.add(e.id);
+      renderLorebook();
+    };
+    card.querySelectorAll('[data-k]').forEach(el => {
+      el.onclick = ev => ev.stopPropagation();
+      el.oninput = () => {
+        const k = el.dataset.k;
+        if (k === 'keywords') loreData[idx][k] = el.value.split(',').map(s => s.trim()).filter(Boolean);
+        else loreData[idx][k] = el.value;
+        if (k === 'title' || k === 'content') {
+          const preview = card.querySelector('.preview');
+          preview.innerHTML = `${loreData[idx].content ? '' : '（草稿，未送出）｜'}<span class="src">${esc(loreData[idx].title || '未命名')}</span> ｜ ${esc(loreData[idx].content || '（內容空白）')}`;
+        }
+        saveLocal();
+      };
+    });
+    card.querySelector('.del').onclick = ev => {
+      ev.stopPropagation();
+      if (!confirm('確定刪除這條世界書條目？')) return;
+      loreExpanded.delete(e.id);
+      loreData.splice(idx, 1); renderLorebook(); saveLocal();
+    };
+    list.appendChild(card);
+  });
+  const status = document.getElementById('lore-status');
+  status.textContent = `共 ${loreData.length} 條（${loreData.filter(e => e.content && e.content.trim()).length} 條已填內容會送出）`;
+}
+
 // ===================== 特殊事件文案 =====================
 // 每個特殊事件＝腳本卡（card，主頁原文顯示、保證演出）＋ AI 續寫指示（prompt，AI 接著寫餘波）。
 const EVENT_GROUPS = [
   { key: 'ascension', label: '飛升篇' },
   { key: 'shadowRevenge', label: '冥影與霜解篇' },
   { key: 'rebirth', label: '再生篇' },
-  { key: 'observation', label: '觀察篇' }
+  { key: 'observation', label: '觀察篇' },
+  { key: 'farewell', label: '永別篇' }
 ];
 const EVENT_FIELDS = [
   { key: 'ascension', label: '飛升篇（健康＋飽食同時滿值）', group: 'ascension' },
   { key: 'shadowRevenge', label: '冥影與霜解篇（健康＋飽食同時歸零＝死亡）', group: 'shadowRevenge' },
   { key: 'rebirth', label: '再生篇（死亡倒數結束、糰糰自動再生）', group: 'rebirth' },
-  { key: 'observation', label: '觀察篇（玩家輸入觸發旁白）', group: 'observation' }
+  { key: 'observation', label: '觀察篇（玩家輸入觸發旁白）', group: 'observation' },
+  { key: 'farewell', label: '永別篇（玩家語句出現放下/結束/祝福/告別/不會再回來）', group: 'farewell' }
 ];
 let eventData = {};
 let eventActiveGroup = 'ascension';
@@ -1347,7 +1464,7 @@ function saveLocal() {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({
       promptData: collectPromptData(), balanceData: collectBalanceData(),
-      fragData, eventData: collectEventData(), traitData: collectTraitData()
+      fragData, eventData: collectEventData(), traitData: collectTraitData(), loreData
     }));
   } catch (e) {}
 }
@@ -1360,6 +1477,7 @@ function loadLocal() {
     if (d.balanceData) balanceData = d.balanceData;
     if (d.fragData) fragData = d.fragData;
     if (d.eventData) eventData = d.eventData;
+    if (d.loreData) loreData = d.loreData;
     if (d.traitData) {
       if (d.traitData.nicknameGrid) nicknameGrid = d.traitData.nicknameGrid;
       if (d.traitData.textureGrid) textureGrid = d.traitData.textureGrid;
@@ -1477,6 +1595,7 @@ async function uploadAll() {
     ['data/hidden-stats.json', collectTraitData, 'trait-status'],
     ['data/fragments.json', collectFragData, 'frag-status'],
     ['data/events.json', collectEventData, 'event-status'],
+    ['data/lorebook.json', collectLoreData, 'lore-status'],
   ];
   let done = 0, failed = 0;
   setStatus('upload-all-status', 'busy', `全部上傳中… 0/${jobs.length}`);
@@ -1510,6 +1629,7 @@ if (!moodBands.length) moodFillSample(); else { moodRenderBands(); moodUpdatePre
 statBuildTable(); statUpdatePreview();
 document.getElementById('stat-preview-name').onblur = () => { statUpdatePreview(); saveLocal(); };
 renderFragments();
+renderLorebook();
 buildEventFields();
 
 if (!restored) {
@@ -1518,6 +1638,7 @@ if (!restored) {
   loadFromServer('fragments', applyFragData);
   loadFromServer('events', applyEventData);
   loadFromServer('hidden-stats', applyTraitData);
+  loadFromServer('lorebook', applyLoreData);
 }
 </script>
 

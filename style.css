@@ -304,6 +304,7 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
   grid-column: 1 / -1;
   justify-content: space-between;
   gap: 10px;
+  min-width: 0;
 }
 .ac-tile-header { display: contents; }
 .ac-tile:has(.switch.on) .ac-tile-header { display: flex; flex-shrink: 0; }
@@ -311,10 +312,14 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
 .ac-tile-pills {
   display: none;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   flex: 1;
+  min-width: 0;
+  overflow-x: auto;
   cursor: pointer;
+  scrollbar-width: none;
 }
+.ac-tile-pills::-webkit-scrollbar { display: none; }
 .ac-tile:has(.switch.on) .ac-tile-pills { display: flex; }
 .ac-pill {
   display: flex;
