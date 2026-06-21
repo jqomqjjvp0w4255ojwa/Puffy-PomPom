@@ -393,7 +393,7 @@
   <!-- ============ 特殊事件文案 ============ -->
   <div class="tab-panel" id="panel-event">
     <div class="panel-head">
-      <div class="desc">飛升＝健康＋飽食同時滿；冥影＝兩者同時歸零；觀察＝玩家輸入觸發旁白。</div>
+      <div class="desc">每個事件＝腳本卡（主頁原文顯示、保證演出）＋AI 續寫指示。飛升＝健康＋飽食同時滿；冥影＝兩者同時歸零（死亡，進入報復倒數）；再生＝倒數結束自動復活；觀察＝玩家輸入觸發旁白。死亡倒數長度在「數值平衡」調整。</div>
       <div class="actions">
         <button class="ghost" onclick="loadFromServer('events', applyEventData)">↻ 拉取最新</button>
         <button class="primary" onclick="uploadJSON('data/events.json', collectEventData(), 'event-status')">上傳</button>
@@ -582,8 +582,12 @@ function exportMarkdown() {
   });
   md += `## 數值平衡\n\n| 參數 | 值 |\n|---|---|\n`;
   Object.entries(s.balance).forEach(([k, v]) => { md += `| ${k} | ${v} |\n`; });
-  md += `\n## 特殊事件文案\n\n`;
-  Object.entries(s.events).forEach(([k, v]) => { md += `### ${k}\n\n${v || '（空）'}\n\n`; });
+  md += `\n## 特殊事件（腳本卡＋AI 續寫）\n\n`;
+  Object.entries(s.events).forEach(([k, v]) => {
+    const card = (v && v.card) || '';
+    const prompt = (v && typeof v === 'object') ? (v.prompt || '') : (v || '');
+    md += `### ${k}\n\n**腳本卡**：${card || '（空）'}\n\n**AI 續寫**：${prompt || '（空）'}\n\n`;
+  });
   md += `## 紙片碎片\n\n`;
   const bySource = {};
   (s.fragments.fragments || []).forEach(f => { (bySource[f.source || '未分類'] ||= []).push(f); });
@@ -772,7 +776,8 @@ const BALANCE_ADV_GROUPS = [
   {
     title: '其他',
     fields: [
-      { key: 'textureEase', label: '質地靠近速度', desc: '0~1', step: 0.01 }
+      { key: 'textureEase', label: '質地靠近速度', desc: '0~1', step: 0.01 },
+      { key: 'rebirthTicks', label: '死亡後再生(次)', desc: '死亡後幾次更新自動再生', step: 1 }
     ]
   },
   {
@@ -1227,18 +1232,27 @@ function collectFragData() { return fragData; }
 function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
 
 // ===================== 特殊事件文案 =====================
+// 每個特殊事件＝腳本卡（card，主頁原文顯示、保證演出）＋ AI 續寫指示（prompt，AI 接著寫餘波）。
 const EVENT_GROUPS = [
   { key: 'ascension', label: '飛升篇' },
   { key: 'shadowRevenge', label: '冥影與霜解篇' },
+  { key: 'rebirth', label: '再生篇' },
   { key: 'observation', label: '觀察篇' }
 ];
 const EVENT_FIELDS = [
-  { key: 'ascension', label: '飛升篇（健康＋飽食同時滿值）', rows: 9, group: 'ascension' },
-  { key: 'shadowRevenge', label: '冥影與霜解篇（健康＋飽食同時歸零）', rows: 7, group: 'shadowRevenge' },
-  { key: 'observation', label: '觀察篇（玩家輸入觸發旁白）', rows: 5, group: 'observation' }
+  { key: 'ascension', label: '飛升篇（健康＋飽食同時滿值）', group: 'ascension' },
+  { key: 'shadowRevenge', label: '冥影與霜解篇（健康＋飽食同時歸零＝死亡）', group: 'shadowRevenge' },
+  { key: 'rebirth', label: '再生篇（死亡倒數結束、糰糰自動再生）', group: 'rebirth' },
+  { key: 'observation', label: '觀察篇（玩家輸入觸發旁白）', group: 'observation' }
 ];
 let eventData = {};
 let eventActiveGroup = 'ascension';
+// 讀進來的 events.json 可能是舊版字串（只有 prompt），統一轉成 { card, prompt }。
+function normalizeEventEntry(v) {
+  if (typeof v === 'string') return { card: '', prompt: v };
+  if (v && typeof v === 'object') return { card: v.card || '', prompt: v.prompt || '' };
+  return { card: '', prompt: '' };
+}
 function buildEventFields() {
   buildSubtabs(document.getElementById('event-subtabs'), 'event', EVENT_GROUPS, EVENT_GROUPS.findIndex(g => g.key === eventActiveGroup));
   const box = document.getElementById('event-fields');
@@ -1249,20 +1263,41 @@ function buildEventFields() {
     groupBox.dataset.group = 'event';
     groupBox.dataset.sub = g.key;
     EVENT_FIELDS.filter(ev => ev.group === g.key).forEach(ev => {
+      const entry = normalizeEventEntry(eventData[ev.key]);
+      eventData[ev.key] = entry;
       const div = document.createElement('div');
       div.className = 'field';
-      div.innerHTML = `<label>${ev.label}</label><textarea id="event-${ev.key}" rows="${ev.rows}"></textarea>`;
+      div.innerHTML =
+        `<label>${ev.label}</label>` +
+        `<div class="field-desc">腳本卡：主頁會原文顯示這段（特殊框），保證演出。留空＝不顯示卡片。</div>` +
+        `<textarea id="event-card-${ev.key}" rows="4" placeholder="腳本卡（原文顯示）"></textarea>` +
+        `<div class="field-desc" style="margin-top:6px">AI 續寫指示：AI 接著卡片寫「之後的餘波」，不要重述卡片。</div>` +
+        `<textarea id="event-prompt-${ev.key}" rows="6" placeholder="AI 續寫指示"></textarea>`;
       groupBox.appendChild(div);
-      div.querySelector('textarea').value = eventData[ev.key] || '';
-      div.querySelector('textarea').oninput = e => { eventData[ev.key] = e.target.value; saveLocal(); };
+      const cardTa = div.querySelector(`#event-card-${ev.key}`);
+      const promptTa = div.querySelector(`#event-prompt-${ev.key}`);
+      cardTa.value = entry.card;
+      promptTa.value = entry.prompt;
+      cardTa.oninput = e => { eventData[ev.key].card = e.target.value; saveLocal(); };
+      promptTa.oninput = e => { eventData[ev.key].prompt = e.target.value; saveLocal(); };
     });
     box.appendChild(groupBox);
   });
 }
-function applyEventData(data) { eventData = data || {}; buildEventFields(); }
+function applyEventData(data) {
+  data = data || {};
+  eventData = {};
+  EVENT_FIELDS.forEach(ev => { eventData[ev.key] = normalizeEventEntry(data[ev.key]); });
+  buildEventFields();
+}
 function collectEventData() {
   const out = {};
-  EVENT_FIELDS.forEach(ev => { out[ev.key] = document.getElementById(`event-${ev.key}`).value; });
+  EVENT_FIELDS.forEach(ev => {
+    out[ev.key] = {
+      card: document.getElementById(`event-card-${ev.key}`).value,
+      prompt: document.getElementById(`event-prompt-${ev.key}`).value
+    };
+  });
   return out;
 }
 

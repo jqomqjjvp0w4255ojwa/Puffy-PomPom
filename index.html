@@ -49,6 +49,18 @@
       <div class="rent-note-text">房間暫時空著。<br>白糰糰不在，沒有人在觀察。</div>
     </div>
   </div>
+
+  <div class="death-overlay" id="death-overlay" style="display:none;">
+    <div class="death-note">
+      <div class="death-note-title">冥影・霜解</div>
+      <div class="death-note-text" id="death-note-text">白糰糰無聲崩解，化作毛毛與冰屑。<br>小黑影自陰影浮現，展開報復。</div>
+      <div class="death-countdown" id="death-countdown"></div>
+      <div class="death-actions">
+        <button class="death-btn death-wait" onclick="closeDeathOverlay()">等待糰糰歸來</button>
+        <button class="death-btn death-reset" onclick="resetWorld()">放棄紀錄（重啟）</button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <button class="panel-btn" id="panel-btn" onclick="openPanel()" aria-label="巨怪面板">

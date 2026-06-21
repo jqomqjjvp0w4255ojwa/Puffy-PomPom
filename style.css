@@ -31,6 +31,32 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
 }
 .rent-note-title { font-size: 18px; letter-spacing: 0.3em; color: #6a5238; margin-bottom: 10px; font-weight: 500; }
 .rent-note-text { font-size: 12px; color: #9a8a72; line-height: 1.9; }
+
+.death-overlay {
+  position: absolute; inset: 0;
+  background: rgba(16,18,26,0.72);
+  backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px);
+  display: flex; align-items: center; justify-content: center; z-index: 6;
+}
+.death-note {
+  background: #1c2030; border: 1px solid #3a4258; border-radius: 6px;
+  box-shadow: 0 8px 28px rgba(0,0,0,0.55); padding: 1.5rem 1.75rem;
+  text-align: center; max-width: 82%; color: #c8cfe0;
+}
+.death-note-title { font-size: 18px; letter-spacing: 0.3em; color: #9fb4e6; margin-bottom: 12px; font-weight: 500; }
+.death-note-text { font-size: 12px; color: #9aa3bd; line-height: 1.9; }
+.death-countdown { font-size: 12px; color: #7fa0d8; margin: 14px 0 4px; letter-spacing: 0.05em; }
+.death-actions { display: flex; gap: 10px; justify-content: center; margin-top: 16px; }
+.death-btn { font-size: 12px; padding: 7px 14px; border-radius: 5px; cursor: pointer; border: 1px solid #3a4258; }
+.death-wait { background: #2a3146; color: #c8cfe0; }
+.death-reset { background: transparent; color: #b08a8a; border-color: #5a3a3a; }
+
+/* 特殊事件腳本卡：原文顯示在 AI 續寫之前，與日常動態區隔 */
+.entry-event-card {
+  font-size: 13px; color: #5a4a6a; line-height: 1.9; white-space: pre-line;
+  background: #f3eef8; border-left: 3px solid #b9a3d8; border-radius: 4px;
+  padding: 8px 12px; margin-bottom: 8px;
+}
 .notebook-header { padding: 1.25rem 1.5rem 1rem; border-bottom: 2px solid #e8c84a; }
 .header-label {
   display: flex;

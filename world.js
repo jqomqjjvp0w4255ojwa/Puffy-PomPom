@@ -89,33 +89,63 @@ ${bodyBlock}
 }
 const SYSTEM_PROMPT = buildSystemPrompt();
 
-// 特殊事件旁白文案，可在 /content-lab 編輯並自動上傳覆蓋 data/events.json。
-const EVENT_PROMPTS_BUILTIN = {
-  ascension: `特殊事件・飛升篇（健康與飽食同時滿值，這次更新請完整呈現此事件，不要寫成日常動態）：
-白糰糰進入「渡劫」狀態：全身絨毛微顫，靜坐窗邊仰望天空，雷雲湧動。
-隨機二選一決定結局並寫入scene：
+// 特殊事件＝「腳本卡（card，主頁直接顯示的固定劇情，保證演出）」＋「prompt（AI 接著寫的餘波指示）」。
+// 可在 /content-lab 編輯並自動上傳覆蓋 data/events.json。舊版 events.json 是「key→字串」，
+// 會被當成只有 prompt、沒有 card 來相容處理。
+const EVENT_DEFS_BUILTIN = {
+  ascension: {
+    card: `【飛升・渡劫】白糰糰全身絨毛微顫，靜坐窗邊仰望天空，雷雲湧動。一道光自他身上亮起。`,
+    prompt: `承接上面的渡劫劇情卡，只寫「之後的餘波」，隨機二選一並寫入scene：
 A. 度劫失敗（電糰糰）：遭雷擊，絨毛焦捲變黑，靜電纏身，動作僵硬，沉默放電躲回角落。
-B. 度劫成功（法喜糰糰）：升空發光後「啪」一聲落地，異常開心，於地板施展誇張街舞動作。`,
-  shadowRevenge: `特殊事件・冥影與霜解篇（健康與飽食同時歸零，這次更新請完整呈現此事件，不要寫成日常動態）：
-白糰糰無聲崩解，只留下毛毛與冰屑，小黑影自陰影浮現，與殘骸融合成「冰晶暗影」，展開一場正義與荒誕共行的審判：室內異常降溫結霜、巨型Mr.DUST夜行騷擾、如影隨形的精神干擾。
-終局：小黑影在無人處吐出白糰糰遺骸，俠魂等待再生。
-shadow.active設為true，shadow.dust_count明顯增加。`,
-  observation: `特殊事件・觀察篇（玩家輸入觸發旁白模式）：
+B. 度劫成功（法喜糰糰）：升空發光後「啪」一聲落地，異常開心，於地板施展誇張街舞動作。`
+  },
+  shadowRevenge: {
+    card: `【冥影・霜解】白糰糰無聲崩解，只留下毛毛與冰屑。小黑影自陰影浮現，與殘骸融合成「冰晶暗影」。室內異常降溫結霜。`,
+    prompt: `承接上面的冥影劇情卡，只寫「之後的餘波」：冰晶暗影展開一場正義與荒誕共行的審判——巨型Mr.DUST夜行騷擾、如影隨形的精神干擾。不要重述卡片已寫的崩解過程。shadow.active設為true，shadow.dust_count明顯增加。`
+  },
+  rebirth: {
+    card: `【再生】涼濕的角落裡，散落的毛毛與冰屑悄悄聚攏。一顆小小的白糰糰重新成形，墨色豆眼緩緩睜開。冰晶暗影悄然退回影子。`,
+    prompt: `承接上面的再生劇情卡，只寫「之後的餘波」：白糰糰帶著模糊的舊記憶重新醒來，動作還有點生疏小心。小黑影回到平時潛伏狀態，shadow.active設為false。`
+  },
+  observation: {
+    card: ``,
+    prompt: `特殊事件・觀察篇（玩家輸入觸發旁白模式）：
 本次scene改用DISCOVERY紀錄片風格書寫：科學旁觀的趣味、俏皮詼諧的科普語氣，把白糰糰的行為包裝成「野生觀察紀錄」（例如：「在零下八度的清晨，一隻野生白糰糰⋯⋯」），但內容仍要符合他平時的行為邏輯。`
-};
-function loadEventPrompts() {
-  try {
-    const data = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'events.json'), 'utf8'));
-    return { ...EVENT_PROMPTS_BUILTIN, ...data };
-  } catch (err) {
-    return EVENT_PROMPTS_BUILTIN;
   }
+};
+function loadEventDefs() {
+  let data = {};
+  try {
+    data = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'events.json'), 'utf8'));
+  } catch (err) {
+    data = {};
+  }
+  const out = {};
+  const keys = new Set([...Object.keys(EVENT_DEFS_BUILTIN), ...Object.keys(data)]);
+  for (const k of keys) {
+    const b = EVENT_DEFS_BUILTIN[k] || { card: '', prompt: '' };
+    const d = data[k];
+    if (typeof d === 'string') out[k] = { card: b.card || '', prompt: d };                 // 舊版字串＝只有 prompt
+    else if (d && typeof d === 'object') out[k] = { card: d.card ?? b.card ?? '', prompt: d.prompt ?? b.prompt ?? '' };
+    else out[k] = { card: b.card || '', prompt: b.prompt || '' };
+  }
+  return out;
 }
-const EVENT_PROMPTS = loadEventPrompts();
+const EVENT_DEFS = loadEventDefs();
+function getEventCard(key) { return (EVENT_DEFS[key] || {}).card || ''; }
+function buildEventInput(key) {
+  const def = EVENT_DEFS[key] || {};
+  const card = def.card || '';
+  const prompt = def.prompt || '';
+  // 腳本卡已「發生」並會原文顯示在主頁，AI 只接著寫餘波，不要重述卡片。
+  if (card) return `【這段劇情卡已經發生，且會原文顯示給讀者，請勿重述卡片內容，只接著寫「之後」的餘波反應】\n${card}\n\n【接續指示】\n${prompt}`;
+  return prompt;
+}
 
+// 死亡（健康＋飽食歸零）改由 tick 內的死亡狀態機處理（要管重生倒數與小黑影好感），
+// 這裡只負責偵測飛升與觀察兩種即時事件。
 function detectTriggeredEvent(bt, combinedPlayerText) {
   if (bt.hp >= 100 && bt.food >= 100) return 'ascension';
-  if (bt.hp <= 0 && bt.food <= 0) return 'shadowRevenge';
   if (/📺|觀察日誌|研究|旁白啟動/.test(combinedPlayerText)) return 'observation';
   return null;
 }
@@ -509,6 +539,7 @@ const BALANCE_BUILTIN = {
   moodVisitor: 8,
   textureEase: 0.05,
   ownerFeedFoodBoost: 35,
+  rebirthTicks: 4,
   tickNightMinMin: 180,
   tickNightMaxMin: 360,
   tickDayMinMin: 15,
@@ -908,9 +939,36 @@ async function tick() {
 
   const combinedPlayerText = [world.owner_status, ownerActionUnread ? world.owner_action : null, ...visitorMessages.map(m => m.message)]
     .filter(Boolean).join(' ');
-  const triggeredEvent = detectTriggeredEvent(bt, combinedPlayerText);
-  const eventInput = triggeredEvent ? '\n' + EVENT_PROMPTS[triggeredEvent] : '';
-  if (triggeredEvent) console.log(`特殊事件觸發：${triggeredEvent}`);
+
+  // 小黑影好感（對糰糰）＝事件驅動：平時 0，糰糰死亡 -100（觸發報復循環），飛升 +1。
+  if (typeof world.characters.shadow.affection !== 'number') world.characters.shadow.affection = 0;
+  // 死亡狀態機：{ active, ticksLeft }。死亡後每個 tick 都是暗影復仇，倒數歸零時自動再生。
+  if (!world.death || typeof world.death !== 'object') world.death = { active: false, ticksLeft: 0 };
+
+  let triggeredEvent = detectTriggeredEvent(bt, combinedPlayerText); // ascension / observation / null
+  if (world.death.active) {
+    // 復仇期間：還有倒數就繼續復仇，最後一格改成再生事件並結束死亡。
+    if (world.death.ticksLeft > 1) {
+      world.death.ticksLeft -= 1;
+      triggeredEvent = 'shadowRevenge';
+    } else {
+      world.death.ticksLeft = 0;
+      world.death.active = false;
+      world.characters.shadow.affection = 0; // 糰糰歸來，小黑影好感回到平時的 0
+      triggeredEvent = 'rebirth';
+    }
+  } else if (bt.hp <= 0 && bt.food <= 0) {
+    // 剛死亡：進入復仇倒數，小黑影好感砸到 -100。
+    world.death = { active: true, ticksLeft: Math.max(1, balance.rebirthTicks) };
+    world.characters.shadow.affection = -100;
+    triggeredEvent = 'shadowRevenge';
+  } else if (triggeredEvent === 'ascension') {
+    world.characters.shadow.affection = (world.characters.shadow.affection || 0) + 1;
+  }
+
+  const eventCard = triggeredEvent ? getEventCard(triggeredEvent) : '';
+  const eventInput = triggeredEvent ? '\n' + buildEventInput(triggeredEvent) : '';
+  if (triggeredEvent) console.log(`特殊事件觸發：${triggeredEvent}（死亡倒數剩 ${world.death.ticksLeft}）`);
 
   // 健康/飽食完全由機制決定（衰減、餵食加成、特殊事件強制值），AI不再直接控制這兩個數字，
   // 只透過一句簡短狀態描述去理解該怎麼寫，避免被硬數值門檻卡住敘述。
@@ -924,6 +982,9 @@ async function tick() {
     bt = world.characters.baituantuan;
   } else if (triggeredEvent === 'shadowRevenge') {
     world.characters.baituantuan = { ...bt, food: 60, hp: 60 };
+    bt = world.characters.baituantuan;
+  } else if (triggeredEvent === 'rebirth') {
+    world.characters.baituantuan = { ...bt, food: 80, hp: 80 }; // 再生＝回到初始健康/飽食
     bt = world.characters.baituantuan;
   }
 
@@ -1052,6 +1113,9 @@ async function tick() {
       location: result.baituantuan.location,
       fur: result.baituantuan.fur && result.baituantuan.fur !== '正常' ? result.baituantuan.fur : null,
       shadowActive: !!result.shadow.active,
+      // 特殊事件的腳本卡：主頁會用特殊框原文顯示在 AI 續寫的 scene 之前。
+      eventKey: triggeredEvent || null,
+      eventCard: eventCard || null,
       tokens: { input: usage.input_tokens || 0, output: usage.output_tokens || 0 }
     }]);
 

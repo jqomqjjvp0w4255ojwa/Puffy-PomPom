@@ -512,6 +512,7 @@ function renderDiaryEntries(diary) {
   container.innerHTML = diary.slice().reverse().map(e => `
     <div class="entry">
       <div class="entry-time">${escapeHtml(e.time)}</div>
+      ${e.eventCard ? `<div class="entry-event-card">${escapeHtml(e.eventCard)}</div>` : ''}
       <div class="entry-text">${escapeHtml(e.scene)}</div>
       <div class="entry-stats">健康 ${e.hp} · 飽食 ${e.food} · ${escapeHtml(e.location)}${e.fur ? ` · ${escapeHtml(e.fur)}` : ''}</div>
       ${e.shadowActive ? '<div class="entry-shadow">⚠ 小黑影出沒中</div>' : ''}
@@ -704,6 +705,8 @@ async function load() {
 
     document.getElementById('rent-overlay').style.display = world.for_rent ? 'flex' : 'none';
 
+    updateDeathOverlay(world.death);
+
     maybeShowFragmentCard(world.fragments);
 
     await refreshTodayPanels(world);
@@ -711,6 +714,38 @@ async function load() {
 
   } catch(e) {
     document.getElementById('entries').innerHTML = '<div class="empty">暫時無法連線。</div>';
+  }
+}
+
+// 死亡畫面：糰糰死亡（world.death.active）時蓋上暗色覆蓋，顯示重生倒數與兩顆按鈕。
+// 「等待糰糰歸來」只是把覆蓋收起來繼續看日記（本次工作階段內不再跳出）；倒數結束會自動再生。
+let deathDismissed = false;
+function updateDeathOverlay(death) {
+  const overlay = document.getElementById('death-overlay');
+  if (!overlay) return;
+  if (!death || !death.active) {
+    deathDismissed = false; // 已再生，重置，下次死亡再跳
+    overlay.style.display = 'none';
+    return;
+  }
+  const cd = document.getElementById('death-countdown');
+  if (cd) cd.textContent = death.ticksLeft > 0 ? `小黑影的報復還會持續約 ${death.ticksLeft} 次更新，之後糰糰會自行再生。` : '糰糰即將再生…';
+  overlay.style.display = deathDismissed ? 'none' : 'flex';
+}
+function closeDeathOverlay() {
+  deathDismissed = true;
+  const overlay = document.getElementById('death-overlay');
+  if (overlay) overlay.style.display = 'none';
+}
+async function resetWorld() {
+  if (!confirm('確定要放棄這段紀錄、重新開始嗎？\n目前的世界與所有每日紀錄會被「封存」（搬到 archive/，不會刪除），再從初始值重置。')) return;
+  try {
+    const res = await fetch('/api/reset', { method: 'POST' });
+    const data = await res.json();
+    if (data.ok) { deathDismissed = false; location.reload(); }
+    else alert('重啟失敗：' + (data.error || '未知錯誤'));
+  } catch (e) {
+    alert('重啟失敗：' + e.message);
   }
 }
 
