@@ -664,6 +664,15 @@ const server = http.createServer((req, res) => {
       res.writeHead(404);
       res.end('not found');
     }
+  } else if (req.url === '/trait-lab' || req.url === '/trait-lab.html') {
+    try {
+      const html = fs.readFileSync(path.join(__dirname, 'tools', 'trait-lab.html'), 'utf8');
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+      res.end(html);
+    } catch (e) {
+      res.writeHead(404);
+      res.end('not found');
+    }
   } else if (req.url === '/style.css' || req.url === '/app.js') {
     try {
       const file = req.url.slice(1);
