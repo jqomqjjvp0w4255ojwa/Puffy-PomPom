@@ -147,6 +147,29 @@ function buildEventInput(key) {
   return prompt;
 }
 
+// 世界書（lorebook）：條目＝關鍵字＋補充設定文字。content 空白＝草稿，即使關鍵字命中也不送出。
+// 在 content-lab 編輯、上傳覆蓋 data/lorebook.json。供主世界AI與電視台共用。
+function loadLorebook() {
+  try {
+    const data = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'lorebook.json'), 'utf8'));
+    return Array.isArray(data) ? data : [];
+  } catch (err) {
+    return [];
+  }
+}
+function matchLorebook(text) {
+  const hay = text || '';
+  return loadLorebook().filter(e =>
+    e.content && e.content.trim() &&
+    Array.isArray(e.keywords) && e.keywords.some(k => k && hay.includes(k))
+  );
+}
+function buildLoreInput(text) {
+  const hits = matchLorebook(text).slice(0, 4);
+  if (hits.length === 0) return '';
+  return '\n世界書補充設定（符合目前情境，自然融入敘述，不要逐字唸出標題）：\n' + hits.map(e => `- ${e.content}`).join('\n');
+}
+
 // 死亡（健康＋飽食歸零）改由 tick 內的死亡狀態機處理（要管重生倒數與小黑影好感），
 // 這裡只負責偵測飛升與觀察兩種即時事件。
 function detectTriggeredEvent(world, bt, combinedPlayerText) {
@@ -336,11 +359,17 @@ function buildTvContext() {
   };
 }
 
-// 給電視台用的世界觀補充：抽幾張小黑影紙片當背景知識，讓 Gemini 也認識他的調性（免費模型，多讀點資料無妨）。
-function buildLoreSnippetForTv() {
-  if (!FRAGMENTS || FRAGMENTS.length === 0) return '';
-  const sample = FRAGMENTS.filter(f => f.source && f.text).slice(0, 8).map(f => `「${f.text}」`).join('\n');
-  return sample ? `\n以下是世界裡流傳的小黑影紙片字句（背景調性參考，不必引用原文）：\n${sample}` : '';
+// 給電視台用的世界觀補充：抽幾張小黑影紙片當背景知識＋符合目前情境的世界書條目，
+// 讓 Gemini 也認識他的調性（免費模型，多讀點資料無妨）。
+function buildLoreSnippetForTv(ctx) {
+  const parts = [];
+  if (FRAGMENTS && FRAGMENTS.length > 0) {
+    const sample = FRAGMENTS.filter(f => f.source && f.text).slice(0, 8).map(f => `「${f.text}」`).join('\n');
+    if (sample) parts.push(`以下是世界裡流傳的小黑影紙片字句（背景調性參考，不必引用原文）：\n${sample}`);
+  }
+  const loreInput = buildLoreInput((ctx && ctx.recentMemory || []).join(' '));
+  if (loreInput) parts.push(loreInput.replace(/^\n/, ''));
+  return parts.length ? '\n' + parts.join('\n') : '';
 }
 
 function buildTvPrompt(channel, ctx) {
@@ -351,7 +380,7 @@ function buildTvPrompt(channel, ctx) {
     `白糰糰最近的動態紀錄（由舊到新）：\n${(ctx.recentMemory && ctx.recentMemory.length ? ctx.recentMemory : [ctx.recentScene]).map((m, i) => `${i + 1}. ${m}`).join('\n')}`;
 
   const lengthRule = '請嚴格控制在 120 字以內，不要超過，寧可短也不要長；只能根據上面提供的資訊發揮，不要編造與設定矛盾的內容。';
-  const lorePrefix = `${SYSTEM_PROMPT}\n\n———\n以上是角色設定，務必遵守白糰糰的身體構造（沒有耳朵、鼻子，靠觸感與顏色感知世界）與小黑影的設定。${buildLoreSnippetForTv()}\n\n`;
+  const lorePrefix = `${SYSTEM_PROMPT}\n\n———\n以上是角色設定，務必遵守白糰糰的身體構造（沒有耳朵、鼻子，靠觸感與顏色感知世界）與小黑影的設定。${buildLoreSnippetForTv(ctx)}\n\n`;
 
   if (channel === 'nature') {
     return `${lorePrefix}${stateLine}\n\n你是 DISCOVERY 生態紀錄片的旁白。請以科學旁觀又俏皮詼諧的科普語氣，把白糰糰「當下這一刻」的行為包裝成一段野生觀察紀錄（例如開場「在零下八度的清晨，一隻野生白糰糰……」）。${lengthRule}繁體中文、只輸出旁白本身，不要加標題或前言。`;
@@ -985,7 +1014,7 @@ const server = http.createServer((req, res) => {
     // 給 content-lab 讀目前線上的 data/*.json，方便手機開頁面時帶出最新內容。
     try {
       const name = req.url.split('/')[3].split('?')[0];
-      const allow = { 'system-prompt': 'system-prompt.json', 'fragments': 'fragments.json', 'events': 'events.json', 'balance': 'balance.json', 'hidden-stats': 'hidden-stats.json' };
+      const allow = { 'system-prompt': 'system-prompt.json', 'fragments': 'fragments.json', 'events': 'events.json', 'balance': 'balance.json', 'hidden-stats': 'hidden-stats.json', 'lorebook': 'lorebook.json' };
       if (!allow[name]) { res.writeHead(404); res.end('not found'); return; }
       const content = fs.readFileSync(path.join(__dirname, 'data', allow[name]), 'utf8');
       res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
@@ -1175,6 +1204,7 @@ async function tick() {
     world.room.ac = acNow;
   }
   const climateInput = '\n' + distillClimate(world.room, weather);
+  const loreInput = buildLoreInput([combinedPlayerText, ...(bt.memory || []).slice(-3)].join(' '));
   const acLabel = acNow.on
     ? `${acNow.broken ? '故障' : { cool: '冷氣', heat: '暖氣', fan: '送風', dry: '除濕' }[acNow.mode] || '冷氣'}${acNow.mode === 'fan' ? '' : acNow.temp + '℃'}`
     : '關';
@@ -1186,7 +1216,7 @@ async function tick() {
 窗戶：${world.room.window_open ? '開' : '關'} 冷氣：${acLabel} 燈：${world.room.light_on ? '開' : '關'} 廁所門：${world.room.toilet_open ? '開' : '關'}
 巨怪對房間環境的描述：${world.room.env_desc || '無'}
 今天已發生：${world.room.events_today.join('，') || '無'}
-近期記憶：${(bt.memory || []).slice(-5).join(' / ') || '無'}${weatherInput}${climateInput}${ownerInput}${awayInput}${visitorInput}${eventInput}${pendingNotesInput}${hiddenInput}
+近期記憶：${(bt.memory || []).slice(-5).join(' / ') || '無'}${weatherInput}${climateInput}${ownerInput}${awayInput}${visitorInput}${eventInput}${pendingNotesInput}${hiddenInput}${loreInput}
 
 生成這段時間白糰糰的動態。`;
 

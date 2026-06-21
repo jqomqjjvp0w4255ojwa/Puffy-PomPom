@@ -214,6 +214,7 @@
     <button class="tab-btn" data-tab="system" onclick="switchTab('system')">系統規則</button>
     <button class="tab-btn" data-tab="balance" onclick="switchTab('balance')">數值平衡</button>
     <button class="tab-btn" data-tab="frag" onclick="switchTab('frag')">紙片碎片</button>
+    <button class="tab-btn" data-tab="lore" onclick="switchTab('lore')">世界書</button>
     <button class="tab-btn" data-tab="event" onclick="switchTab('event')">特殊事件</button>
     <button class="tab-btn" data-tab="dev" onclick="switchTab('dev')">開發者專區</button>
   </div>
@@ -392,6 +393,23 @@
     </div>
     <div id="frag-list"></div>
     <div class="status-line off" id="frag-status"></div>
+  </div>
+
+  <!-- ============ 世界書（lorebook） ============ -->
+  <div class="tab-panel" id="panel-lore">
+    <div class="panel-head">
+      <div class="desc">每張卡＝關鍵字＋補充設定文字。關鍵字命中玩家輸入或最近動態時，「內容」欄有寫東西才會被夾進當次prompt（給主世界AI與電視台共用），空白的卡不會送出，可以先建好條目慢慢補內容。</div>
+      <div class="actions">
+        <button class="ghost" onclick="loadFromServer('lorebook', applyLoreData)">↻ 拉取最新</button>
+        <button class="primary" onclick="uploadJSON('data/lorebook.json', collectLoreData(), 'lore-status')">上傳</button>
+      </div>
+    </div>
+    <div class="frag-search-row">
+      <input type="text" id="lore-search" placeholder="搜尋標題／關鍵字／內容…" oninput="renderLorebook()">
+      <button class="ghost" onclick="addLoreEntry()">＋ 新增</button>
+    </div>
+    <div id="lore-list"></div>
+    <div class="status-line off" id="lore-status"></div>
   </div>
 
   <!-- ============ 特殊事件文案 ============ -->
@@ -1271,6 +1289,75 @@ function renderFragments() {
 function collectFragData() { return fragData; }
 function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
 
+// ===================== 世界書（lorebook） =====================
+// 條目＝{ id, title, keywords[], content }。content 空白＝草稿、不會送進prompt（即使關鍵字命中）。
+let loreData = [];
+let loreExpanded = new Set();
+function addLoreEntry() {
+  const id = 'lore-' + Date.now();
+  loreData.unshift({ id, title: '', keywords: [], content: '' });
+  loreExpanded.add(id);
+  renderLorebook();
+}
+function applyLoreData(data) {
+  loreData = Array.isArray(data) ? data : [];
+  loreExpanded = new Set();
+  renderLorebook();
+}
+function collectLoreData() { return loreData; }
+function renderLorebook() {
+  const list = document.getElementById('lore-list');
+  const q = (document.getElementById('lore-search').value || '').trim().toLowerCase();
+  list.innerHTML = '';
+  loreData.forEach((e, idx) => {
+    const hay = `${e.title} ${(e.keywords||[]).join(',')} ${e.content}`.toLowerCase();
+    if (q && !hay.includes(q)) return;
+    const isOpen = loreExpanded.has(e.id);
+    const card = document.createElement('div');
+    card.className = 'frag-card' + (isOpen ? ' expanded' : '');
+    card.innerHTML = `
+      <div class="frag-summary">
+        <span class="idx">#${idx + 1}</span>
+        <span class="preview">${e.content ? '' : '（草稿，未送出）｜'}<span class="src">${esc(e.title || '未命名')}</span> ｜ ${esc(e.content || '（內容空白）')}</span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="frag-body">
+        <div class="row">
+          <div><label>標題（方便辨識，不會送進prompt）</label><input data-k="title" value="${esc(e.title)}"></div>
+          <div><label>關鍵字（逗號分隔，命中玩家輸入或最近動態）</label><input data-k="keywords" value="${esc((e.keywords||[]).join(','))}"></div>
+        </div>
+        <div class="row"><div style="flex-basis:100%"><label>補充設定內容（空白＝草稿不送出）</label><textarea data-k="content" rows="3">${esc(e.content)}</textarea></div></div>
+        <div class="row"><div style="flex:0 0 auto"><button class="del">刪除這條</button></div></div>
+      </div>`;
+    card.querySelector('.frag-summary').onclick = () => {
+      if (isOpen) loreExpanded.delete(e.id); else loreExpanded.add(e.id);
+      renderLorebook();
+    };
+    card.querySelectorAll('[data-k]').forEach(el => {
+      el.onclick = ev => ev.stopPropagation();
+      el.oninput = () => {
+        const k = el.dataset.k;
+        if (k === 'keywords') loreData[idx][k] = el.value.split(',').map(s => s.trim()).filter(Boolean);
+        else loreData[idx][k] = el.value;
+        if (k === 'title' || k === 'content') {
+          const preview = card.querySelector('.preview');
+          preview.innerHTML = `${loreData[idx].content ? '' : '（草稿，未送出）｜'}<span class="src">${esc(loreData[idx].title || '未命名')}</span> ｜ ${esc(loreData[idx].content || '（內容空白）')}`;
+        }
+        saveLocal();
+      };
+    });
+    card.querySelector('.del').onclick = ev => {
+      ev.stopPropagation();
+      if (!confirm('確定刪除這條世界書條目？')) return;
+      loreExpanded.delete(e.id);
+      loreData.splice(idx, 1); renderLorebook(); saveLocal();
+    };
+    list.appendChild(card);
+  });
+  const status = document.getElementById('lore-status');
+  status.textContent = `共 ${loreData.length} 條（${loreData.filter(e => e.content && e.content.trim()).length} 條已填內容會送出）`;
+}
+
 // ===================== 特殊事件文案 =====================
 // 每個特殊事件＝腳本卡（card，主頁原文顯示、保證演出）＋ AI 續寫指示（prompt，AI 接著寫餘波）。
 const EVENT_GROUPS = [
@@ -1349,7 +1436,7 @@ function saveLocal() {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({
       promptData: collectPromptData(), balanceData: collectBalanceData(),
-      fragData, eventData: collectEventData(), traitData: collectTraitData()
+      fragData, eventData: collectEventData(), traitData: collectTraitData(), loreData
     }));
   } catch (e) {}
 }
@@ -1362,6 +1449,7 @@ function loadLocal() {
     if (d.balanceData) balanceData = d.balanceData;
     if (d.fragData) fragData = d.fragData;
     if (d.eventData) eventData = d.eventData;
+    if (d.loreData) loreData = d.loreData;
     if (d.traitData) {
       if (d.traitData.nicknameGrid) nicknameGrid = d.traitData.nicknameGrid;
       if (d.traitData.textureGrid) textureGrid = d.traitData.textureGrid;
@@ -1479,6 +1567,7 @@ async function uploadAll() {
     ['data/hidden-stats.json', collectTraitData, 'trait-status'],
     ['data/fragments.json', collectFragData, 'frag-status'],
     ['data/events.json', collectEventData, 'event-status'],
+    ['data/lorebook.json', collectLoreData, 'lore-status'],
   ];
   let done = 0, failed = 0;
   setStatus('upload-all-status', 'busy', `全部上傳中… 0/${jobs.length}`);
@@ -1512,6 +1601,7 @@ if (!moodBands.length) moodFillSample(); else { moodRenderBands(); moodUpdatePre
 statBuildTable(); statUpdatePreview();
 document.getElementById('stat-preview-name').onblur = () => { statUpdatePreview(); saveLocal(); };
 renderFragments();
+renderLorebook();
 buildEventFields();
 
 if (!restored) {
@@ -1520,6 +1610,7 @@ if (!restored) {
   loadFromServer('fragments', applyFragData);
   loadFromServer('events', applyEventData);
   loadFromServer('hidden-stats', applyTraitData);
+  loadFromServer('lorebook', applyLoreData);
 }
 </script>
 
