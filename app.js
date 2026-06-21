@@ -794,6 +794,7 @@ async function load() {
     setPauseUI(worldPaused);
 
     updateDeathOverlay(world.death);
+    updateFarewellOverlay(world.farewell);
 
     maybeShowFragmentCard(world.fragments);
 
@@ -824,6 +825,26 @@ function closeDeathOverlay() {
   deathDismissed = true;
   const overlay = document.getElementById('death-overlay');
   if (overlay) overlay.style.display = 'none';
+}
+// 永別事件：卡片顯示後等飼主選「種下蕈菇／不種」。選完前世界暫停生成（見 world.js tick()）。
+function updateFarewellOverlay(farewell) {
+  const pendingOverlay = document.getElementById('farewell-overlay');
+  const endedOverlay = document.getElementById('ended-overlay');
+  if (!pendingOverlay || !endedOverlay) return;
+  pendingOverlay.style.display = (farewell && farewell.pending) ? 'flex' : 'none';
+  endedOverlay.style.display = (farewell && farewell.locked) ? 'flex' : 'none';
+}
+async function farewellChoice(plant) {
+  try {
+    await fetch('/api/owner', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: 'farewell_choice', plant })
+    });
+    load();
+  } catch (e) {
+    alert('選擇送出失敗，請再試一次。');
+  }
 }
 async function resetWorld() {
   if (!confirm('確定要放棄這段紀錄、重新開始嗎？\n目前的世界與所有每日紀錄會被「封存」（搬到 archive/，不會刪除），再從初始值重置。')) return;
