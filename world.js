@@ -13,6 +13,13 @@ const LEGACY_LOG_FILE = path.join(__dirname, 'log.txt');
 const LOGS_DIR = path.join(DATA_DIR, 'logs');
 const MIGRATION_MARKER = path.join(LOGS_DIR, '.migrated');
 
+// 避免寫到一半被中斷導致 world.json 截斷成不合法 JSON：先寫暫存檔再 rename（同一磁區內 rename 是原子操作）。
+function writeWorldFile(world) {
+  const tmp = `${WORLD_FILE}.tmp`;
+  fs.writeFileSync(tmp, JSON.stringify(world, null, 2));
+  fs.renameSync(tmp, WORLD_FILE);
+}
+
 // Volume 剛掛載時是空的，用 repo 內建的 world.json 當初始值種一份過去。
 function ensureWorldFile() {
   if (!fs.existsSync(WORLD_FILE)) {
@@ -37,11 +44,17 @@ function buildSystemPrompt() {
 白糰糰是誰：
 ${section('identity')}
 
+生命週期：
+${section('lifecycle')}
+
 尺寸與認知：
 ${section('sizeCognition')}
 
 性格與信念：
 ${section('personality')}
+
+社交與情感：
+${section('social')}
 
 身體與感知（重要，別寫錯）：
 ${section('body')}
@@ -49,7 +62,7 @@ ${section('body')}
 毛況系統：
 ${section('furSystem')}
 
-依當前數值調整行為（讓描述的動作跟健康/飽食一致，別寫出與數值矛盾的狀態）：
+依當前狀態調整行為（這是描述性的語氣參考，不是精確數值規則，順著這條線寫，不要卡在某個門檻上）：
 ${section('statBands')}
 
 小黑影：
@@ -58,8 +71,8 @@ ${section('shadow')}
 訪客留言：
 ${section('visitors')}
 
-食物來源邏輯：
-${section('foodSource')}
+生活習性：
+${section('habits')}
 
 規則：
 ${section('rules')}
@@ -68,8 +81,6 @@ ${section('rules')}
 {
   "scene": "這段時間發生的事，2-4句，漫畫分鏡風格，句與句之間換行",
   "baituantuan": {
-    "hp": 數字,
-    "food": 數字,
     "location": "地點",
     "fur": "正常，或簡短描述（4-8字內，例如：微髒、右耳禿一塊、毛打結）"
   },
@@ -95,12 +106,11 @@ const EVENT_PROMPTS_BUILTIN = {
 白糰糰進入「渡劫」狀態：全身絨毛微顫，靜坐窗邊仰望天空，雷雲湧動。
 隨機二選一決定結局並寫入scene：
 A. 度劫失敗（電糰糰）：遭雷擊，絨毛焦捲變黑，靜電纏身，動作僵硬，沉默放電躲回角落。
-B. 度劫成功（法喜糰糰）：升空發光後「啪」一聲落地，異常開心，於地板施展誇張街舞動作。
-輸出時將baituantuan.food設為50、baituantuan.hp設為120（這是封頂溢出的特殊值，不是錯誤）。`,
+B. 度劫成功（法喜糰糰）：升空發光後「啪」一聲落地，異常開心，於地板施展誇張街舞動作。`,
   shadowRevenge: `特殊事件・冥影與霜解篇（健康與飽食同時歸零，這次更新請完整呈現此事件，不要寫成日常動態）：
 白糰糰無聲崩解，只留下毛毛與冰屑，小黑影自陰影浮現，與殘骸融合成「冰晶暗影」，展開一場正義與荒誕共行的審判：室內異常降溫結霜、巨型Mr.DUST夜行騷擾、如影隨形的精神干擾。
 終局：小黑影在無人處吐出白糰糰遺骸，俠魂等待再生。
-輸出時將baituantuan.food與baituantuan.hp都設為60（重生後的起始值），shadow.active設為true，shadow.dust_count明顯增加。`,
+shadow.active設為true，shadow.dust_count明顯增加。`,
   observation: `特殊事件・觀察篇（玩家輸入觸發旁白模式）：
 本次scene改用DISCOVERY紀錄片風格書寫：科學旁觀的趣味、俏皮詼諧的科普語氣，把白糰糰的行為包裝成「野生觀察紀錄」（例如：「在零下八度的清晨，一隻野生白糰糰⋯⋯」），但內容仍要符合他平時的行為邏輯。`
 };
@@ -499,6 +509,7 @@ const BALANCE_BUILTIN = {
   moodAway: -5,
   moodVisitor: 8,
   textureEase: 0.05,
+  ownerFeedFoodBoost: 35,
   tickNightMinMin: 180,
   tickNightMaxMin: 360,
   tickDayMinMin: 15,
@@ -510,6 +521,26 @@ function loadBalance() {
   } catch (err) {
     return BALANCE_BUILTIN;
   }
+}
+
+// 把健康/飽食數值轉成一句簡短的狀態描述給AI，而不是直接餵數字讓AI卡在門檻上判斷。
+function describeVital(hp, food) {
+  let hpLine;
+  if (hp >= 95) hpLine = '健康飽滿，毛澎潤渾圓，眼神銳利，動作靈活';
+  else if (hp > 75) hpLine = '健康穩定，動作平穩，略顯疲態';
+  else if (hp > 50) hpLine = '毛開始塌軟，動作微歪，偏好躲陰影靜坐、咬竹籤';
+  else if (hp > 25) hpLine = '健康亮紅燈，掉毛變扁，動作遲緩，可能啃家具找東西吃';
+  else if (hp > 5) hpLine = '健康危急，瀕臨崩潰，行為混亂';
+  else hpLine = '健康瀕臨崩潰邊緣，絨毛因重病蒸發，露出粉色身體，無法戰鬥，急需介入';
+
+  let foodLine;
+  if (food >= 95) foodLine = '活力充沛、毛炸成球，會跳舞玩水';
+  else if (food > 75) foodLine = '飽足，主動找小東西啃、舔冰舔竹籤';
+  else if (food > 50) foodLine = '略餓，動作變慢，偷舔牆、舔灰塵、跑廁所吸水';
+  else if (food > 25) foodLine = '飢餓，行為開始混亂';
+  else foodLine = '極度飢餓，可能啃自己、變裸糰糰、排出黑色霜晶，這是需要緊急介入的危險狀態';
+
+  return `${hpLine}；${foodLine}`;
 }
 
 function applyNaturalDecay(world) {
@@ -538,6 +569,17 @@ const server = http.createServer((req, res) => {
       const world = JSON.parse(fs.readFileSync(WORLD_FILE, 'utf8'));
       res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
       res.end(JSON.stringify({ world }));
+    } catch (e) {
+      res.writeHead(500);
+      res.end('error');
+    }
+
+  } else if (req.url.startsWith('/api/usage')) {
+    try {
+      const world = JSON.parse(fs.readFileSync(WORLD_FILE, 'utf8'));
+      const usage = world.tokenUsage || { inputTokens: 0, outputTokens: 0, calls: 0 };
+      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ usage }));
     } catch (e) {
       res.writeHead(500);
       res.end('error');
@@ -584,7 +626,7 @@ const server = http.createServer((req, res) => {
         if ('env_desc' in data) {
           world.room.env_desc_time = data.env_desc ? getRealTime().display : '';
         }
-        fs.writeFileSync(WORLD_FILE, JSON.stringify(world, null, 2));
+        writeWorldFile(world);
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ ok: true }));
       });
@@ -608,7 +650,7 @@ const server = http.createServer((req, res) => {
           world.owner_action_read = !data.input;
         }
         if (data.type === 'away') world.owner_away = !!data.away;
-        fs.writeFileSync(WORLD_FILE, JSON.stringify(world, null, 2));
+        writeWorldFile(world);
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ ok: true }));
       });
@@ -650,7 +692,7 @@ const server = http.createServer((req, res) => {
         }
 
         world.fragments = fragState;
-        fs.writeFileSync(WORLD_FILE, JSON.stringify(world, null, 2));
+        writeWorldFile(world);
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ ok: true, bonusHint }));
       });
@@ -668,7 +710,7 @@ const server = http.createServer((req, res) => {
         const text = (data.text || '').trim().slice(0, 60);
         const world = JSON.parse(fs.readFileSync(WORLD_FILE, 'utf8'));
         pushPendingNote(world, text);
-        fs.writeFileSync(WORLD_FILE, JSON.stringify(world, null, 2));
+        writeWorldFile(world);
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ ok: true }));
       });
@@ -685,7 +727,7 @@ const server = http.createServer((req, res) => {
         const data = JSON.parse(Buffer.concat(body).toString());
         const world = JSON.parse(fs.readFileSync(WORLD_FILE, 'utf8'));
         world.visitor_messages = (world.visitor_messages || []).filter(m => m.id !== data.id);
-        fs.writeFileSync(WORLD_FILE, JSON.stringify(world, null, 2));
+        writeWorldFile(world);
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ ok: true }));
       });
@@ -712,7 +754,7 @@ const server = http.createServer((req, res) => {
         const { display } = getRealTime();
         const id = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
         world.visitor_messages = [...(world.visitor_messages || []), { id, name: name || '匿名訪客', message, time: display, color }];
-        fs.writeFileSync(WORLD_FILE, JSON.stringify(world, null, 2));
+        writeWorldFile(world);
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ ok: true, id }));
       });
@@ -751,15 +793,6 @@ const server = http.createServer((req, res) => {
   } else if (req.url === '/' || req.url === '/index.html') {
     try {
       const html = fs.readFileSync('index.html', 'utf8');
-      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-      res.end(html);
-    } catch (e) {
-      res.writeHead(404);
-      res.end('not found');
-    }
-  } else if (req.url === '/trait-lab' || req.url === '/trait-lab.html') {
-    try {
-      const html = fs.readFileSync(path.join(__dirname, 'tools', 'trait-lab.html'), 'utf8');
       res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
       res.end(html);
     } catch (e) {
@@ -823,11 +856,23 @@ async function tick() {
   world = applyNaturalDecay(world);
 
   const { display } = getRealTime();
-  const bt = world.characters.baituantuan;
+  let bt = world.characters.baituantuan;
 
   // owner_action 只在第一次被 AI 讀到時納入 prompt；讀過一次就只是顯示用的唯讀文字，
   // 直到玩家送出新的一則才會再次變成「未讀」。
   const ownerActionUnread = !!world.owner_action && !world.owner_action_read;
+
+  // 巨怪的行為描述若提到餵食/留置食物，機制上直接加飽食度，不完全依賴 AI 自行判斷給多少。
+  // 否則每一輪 applyNaturalDecay 持續扣飽食，玩家明明餵了東西，數值卻沒有反映。
+  const FEED_KEYWORDS = /冰棒|冰塊|水|麵包|食物|餵|放.*吃|留.*吃|奶|點心|零食/;
+  if (ownerActionUnread && FEED_KEYWORDS.test(world.owner_action)) {
+    const bal = loadBalance();
+    const newFood = Math.min(100, bt.food + bal.ownerFeedFoodBoost);
+    world.characters.baituantuan = { ...bt, food: newFood };
+    bt = world.characters.baituantuan;
+    console.log(`偵測到餵食行為，飽食 +${bal.ownerFeedFoodBoost} → ${newFood}`);
+  }
+
   const ownerStatus = world.owner_status ? `巨怪狀態：${world.owner_status}` : '';
   const ownerAction = ownerActionUnread ? `巨怪對房間的行為：${world.owner_action}` : '';
   const ownerInput = (ownerStatus || ownerAction) ? '\n' + [ownerStatus, ownerAction].filter(Boolean).join('\n') : '';
@@ -868,6 +913,17 @@ async function tick() {
   const eventInput = triggeredEvent ? '\n' + EVENT_PROMPTS[triggeredEvent] : '';
   if (triggeredEvent) console.log(`特殊事件觸發：${triggeredEvent}`);
 
+  // 健康/飽食完全由機制決定（衰減、餵食加成、特殊事件強制值），AI不再直接控制這兩個數字，
+  // 只透過一句簡短狀態描述去理解該怎麼寫，避免被硬數值門檻卡住敘述。
+  if (triggeredEvent === 'ascension') {
+    world.characters.baituantuan = { ...bt, food: 50, hp: 120 };
+    bt = world.characters.baituantuan;
+  } else if (triggeredEvent === 'shadowRevenge') {
+    world.characters.baituantuan = { ...bt, food: 60, hp: 60 };
+    bt = world.characters.baituantuan;
+  }
+  const vitalLine = describeVital(bt.hp, bt.food);
+
   const weather = await fetchWeather() || world.weather || null;
   const weatherInput = weather
     ? `\n戶外天氣（台北實況）：${weather.desc} ${weather.temp}℃ 濕度${weather.humidity}%`
@@ -887,7 +943,7 @@ async function tick() {
     : '關';
 
   const prompt = `當前時間：${display}
-白糰糰：健康${bt.hp} 飽食${bt.food} 毛況:${bt.fur || '正常'} 位置:${bt.location}
+白糰糰目前狀態：${vitalLine} · 毛況:${bt.fur || '正常'} · 位置:${bt.location}
 小黑影：${world.characters.shadow.active ? '活躍' : '潛伏'} 位置:${world.characters.shadow.location} 灰塵:${world.characters.shadow.dust_count}
 房間清潔度：${world.room.cleanliness}
 窗戶：${world.room.window_open ? '開' : '關'} 冷氣：${acLabel} 燈：${world.room.light_on ? '開' : '關'} 廁所門：${world.room.toilet_open ? '開' : '關'}
@@ -911,14 +967,23 @@ async function tick() {
     text = text.replace(/^```json\s*/, '').replace(/```\s*$/, '');
     const result = JSON.parse(text);
 
+    const usage = response.usage || {};
+    const prevUsage = world.tokenUsage || { inputTokens: 0, outputTokens: 0, calls: 0 };
+    const tokenUsage = {
+      inputTokens: prevUsage.inputTokens + (usage.input_tokens || 0),
+      outputTokens: prevUsage.outputTokens + (usage.output_tokens || 0),
+      calls: prevUsage.calls + 1
+    };
+
     const newWorld = {
       ...world,
       nextTickAt: Date.now() + delay,
       weather: weather || world.weather || null,
+      tokenUsage,
       characters: {
         baituantuan: {
           ...world.characters.baituantuan,
-          ...result.baituantuan,
+          ...(({ hp, food, ...rest }) => rest)(result.baituantuan || {}),
           ...hidden,
           nickname,
           texture,
@@ -969,26 +1034,36 @@ async function tick() {
       newWorld.pending_notes = [];
     }
 
-    fs.writeFileSync(WORLD_FILE, JSON.stringify(newWorld, null, 2));
+    writeWorldFile(newWorld);
 
     const furNote = result.baituantuan.fur && result.baituantuan.fur !== '正常'
       ? ` · ${result.baituantuan.fur}` : '';
 
+    const finalBt = newWorld.characters.baituantuan;
+
     appendToDay(todayKey, 'diary', [{
       time: display,
       scene: result.scene,
-      hp: result.baituantuan.hp,
-      food: result.baituantuan.food,
+      hp: finalBt.hp,
+      food: finalBt.food,
       location: result.baituantuan.location,
       fur: result.baituantuan.fur && result.baituantuan.fur !== '正常' ? result.baituantuan.fur : null,
-      shadowActive: !!result.shadow.active
+      shadowActive: !!result.shadow.active,
+      tokens: { input: usage.input_tokens || 0, output: usage.output_tokens || 0 }
     }]);
 
-    console.log(`【${display}】\n${result.scene}\n健康 ${result.baituantuan.hp} · 飽食 ${result.baituantuan.food}${furNote} · ${result.baituantuan.location}\n${result.shadow.active ? '⚠️ 小黑影出沒中' : ''}`);
+    console.log(`【${display}】\n${result.scene}\n健康 ${finalBt.hp} · 飽食 ${finalBt.food}${furNote} · ${result.baituantuan.location}\n${result.shadow.active ? '⚠️ 小黑影出沒中' : ''}\ntoken：本次input${usage.input_tokens || 0}/output${usage.output_tokens || 0} · 累計input${tokenUsage.inputTokens}/output${tokenUsage.outputTokens}（共${tokenUsage.calls}次）`);
 
   } catch (e) {
     console.error('錯誤：', e.message);
-    const world2 = JSON.parse(fs.readFileSync(WORLD_FILE, 'utf8'));
+    // world.json 萬一損毀，這裡重讀也會炸；退回 tick 開頭讀到的 world，至少能把 nextTickAt 寫回去續命。
+    let world2;
+    try {
+      world2 = JSON.parse(fs.readFileSync(WORLD_FILE, 'utf8'));
+    } catch (readErr) {
+      console.error('world.json 讀取/解析失敗，改用記憶體中的版本回寫：', readErr.message);
+      world2 = world;
+    }
     world2.nextTickAt = Date.now() + delay;
     if (weather) world2.weather = weather;
 
@@ -1003,7 +1078,7 @@ async function tick() {
       console.error('偵測到額度/金鑰問題，進入吉屋出租狀態。');
     }
 
-    fs.writeFileSync(WORLD_FILE, JSON.stringify(world2, null, 2));
+    writeWorldFile(world2);
   }
 console.log(`下次更新：${Math.round(delay/60000)} 分鐘後（${new Date(Date.now()+delay).toLocaleString('zh-TW',{timeZone:'Asia/Taipei'})}）`);
 

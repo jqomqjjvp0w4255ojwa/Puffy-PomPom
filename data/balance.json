@@ -24,6 +24,8 @@
 
   "textureEase": 0.05,
 
+  "ownerFeedFoodBoost": 35,
+
   "tickNightMinMin": 180,
   "tickNightMaxMin": 360,
   "tickDayMinMin": 15,

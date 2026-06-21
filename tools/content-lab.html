@@ -77,12 +77,27 @@
   }
   input:focus, select:focus { outline: 2px solid #e8a070; }
 
-  .num-grid { display: grid; grid-template-columns: 1fr; gap: 10px; }
+  .num-grid { display: grid; grid-template-columns: 1fr; gap: 8px; }
   @media (min-width: 520px) { .num-grid { grid-template-columns: 1fr 1fr; } }
-  .num-card { background: #fff; border: 1px solid #e8c8b0; border-radius: 10px; padding: 12px 14px; }
-  .num-card label { display: block; font-size: 12px; color: #6a4a2a; margin-bottom: 3px; }
-  .num-card .field-desc { font-size: 11px; color: #a08868; margin: 2px 0 8px; line-height: 1.4; }
-  .num-card input { width: 100%; padding: 9px 10px; font-size: 14px; }
+  .num-card { background: #fff; border: 1px solid #e8c8b0; border-radius: 8px; padding: 10px 12px; }
+  .num-card > .title { font-size: 12px; font-weight: 600; color: #5a3a2a; margin-bottom: 8px; }
+  .num-card > .fields { display: flex; gap: 8px; flex-wrap: wrap; }
+  .num-card .field-item { flex: 1; min-width: 100px; display: flex; flex-direction: column; }
+  .num-card label { display: block; font-size: 11px; color: #6a4a2a; margin-bottom: 2px; font-weight: 500; }
+  .num-card .field-desc { font-size: 10px; color: #a08868; margin-bottom: 4px; line-height: 1.3; }
+  .num-card input { width: 100%; padding: 6px 8px; font-size: 13px; }
+
+  .dev-section { background: #fff; border: 1px solid #e8c8b0; border-radius: 10px; padding: 14px 16px; margin-bottom: 14px; }
+  .dev-section h3 { font-size: 13px; color: #5a3a2a; margin: 0 0 6px; }
+  .dev-note { font-size: 11px; color: #a08868; margin-bottom: 10px; line-height: 1.4; }
+  .dev-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .dev-table th, .dev-table td { border: 1px solid #f0e4d4; padding: 6px 10px; text-align: left; }
+  .dev-table th { background: #f6ede0; color: #6a4a2a; font-weight: 600; }
+  .dev-table td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .dev-table tr.total td { font-weight: 700; background: #faf3e8; color: #5a3a2a; }
+  .dev-table tr.warn td { color: #b05a2a; }
+  .dev-cost-controls label { display: block; font-size: 12px; color: #6a4a2a; margin-bottom: 6px; }
+  .dev-cost-controls label span { margin-right: 12px; }
 
   .frag-search-row { display: flex; gap: 8px; margin-bottom: 10px; }
   .frag-search-row input { flex: 1; padding: 9px 10px; }
@@ -144,7 +159,7 @@
   table.grid th { background: #f0e4d4; padding: 6px 4px; font-weight: 500; white-space: nowrap; }
   table.grid th.corner { background: #e8d8c4; }
   table.grid td input {
-    width: 92px; height: 46px; border: none; text-align: center;
+    width: 60px; height: 32px; border: none; text-align: center;
     font-size: 12px; font-family: inherit; background: transparent; color: #4a3a2a;
   }
   table.grid td input:focus { background: #fff3e0; outline: 2px solid #e8a070; }
@@ -190,6 +205,7 @@
     <button class="tab-btn" data-tab="trait" onclick="switchTab('trait')">暱稱實驗室</button>
     <button class="tab-btn" data-tab="frag" onclick="switchTab('frag')">紙片碎片</button>
     <button class="tab-btn" data-tab="event" onclick="switchTab('event')">特殊事件</button>
+    <button class="tab-btn" data-tab="dev" onclick="switchTab('dev')">開發者專區</button>
   </div>
 
   <!-- ============ 性格設定 ============ -->
@@ -238,7 +254,7 @@
       </div>
       <div class="trait-layout">
         <div class="trait-panel trait-preview">
-          <div class="preview-name" id="nickname-preview-name">—</div>
+          <div class="preview-name" id="nickname-preview-name" contenteditable="true" placeholder="點擊編輯暱稱或直接填格子">—</div>
           <div class="slider-row">
             <label><span>熟悉度</span><span><span id="nickname-fam-val">50</span> <span class="band-tag" id="nickname-fam-band"></span></span></label>
             <input type="range" id="nickname-fam-slider" min="0" max="100" value="50" oninput="nicknameUpdatePreview()">
@@ -332,14 +348,198 @@
     <div id="event-fields"></div>
     <div class="status-line off" id="event-status"></div>
   </div>
+
+  <!-- ============ 開發者專區（token 計算 / 費用預測 / 匯出） ============ -->
+  <div class="tab-panel" id="panel-dev">
+    <div class="panel-head">
+      <div class="desc">即時估算每次世界更新送進 API 的 token 與花費，並可把所有設定匯出成 Markdown，貼到 Notion／Google 文件整理。自己看哪段太肥就回各分頁精簡，不用怕刪錯重要內容。</div>
+      <div class="actions">
+        <button class="ghost" onclick="refreshDevStats()">↻ 重新計算</button>
+      </div>
+    </div>
+
+    <div class="dev-section">
+      <h3>① system prompt 逐段 token（每次更新都會完整送出，這是成本大頭）</h3>
+      <div class="dev-note">中文約 1 字≈1 token、英數約 4 字≈1 token，為估算值，實際以 API 回報為準。</div>
+      <table class="dev-table" id="dev-prompt-table"></table>
+    </div>
+
+    <div class="dev-section">
+      <h3>② 每次更新總 token（system + 當回合世界狀態 + 輸出）</h3>
+      <table class="dev-table" id="dev-pertick-table"></table>
+    </div>
+
+    <div class="dev-section">
+      <h3>③ 費用預測</h3>
+      <div class="dev-cost-controls">
+        <label>模型單價（USD / 百萬 token）
+          <span>input <input type="number" id="dev-price-in" value="3" step="0.5" style="width:64px" oninput="refreshDevStats()"></span>
+          <span>output <input type="number" id="dev-price-out" value="15" step="0.5" style="width:64px" oninput="refreshDevStats()"></span>
+        </label>
+        <div class="dev-note">預設為 Claude Sonnet 4.6 參考價（$3 / $15）。換模型自行改。</div>
+      </div>
+      <table class="dev-table" id="dev-cost-table"></table>
+    </div>
+
+    <div class="dev-section">
+      <h3>④ 實際累計用量（來自伺服器，跑過 tick 才有）</h3>
+      <table class="dev-table" id="dev-actual-table"></table>
+    </div>
+
+    <div class="dev-section">
+      <h3>⑤ 匯出</h3>
+      <div class="actions" style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="primary" onclick="exportMarkdown()">⬇ 匯出全部設定（Markdown）</button>
+        <button class="secondary" onclick="exportJSON()">⬇ 匯出全部設定（JSON 備份）</button>
+      </div>
+      <div class="dev-note">Markdown 適合貼 Notion／Google 文件；JSON 適合做完整備份還原。</div>
+    </div>
+  </div>
 </main>
 
 <script>
 function switchTab(name) {
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id === `panel-${name}`));
+  if (name === 'dev') refreshDevStats();
 }
 function toggleGhPanel() { document.getElementById('gh-panel').classList.toggle('open'); }
+
+// ===================== 開發者專區：token 估算 / 費用預測 / 匯出 =====================
+// 粗估：CJK 中日韓字 ≈ 1 token，其餘（英數標點）≈ 0.25 token。實際以 API 回報為準。
+function estimateTokens(str) {
+  if (!str) return 0;
+  let cjk = 0, other = 0;
+  for (const ch of String(str)) {
+    const code = ch.codePointAt(0);
+    if ((code >= 0x3000 && code <= 0x9FFF) || (code >= 0xF900 && code <= 0xFAFF) || (code >= 0xFF00 && code <= 0xFFEF)) cjk++;
+    else other++;
+  }
+  return Math.round(cjk + other / 4);
+}
+// 複刻 world.js buildSystemPrompt 的骨架（標題＋輸出格式），用來估算固定開銷。
+const SYS_SCAFFOLD = `你是白糰糰宇宙的世界引擎。根據當前世界狀態，生成這段時間內發生的事。
+白糰糰是誰：生命週期：尺寸與認知：性格與信念：社交與情感：身體與感知（重要，別寫錯）：毛況系統：依當前狀態調整行為（這是描述性的語氣參考，不是精確數值規則，順著這條線寫，不要卡在某個門檻上）：小黑影：訪客留言：生活習性：規則：輸出格式，只輸出這個JSON，不要其他文字與markdown：{ "scene": "這段時間發生的事，2-4句，漫畫分鏡風格，句與句之間換行", "baituantuan": { "location": "地點", "fur": "正常，或簡短描述" }, "shadow": { "active": true或false, "location": "地點", "dust_count": 數字 }, "room": { "cleanliness": 數字, "window_open": true或false, "light_on": true, "toilet_open": false, "events_today": ["事件"] } }`;
+const SYS_PROMPT_KEYS = ['identity','lifecycle','sizeCognition','personality','social','body','furSystem','statBands','shadow','visitors','habits','rules'];
+const SYS_PROMPT_LABELS = {
+  identity:'白糰糰是誰', lifecycle:'生命週期', sizeCognition:'尺寸與認知', personality:'性格與信念',
+  social:'社交與情感', body:'身體與感知', furSystem:'毛況系統', statBands:'狀態描述',
+  shadow:'小黑影', visitors:'訪客留言', habits:'生活習性', rules:'規則'
+};
+// 每回合動態世界狀態（時間/狀態/房間/天氣/隱藏數值）的概估，非特殊事件時的典型值。
+const PERTICK_WORLD_EST = 320;   // tokens，當回合 user prompt 的世界狀態描述
+const OUTPUT_EST = 320;          // tokens，scene 2-4 句的典型輸出
+
+function refreshDevStats() {
+  // ① system prompt 逐段
+  const scaffoldTok = estimateTokens(SYS_SCAFFOLD);
+  let sysTotal = scaffoldTok;
+  const rows = [`<tr><th>區塊</th><th>字數</th><th>估 token</th><th>佔比</th></tr>`];
+  const segTok = {};
+  SYS_PROMPT_KEYS.forEach(k => { segTok[k] = estimateTokens(promptData[k] || ''); sysTotal += segTok[k]; });
+  SYS_PROMPT_KEYS.forEach(k => {
+    const t = segTok[k];
+    const pct = sysTotal ? Math.round(t / sysTotal * 100) : 0;
+    const warn = t > 400 ? ' class="warn"' : '';
+    rows.push(`<tr${warn}><td>${SYS_PROMPT_LABELS[k]}</td><td class="num">${(promptData[k]||'').length}</td><td class="num">${t}</td><td class="num">${pct}%</td></tr>`);
+  });
+  rows.push(`<tr><td>骨架（標題＋輸出格式）</td><td class="num">—</td><td class="num">${scaffoldTok}</td><td class="num">${Math.round(scaffoldTok/sysTotal*100)}%</td></tr>`);
+  rows.push(`<tr class="total"><td>system prompt 合計</td><td class="num">—</td><td class="num">${sysTotal}</td><td class="num">100%</td></tr>`);
+  document.getElementById('dev-prompt-table').innerHTML = rows.join('');
+
+  // ② 每次更新總 token
+  const inPerTick = sysTotal + PERTICK_WORLD_EST;
+  const p2 = [`<tr><th>項目</th><th>估 token</th><th>說明</th></tr>`];
+  p2.push(`<tr><td>system prompt（固定）</td><td class="num">${sysTotal}</td><td>每次更新都完整送出</td></tr>`);
+  p2.push(`<tr><td>當回合世界狀態</td><td class="num">${PERTICK_WORLD_EST}</td><td>時間/狀態/房間/天氣/隱藏數值，估計值</td></tr>`);
+  p2.push(`<tr class="total"><td>input 小計</td><td class="num">${inPerTick}</td><td>＝送進 API 的輸入</td></tr>`);
+  p2.push(`<tr><td>output（scene 輸出）</td><td class="num">${OUTPUT_EST}</td><td>2-4 句的典型輸出，估計值</td></tr>`);
+  document.getElementById('dev-pertick-table').innerHTML = p2.join('');
+
+  // ③ 費用預測（依數值平衡的更新頻率推算每天 tick 次數）
+  const b = balanceData || {};
+  const avgDay = ((Number(b.tickDayMinMin)||15) + (Number(b.tickDayMaxMin)||60)) / 2;
+  const avgNight = ((Number(b.tickNightMinMin)||180) + (Number(b.tickNightMaxMin)||360)) / 2;
+  const ticksDay = avgDay > 0 ? (16 * 60 / avgDay) : 0;     // 06:00~22:00
+  const ticksNight = avgNight > 0 ? (8 * 60 / avgNight) : 0; // 22:00~06:00
+  const ticksPerDay = ticksDay + ticksNight;
+  const priceIn = Number(document.getElementById('dev-price-in').value) || 0;
+  const priceOut = Number(document.getElementById('dev-price-out').value) || 0;
+  const dailyIn = ticksPerDay * inPerTick;
+  const dailyOut = ticksPerDay * OUTPUT_EST;
+  const dailyCost = dailyIn / 1e6 * priceIn + dailyOut / 1e6 * priceOut;
+  const c = [`<tr><th>項目</th><th>數值</th></tr>`];
+  c.push(`<tr><td>白天每天約</td><td class="num">${ticksDay.toFixed(1)} 次（間隔均值 ${avgDay} 分）</td></tr>`);
+  c.push(`<tr><td>夜間每天約</td><td class="num">${ticksNight.toFixed(1)} 次（間隔均值 ${avgNight} 分）</td></tr>`);
+  c.push(`<tr class="total"><td>每天總更新</td><td class="num">${ticksPerDay.toFixed(1)} 次</td></tr>`);
+  c.push(`<tr><td>每天 input / output</td><td class="num">${Math.round(dailyIn).toLocaleString()} / ${Math.round(dailyOut).toLocaleString()} tokens</td></tr>`);
+  c.push(`<tr class="total"><td>每天估算花費</td><td class="num">$${dailyCost.toFixed(3)}</td></tr>`);
+  c.push(`<tr class="total"><td>每月估算花費（×30）</td><td class="num">$${(dailyCost*30).toFixed(2)}</td></tr>`);
+  document.getElementById('dev-cost-table').innerHTML = c.join('');
+
+  // ④ 實際累計用量
+  fetch('/api/usage').then(r => r.json()).then(d => {
+    const u = d.usage || { inputTokens: 0, outputTokens: 0, calls: 0 };
+    const realCost = u.inputTokens / 1e6 * priceIn + u.outputTokens / 1e6 * priceOut;
+    const a = [`<tr><th>項目</th><th>數值</th></tr>`];
+    a.push(`<tr><td>累計更新次數</td><td class="num">${u.calls}</td></tr>`);
+    a.push(`<tr><td>累計 input / output</td><td class="num">${u.inputTokens.toLocaleString()} / ${u.outputTokens.toLocaleString()}</td></tr>`);
+    if (u.calls > 0) a.push(`<tr><td>實際平均每次 input / output</td><td class="num">${Math.round(u.inputTokens/u.calls)} / ${Math.round(u.outputTokens/u.calls)}</td></tr>`);
+    a.push(`<tr class="total"><td>累計實際花費</td><td class="num">$${realCost.toFixed(4)}</td></tr>`);
+    document.getElementById('dev-actual-table').innerHTML = a.join('');
+  }).catch(() => {
+    document.getElementById('dev-actual-table').innerHTML = `<tr><td>尚無資料（伺服器未啟動或還沒跑過更新）</td></tr>`;
+  });
+}
+
+function collectAllSettings() {
+  return {
+    systemPrompt: collectPromptData(),
+    balance: collectBalanceData(),
+    hiddenStats: collectTraitData(),
+    fragments: collectFragData(),
+    events: collectEventData()
+  };
+}
+function downloadFile(filename, content, type) {
+  const blob = new Blob([content], { type });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+function stamp() {
+  const d = new Date();
+  const p = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}`;
+}
+function exportJSON() {
+  downloadFile(`puffy-settings-${stamp()}.json`, JSON.stringify(collectAllSettings(), null, 2), 'application/json');
+}
+function exportMarkdown() {
+  const s = collectAllSettings();
+  let md = `# 白糰糰設定匯出\n\n匯出時間：${new Date().toLocaleString('zh-TW')}\n\n`;
+  md += `## 性格設定（system prompt）\n\n`;
+  SYS_PROMPT_KEYS.forEach(k => {
+    md += `### ${SYS_PROMPT_LABELS[k]}（\`${k}\`）\n\n${s.systemPrompt[k] || '（空）'}\n\n`;
+  });
+  md += `## 數值平衡\n\n| 參數 | 值 |\n|---|---|\n`;
+  Object.entries(s.balance).forEach(([k, v]) => { md += `| ${k} | ${v} |\n`; });
+  md += `\n## 特殊事件文案\n\n`;
+  Object.entries(s.events).forEach(([k, v]) => { md += `### ${k}\n\n${v || '（空）'}\n\n`; });
+  md += `## 紙片碎片\n\n`;
+  const bySource = {};
+  (s.fragments.fragments || []).forEach(f => { (bySource[f.source || '未分類'] ||= []).push(f); });
+  Object.keys(bySource).sort().forEach(src => {
+    md += `### ${src}\n\n`;
+    bySource[src].forEach(f => { md += `- **${f.label || f.id}**：${f.text}\n`; });
+    md += `\n`;
+  });
+  md += `## 暱稱／質地／心情對照（隱藏數值）\n\n`;
+  md += `（暱稱 7×7、質地 7×7、心情色彩分段，詳見各實驗室分頁）\n`;
+  downloadFile(`puffy-settings-${stamp()}.md`, md, 'text/markdown');
+}
 
 // ===================== 共用：第二層分頁 =====================
 function buildSubtabs(box, group, subs, activeIndex) {
@@ -369,15 +569,17 @@ const PROMPT_GROUPS = [
   { key: 'rules', label: '互動規則' }
 ];
 const PROMPT_SECTIONS = [
-  { key: 'identity', label: '白糰糰是誰', rows: 4, group: 'basic' },
+  { key: 'identity', label: '白糰糰是誰', rows: 6, group: 'basic' },
+  { key: 'lifecycle', label: '生命週期', rows: 4, group: 'basic' },
   { key: 'sizeCognition', label: '尺寸與認知', rows: 4, group: 'basic' },
   { key: 'personality', label: '性格與信念', rows: 5, group: 'basic' },
-  { key: 'body', label: '身體與感知（重要，別寫錯）', rows: 7, group: 'body' },
+  { key: 'social', label: '社交與情感', rows: 5, group: 'basic' },
+  { key: 'body', label: '身體與感知（重要，別寫錯）', rows: 10, group: 'body' },
   { key: 'furSystem', label: '毛況系統', rows: 3, group: 'body' },
-  { key: 'statBands', label: '依當前數值調整行為（健康/飽食分級）', rows: 9, group: 'body', desc: '糰糰的求生反應就在這段，低數值要寫出明顯危機感。' },
+  { key: 'statBands', label: '依當前狀態調整行為（健康/飽食線性描述）', rows: 6, group: 'body', desc: '糰糰的狀態現在是一句簡短描述，不是硬門檻，順著語氣寫危機感即可。' },
   { key: 'shadow', label: '小黑影', rows: 8, group: 'rules' },
   { key: 'visitors', label: '訪客留言', rows: 4, group: 'rules' },
-  { key: 'foodSource', label: '食物來源邏輯', rows: 6, group: 'rules' },
+  { key: 'habits', label: '生活習性', rows: 12, group: 'rules' },
   { key: 'rules', label: '規則', rows: 6, group: 'rules' }
 ];
 let promptData = {};
@@ -414,45 +616,99 @@ const BALANCE_GROUPS = [
   { key: 'basic', label: '基礎衰減' },
   { key: 'adv', label: '隱藏數值累積／回覆頻率' }
 ];
-const BALANCE_FIELDS = [
-  { key: 'foodDeltaWindowOpen', label: '飽食變化／窗開', desc: '每次更新增減值，通常是負數', group: 'basic' },
-  { key: 'foodDeltaWindowClosed', label: '飽食變化／窗關', desc: '窗關通常掉更快', group: 'basic' },
-  { key: 'lowFoodThreshold', label: '飽食過低門檻', desc: '低於這個值會開始扣健康', group: 'basic' },
-  { key: 'lowFoodHpDelta', label: '低飽食時健康變化', desc: '通常是負數', group: 'basic' },
-  { key: 'highFoodThreshold', label: '飽食充足門檻', desc: '高於這個值健康會緩慢回復', group: 'basic' },
-  { key: 'highFoodHpDelta', label: '高飽食時健康變化', desc: '通常是正數', group: 'basic' }
+const BALANCE_BASIC_GROUPS = [
+  {
+    title: '飽食變化',
+    fields: [
+      { key: 'foodDeltaWindowOpen', label: '窗開', desc: '增減值' },
+      { key: 'foodDeltaWindowClosed', label: '窗關', desc: '掉得更快' }
+    ]
+  },
+  {
+    title: '飽食過低',
+    fields: [
+      { key: 'lowFoodThreshold', label: '門檻', desc: '低於此扣健康' },
+      { key: 'lowFoodHpDelta', label: '健康變化', desc: '通常負數' }
+    ]
+  },
+  {
+    title: '飽食充足',
+    fields: [
+      { key: 'highFoodThreshold', label: '門檻', desc: '高於此回血' },
+      { key: 'highFoodHpDelta', label: '健康變化', desc: '通常正數' }
+    ]
+  }
 ];
-const BALANCE_ADV_FIELDS = [
-  { key: 'familiarityPresent', label: '熟悉度／巨怪在場', desc: '巨怪沒外出時每回合加', step: 1, group: 'adv' },
-  { key: 'familiarityInteract', label: '熟悉度／有互動加成', desc: '當回合有新動作時額外加', step: 1, group: 'adv' },
-  { key: 'familiarityAwayDecay', label: '熟悉度／外出變化', desc: '外出時的增減，預設0（不倒退）', step: 1, group: 'adv' },
-  { key: 'affectionInteract', label: '好感度／有互動', desc: '當回合有新動作時加', step: 1, group: 'adv' },
-  { key: 'affectionWellCared', label: '好感度／照顧良好', desc: '飽食足且健康好時加', step: 1, group: 'adv' },
-  { key: 'affectionAway', label: '好感度／外出冷落', desc: '外出時的變化，通常負數', step: 1, group: 'adv' },
-  { key: 'affectionNeglect', label: '好感度／受苦', desc: '飽食或健康過低時，通常負數', step: 1, group: 'adv' },
-  { key: 'moodDecay', label: '心情回歸速度 0~1', desc: '每回合朝中性回歸的比例', step: 0.05, group: 'adv' },
-  { key: 'moodInteract', label: '心情／有互動', desc: '當回合有新動作時加', step: 1, group: 'adv' },
-  { key: 'moodWellCared', label: '心情／照顧良好', desc: '飽食足且健康好時加', step: 1, group: 'adv' },
-  { key: 'moodCrisis', label: '心情／受苦', desc: '飽食或健康過低時，通常負數', step: 1, group: 'adv' },
-  { key: 'moodAway', label: '心情／外出', desc: '外出時的變化，通常負數', step: 1, group: 'adv' },
-  { key: 'moodVisitor', label: '心情／有訪客', desc: '當回合有訪客留言時加', step: 1, group: 'adv' },
-  { key: 'textureEase', label: '質地靠近速度 0~1', desc: '形狀/硬度朝目標靠近的比例', step: 0.01, group: 'adv' },
-  { key: 'tickDayMinMin', label: '回覆頻率／白天最短(分)', desc: '06:00~22:00 之間，每次更新間隔下限', step: 1, group: 'adv' },
-  { key: 'tickDayMaxMin', label: '回覆頻率／白天最長(分)', desc: '06:00~22:00 之間，每次更新間隔上限', step: 1, group: 'adv' },
-  { key: 'tickNightMinMin', label: '回覆頻率／夜間最短(分)', desc: '22:00~06:00 之間，每次更新間隔下限', step: 1, group: 'adv' },
-  { key: 'tickNightMaxMin', label: '回覆頻率／夜間最長(分)', desc: '22:00~06:00 之間，每次更新間隔上限', step: 1, group: 'adv' }
+
+const BALANCE_ADV_GROUPS = [
+  {
+    title: '熟悉度',
+    fields: [
+      { key: 'familiarityPresent', label: '在場', desc: '每回合加', step: 1 },
+      { key: 'familiarityInteract', label: '有互動', desc: '額外加', step: 1 },
+      { key: 'familiarityAwayDecay', label: '外出', desc: '增減', step: 1 }
+    ]
+  },
+  {
+    title: '好感度',
+    fields: [
+      { key: 'affectionInteract', label: '互動加', desc: '每回合', step: 1 },
+      { key: 'affectionWellCared', label: '照顧好', desc: '健康飽食', step: 1 },
+      { key: 'affectionAway', label: '外出冷落', desc: '通常負', step: 1 },
+      { key: 'affectionNeglect', label: '受苦', desc: '低迷時', step: 1 }
+    ]
+  },
+  {
+    title: '心情',
+    fields: [
+      { key: 'moodDecay', label: '回歸速度', desc: '0~1', step: 0.05 },
+      { key: 'moodInteract', label: '互動加', desc: '有動作', step: 1 },
+      { key: 'moodWellCared', label: '照顧好', desc: '加成', step: 1 },
+      { key: 'moodCrisis', label: '受苦', desc: '通常負', step: 1 },
+      { key: 'moodAway', label: '外出', desc: '冷落', step: 1 },
+      { key: 'moodVisitor', label: '訪客', desc: '有留言', step: 1 }
+    ]
+  },
+  {
+    title: '其他',
+    fields: [
+      { key: 'textureEase', label: '質地靠近速度', desc: '0~1', step: 0.01 }
+    ]
+  },
+  {
+    title: '回覆頻率',
+    fields: [
+      { key: 'tickDayMinMin', label: '白天最短(分)', desc: '下限', step: 1 },
+      { key: 'tickDayMaxMin', label: '白天最長(分)', desc: '上限', step: 1 },
+      { key: 'tickNightMinMin', label: '夜間最短(分)', desc: '下限', step: 1 },
+      { key: 'tickNightMaxMin', label: '夜間最長(分)', desc: '上限', step: 1 }
+    ]
+  }
 ];
 let balanceData = {};
 let balanceActiveGroup = 'basic';
-function buildBalanceCards(box, fields) {
+function buildBalanceCards(box, groups) {
   box.innerHTML = '';
-  fields.forEach(f => {
+  groups.forEach(group => {
     const card = document.createElement('div');
     card.className = 'num-card';
-    card.innerHTML = `<label>${f.label}</label><div class="field-desc">${f.desc}</div><input type="number" id="balance-${f.key}" step="${f.step || 1}">`;
+    const title = document.createElement('div');
+    title.className = 'title';
+    title.textContent = group.title;
+    const fields = document.createElement('div');
+    fields.className = 'fields';
+    group.fields.forEach(f => {
+      const item = document.createElement('div');
+      item.className = 'field-item';
+      item.innerHTML = `<label>${f.label}</label>${f.desc ? `<div class="field-desc">${f.desc}</div>` : ''}<input type="number" id="balance-${f.key}" step="${f.step || 1}">`;
+      fields.appendChild(item);
+      const inp = item.querySelector('input');
+      inp.value = balanceData[f.key] ?? 0;
+      inp.oninput = e => { balanceData[f.key] = Number(e.target.value); saveLocal(); };
+    });
+    card.appendChild(title);
+    card.appendChild(fields);
     box.appendChild(card);
-    card.querySelector('input').value = balanceData[f.key] ?? 0;
-    card.querySelector('input').oninput = e => { balanceData[f.key] = Number(e.target.value); saveLocal(); };
   });
 }
 function buildBalanceFields() {
@@ -467,13 +723,18 @@ function buildBalanceFields() {
   advBox.dataset.group = 'balance'; advBox.dataset.sub = 'adv';
   wrap.appendChild(basicBox);
   wrap.appendChild(advBox);
-  buildBalanceCards(basicBox, BALANCE_FIELDS);
-  buildBalanceCards(advBox, BALANCE_ADV_FIELDS);
+  buildBalanceCards(basicBox, BALANCE_BASIC_GROUPS);
+  buildBalanceCards(advBox, BALANCE_ADV_GROUPS);
 }
 function applyBalanceData(data) { balanceData = data || {}; buildBalanceFields(); }
 function collectBalanceData() {
   const out = {};
-  [...BALANCE_FIELDS, ...BALANCE_ADV_FIELDS].forEach(f => { out[f.key] = Number(document.getElementById(`balance-${f.key}`).value); });
+  const allGroups = [...BALANCE_BASIC_GROUPS, ...BALANCE_ADV_GROUPS];
+  allGroups.forEach(g => {
+    g.fields.forEach(f => {
+      out[f.key] = Number(document.getElementById(`balance-${f.key}`).value);
+    });
+  });
   return out;
 }
 
@@ -542,7 +803,14 @@ function nicknameUpdatePreview() {
   document.querySelectorAll('#panel-trait td.active').forEach(td => td.classList.remove('active'));
   const cell = document.getElementById(`nickname-cell-${fi}-${aj}`);
   if (cell) cell.classList.add('active');
-  document.getElementById('nickname-preview-name').textContent = nicknameGrid[fi][aj] || '（這格還沒填）';
+  const previewEl = document.getElementById('nickname-preview-name');
+  const previewText = previewEl.textContent.trim();
+  // 如果預覽被編輯了（內容不是預設值），保存到 grid
+  if (previewText && previewText !== '—' && previewText !== '（這格還沒填）') {
+    nicknameGrid[fi][aj] = previewText;
+  } else {
+    previewEl.textContent = nicknameGrid[fi][aj] || '（這格還沒填）';
+  }
 }
 function nicknameClearAll() {
   if (!confirm('確定清空所有暱稱？這會清掉已經填的內容，請先確定要重填。')) return;
@@ -708,13 +976,31 @@ function renderFragments() {
   const list = document.getElementById('frag-list');
   const q = (document.getElementById('frag-search').value || '').trim().toLowerCase();
   list.innerHTML = '';
+  // 按 source 分組
+  const groups = {};
   fragData.fragments.forEach((f, idx) => {
-    const hay = `${f.id} ${f.source} ${f.label} ${f.text}`.toLowerCase();
-    if (q && !hay.includes(q)) return;
-    const isOpen = fragExpanded.has(f.id);
-    const card = document.createElement('div');
-    card.className = 'frag-card' + (isOpen ? ' expanded' : '');
-    card.innerHTML = `
+    const source = f.source || '未分類';
+    if (!groups[source]) groups[source] = [];
+    groups[source].push({ f, idx });
+  });
+  // 按 source 順序渲染
+  Object.keys(groups).sort().forEach(source => {
+    const items = groups[source].filter(item => {
+      const hay = `${item.f.id} ${item.f.source} ${item.f.label} ${item.f.text}`.toLowerCase();
+      return !q || hay.includes(q);
+    });
+    if (items.length === 0) return;
+    // 組標題
+    const groupTitle = document.createElement('div');
+    groupTitle.style.cssText = 'font-size:12px;font-weight:600;color:#6a4a2a;margin:12px 0 6px;padding:0 14px;';
+    groupTitle.textContent = source;
+    list.appendChild(groupTitle);
+    // 該組內的碎片
+    items.forEach(({ f, idx }) => {
+      const isOpen = fragExpanded.has(f.id);
+      const card = document.createElement('div');
+      card.className = 'frag-card' + (isOpen ? ' expanded' : '');
+      card.innerHTML = `
       <div class="frag-summary">
         <span class="idx">#${idx + 1}</span>
         <span class="preview"><span class="src">${esc(f.source || '未分類')}</span> ｜ ${esc(f.text || '（空白）')}</span>
@@ -763,6 +1049,7 @@ function renderFragments() {
       fragData.fragments.splice(idx, 1); renderFragments(); saveLocal();
     };
     list.appendChild(card);
+    });
   });
   const status = document.getElementById('frag-status');
   status.textContent = `共 ${fragData.fragments.length} 張`;
@@ -921,6 +1208,7 @@ buildPromptFields();
 buildBalanceFields();
 buildSubtabs(document.getElementById('trait-subtabs'), 'trait', TRAIT_GROUPS, 0);
 nicknameBuildTable(); nicknameUpdatePreview();
+document.getElementById('nickname-preview-name').onblur = () => { nicknameUpdatePreview(); saveLocal(); };
 textureBuildTable(); textureUpdatePreview();
 if (!moodBands.length) moodFillSample(); else { moodRenderBands(); moodUpdatePreview(); }
 renderFragments();
