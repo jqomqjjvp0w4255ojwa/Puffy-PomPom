@@ -1,3 +1,6 @@
+const fs = require('fs');
+const path = require('path');
+
 // 黑影紙片蒐集系統 — 紙片資料（由 fragments.csv 轉換而來）
 // =====================================================================
 // 每張紙片欄位：
@@ -242,7 +245,7 @@ function matchFragments(sceneText, playerText, collectedIds) {
 
   // 第一步：先收集「關鍵字命中」的候選紙片，這一步不擲骰。
   const candidates = [];
-  for (const f of FRAGMENTS) {
+  for (const f of activeFragments) {
     if (!f.id || collected.includes(f.id)) continue;
     const sceneHit = (f.scene_keywords || []).some(k => k && scene.includes(k));
     const playerHit = (f.player_keywords || []).some(k => k && player.includes(k));
@@ -272,4 +275,15 @@ function pickWeighted(list) {
   return list[list.length - 1];
 }
 
-module.exports = { FRAGMENTS, COLLECTION_HINTS, matchFragments };
+// 若 data/fragments.json 存在（由 /content-lab 編輯並上傳），就用它覆蓋上面的內建資料。
+// 讀檔失敗或格式不對時，安靜地沿用內建版本，遊戲不會中斷。
+let activeFragments = FRAGMENTS;
+let activeHints = COLLECTION_HINTS;
+try {
+  const raw = fs.readFileSync(path.join(__dirname, 'data', 'fragments.json'), 'utf8');
+  const data = JSON.parse(raw);
+  if (Array.isArray(data.fragments) && data.fragments.length > 0) activeFragments = data.fragments;
+  if (data.collectionHints && typeof data.collectionHints === 'object') activeHints = data.collectionHints;
+} catch (err) { /* 沿用內建資料 */ }
+
+module.exports = { FRAGMENTS: activeFragments, COLLECTION_HINTS: activeHints, matchFragments };
