@@ -81,15 +81,15 @@
   }
   input:focus, select:focus { outline: 2px solid #e8a070; }
 
-  .num-grid { display: grid; grid-template-columns: 1fr; gap: 8px; }
-  @media (min-width: 520px) { .num-grid { grid-template-columns: 1fr 1fr; } }
-  .num-card { background: #fff; border: 1px solid #e8c8b0; border-radius: 8px; padding: 10px 12px; }
-  .num-card > .title { font-size: 12px; font-weight: 600; color: #5a3a2a; margin-bottom: 8px; }
-  .num-card > .fields { display: flex; gap: 8px; flex-wrap: wrap; }
-  .num-card .field-item { flex: 1; min-width: 100px; display: flex; flex-direction: column; }
-  .num-card label { display: block; font-size: 11px; color: #6a4a2a; margin-bottom: 2px; font-weight: 500; }
-  .num-card .field-desc { font-size: 10px; color: #a08868; margin-bottom: 4px; line-height: 1.3; }
-  .num-card input { width: 100%; padding: 6px 8px; font-size: 13px; }
+  /* 方正緊湊的迷你小卡：每組一張卡，欄位直排（標籤＋右對齊等寬輸入框） */
+  .num-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; max-width: 760px; }
+  .mini-tile { background: #fff; border: 1px solid #e8c8b0; border-radius: 6px; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; box-shadow: 0 1px 3px rgba(90,75,65,0.04); }
+  .tile-header { border-bottom: 1px solid #f2ede6; padding-bottom: 6px; }
+  .tile-title { font-size: 13px; font-weight: 600; color: #5a3a2a; }
+  .tile-adjust { display: flex; align-items: center; justify-content: flex-start; gap: 8px; }
+  .adjust-label { font-size: 12px; color: #8a766a; width: 96px; }
+  .input-control { width: 56px; padding: 3px 6px; border: 1px solid #e8c8b0; border-radius: 4px; text-align: right; font-family: monospace; background: #faf9f6; font-size: 13px; color: #4a3a2a; }
+  .input-control:focus { outline: 2px solid #e8a070; background: #fff; }
 
   .dev-section { background: #fff; border: 1px solid #e8c8b0; border-radius: 10px; padding: 14px 16px; margin-bottom: 14px; }
   .dev-section h3 { font-size: 13px; color: #5a3a2a; margin: 0 0 6px; }
@@ -791,23 +791,20 @@ function buildBalanceCards(box, groups) {
   box.innerHTML = '';
   groups.forEach(group => {
     const card = document.createElement('div');
-    card.className = 'num-card';
-    const title = document.createElement('div');
-    title.className = 'title';
-    title.textContent = group.title;
-    const fields = document.createElement('div');
-    fields.className = 'fields';
+    card.className = 'mini-tile';
+    const header = document.createElement('div');
+    header.className = 'tile-header';
+    header.innerHTML = `<span class="tile-title">${group.title}</span>`;
+    card.appendChild(header);
     group.fields.forEach(f => {
-      const item = document.createElement('div');
-      item.className = 'field-item';
-      item.innerHTML = `<label>${f.label}</label>${f.desc ? `<div class="field-desc">${f.desc}</div>` : ''}<input type="number" id="balance-${f.key}" step="${f.step || 1}">`;
-      fields.appendChild(item);
-      const inp = item.querySelector('input');
+      const row = document.createElement('div');
+      row.className = 'tile-adjust';
+      row.innerHTML = `<span class="adjust-label"${f.desc ? ` title="${f.desc}"` : ''}>${f.label}</span><input type="number" class="input-control" id="balance-${f.key}" step="${f.step || 1}">`;
+      card.appendChild(row);
+      const inp = row.querySelector('input');
       inp.value = balanceData[f.key] ?? 0;
       inp.oninput = e => { balanceData[f.key] = Number(e.target.value); saveLocal(); };
     });
-    card.appendChild(title);
-    card.appendChild(fields);
     box.appendChild(card);
   });
 }
