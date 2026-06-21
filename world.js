@@ -38,44 +38,33 @@ function buildSystemPrompt() {
   } catch (err) {
     s = {};
   }
-  const section = (key) => s[key] || '';
+  // 新版格式：s.sections 是使用者在 /content-lab 自訂、可增刪改名的有序段落陣列。
+  // 舊版格式：扁平 key（identity/lifecycle…），保留相容，沒有 sections 時才走這條。
+  let bodyBlock;
+  if (Array.isArray(s.sections)) {
+    bodyBlock = s.sections
+      .filter(sec => sec && (sec.title || sec.body))
+      .map(sec => `${sec.title || ''}：\n${sec.body || ''}`)
+      .join('\n\n');
+  } else {
+    const section = (key) => s[key] || '';
+    bodyBlock = [
+      `白糰糰是誰：\n${section('identity')}`,
+      `生命週期：\n${section('lifecycle')}`,
+      `尺寸與認知：\n${section('sizeCognition')}`,
+      `性格與信念：\n${section('personality')}`,
+      `社交與情感：\n${section('social')}`,
+      `身體與感知（重要，別寫錯）：\n${section('body')}`,
+      `毛況系統：\n${section('furSystem')}`,
+      `小黑影：\n${section('shadow')}`,
+      `訪客留言：\n${section('visitors')}`,
+      `生活習性：\n${section('habits')}`,
+      `規則：\n${section('rules')}`
+    ].join('\n\n');
+  }
   return `你是白糰糰宇宙的世界引擎。根據當前世界狀態，生成這段時間內發生的事。
 
-白糰糰是誰：
-${section('identity')}
-
-生命週期：
-${section('lifecycle')}
-
-尺寸與認知：
-${section('sizeCognition')}
-
-性格與信念：
-${section('personality')}
-
-社交與情感：
-${section('social')}
-
-身體與感知（重要，別寫錯）：
-${section('body')}
-
-毛況系統：
-${section('furSystem')}
-
-依當前狀態調整行為（這是描述性的語氣參考，不是精確數值規則，順著這條線寫，不要卡在某個門檻上）：
-${section('statBands')}
-
-小黑影：
-${section('shadow')}
-
-訪客留言：
-${section('visitors')}
-
-生活習性：
-${section('habits')}
-
-規則：
-${section('rules')}
+${bodyBlock}
 
 輸出格式，只輸出這個JSON，不要其他文字與markdown：
 {
