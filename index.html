@@ -198,6 +198,9 @@
           </div>
           <div class="switch" id="it-ac" onclick="acTogglePower()"><div class="switch-knob"></div></div>
         </div>
+        <div class="switch-tile" onclick="openTv()">
+          <div class="switch-icon-label"><i class="ti ti-device-tv"></i><span>電視</span></div>
+        </div>
       </div>
     </div>
 
@@ -256,6 +259,22 @@
       <span class="ac-section-label">舒眠</span>
       <div class="switch" id="ac-sleep-switch" onclick="acToggleSleep()"><div class="switch-knob"></div></div>
     </div>
+  </div>
+</div>
+
+<div class="ac-overlay" id="tv-overlay" onclick="closeTv()"></div>
+<div class="ac-remote tv-remote" id="tv-remote">
+  <div class="ac-remote-head">
+    <span class="ac-remote-title">電視</span>
+    <button class="ac-power" id="tv-close" onclick="closeTv()" aria-label="關閉"><i class="ti ti-x"></i></button>
+  </div>
+  <div class="tv-screen" id="tv-screen">
+    <div class="tv-screen-static" id="tv-static">— 選一個頻道 —</div>
+  </div>
+  <div class="tv-channels">
+    <button class="tv-channel-btn" data-channel="nature" onclick="playChannel('nature')"><i class="ti ti-paw"></i><span>生物頻道</span></button>
+    <button class="tv-channel-btn" data-channel="news" onclick="playChannel('news')"><i class="ti ti-broadcast"></i><span>新聞頻道</span></button>
+    <button class="tv-channel-btn" data-channel="shopping" onclick="playChannel('shopping')"><i class="ti ti-shopping-cart"></i><span>購物頻道</span></button>
   </div>
 </div>
 

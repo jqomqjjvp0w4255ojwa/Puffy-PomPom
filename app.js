@@ -156,6 +156,46 @@ function renderAcRemote() {
   document.getElementById('ac-sleep-switch').classList.toggle('on', !!ac.sleep);
 }
 
+// ===== 電視（接 Gemini，獨立小請求） =====
+const TV_CHANNEL_LABEL = { nature: '生物頻道', news: '新聞頻道', shopping: '購物頻道' };
+let tvLoading = false;
+
+function openTv() {
+  document.getElementById('tv-overlay').classList.add('open');
+  document.getElementById('tv-remote').classList.add('open');
+}
+function closeTv() {
+  document.getElementById('tv-overlay').classList.remove('open');
+  document.getElementById('tv-remote').classList.remove('open');
+}
+
+async function playChannel(channel) {
+  if (tvLoading) return;
+  tvLoading = true;
+  document.querySelectorAll('.tv-channel-btn').forEach(b =>
+    b.classList.toggle('active', b.dataset.channel === channel));
+  const screen = document.getElementById('tv-screen');
+  screen.innerHTML = `<div class="tv-screen-static">${TV_CHANNEL_LABEL[channel]}・訊號接收中…</div>`;
+  try {
+    const res = await fetch('/api/tv', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ channel })
+    });
+    const data = await res.json();
+    if (data.ok) {
+      screen.innerHTML = `<div class="tv-program">${data.text.replace(/</g, '&lt;')}</div>`;
+    } else {
+      const msg = data.error === 'no_key' ? '訊號中斷（電視台還沒設定）' : '訊號不穩，稍後再轉台看看…';
+      screen.innerHTML = `<div class="tv-screen-static">${msg}</div>`;
+    }
+  } catch (e) {
+    screen.innerHTML = `<div class="tv-screen-static">收訊失敗，雪花一片…</div>`;
+  } finally {
+    tvLoading = false;
+  }
+}
+
 function saveAc() {
   renderAcRemote();
   updateAllToggles();

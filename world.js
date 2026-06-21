@@ -258,6 +258,78 @@ async function fetchWeather() {
   }
 }
 
+// ===== Gemini（電視頻道專用，獨立於主世界的 Claude 呼叫）=====
+// 玩家主動點頻道才觸發，回傳一段短文字，不改世界數值、不佔 tick 預算。
+const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+
+async function callGemini(prompt, maxTokens = 400) {
+  const key = process.env.GEMINI_API_KEY;
+  if (!key) return { error: 'no_key' };
+  try {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${key}`;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 20000);
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { temperature: 1.0, maxOutputTokens: maxTokens }
+      }),
+      signal: controller.signal
+    });
+    clearTimeout(timer);
+    if (!res.ok) {
+      const detail = await res.text().catch(() => '');
+      console.error(`Gemini 回應錯誤 ${res.status}：${detail.slice(0, 200)}`);
+      return { error: `http_${res.status}` };
+    }
+    const data = await res.json();
+    const text = data?.candidates?.[0]?.content?.parts?.map(p => p.text).join('').trim();
+    if (!text) return { error: 'empty' };
+    return { text };
+  } catch (e) {
+    console.error('Gemini 呼叫失敗：', e.message);
+    return { error: 'exception' };
+  }
+}
+
+// 把目前世界狀態整理成電視頻道要用的上下文。
+function buildTvContext() {
+  const world = JSON.parse(fs.readFileSync(WORLD_FILE, 'utf8'));
+  const bt = world.characters.baituantuan;
+  const room = world.room || {};
+  const recentScene = (bt.memory || []).slice(-1)[0] || '（暫無最新動態）';
+  const moodColor = getMoodColorFor(typeof bt.mood === 'number' ? bt.mood : 0);
+  return {
+    recentScene,
+    food: bt.food,
+    hp: bt.hp,
+    location: bt.location || '',
+    mood: moodColor ? moodColor.name : '平靜',
+    cleanliness: room.cleanliness,
+    windowOpen: !!room.window_open,
+    lightOn: room.light_on !== false,
+    acOn: !!(room.ac && room.ac.on),
+    shadowActive: !!(world.characters.shadow && world.characters.shadow.active)
+  };
+}
+
+function buildTvPrompt(channel, ctx) {
+  const stateLine = `白糰糰目前狀態：飽食${ctx.food}、健康${ctx.hp}、心情「${ctx.mood}」、位置「${ctx.location}」。\n` +
+    `房間：清潔度${ctx.cleanliness}、窗戶${ctx.windowOpen ? '開' : '關'}、燈${ctx.lightOn ? '開' : '關'}、空調${ctx.acOn ? '開' : '關'}、小黑影${ctx.shadowActive ? '出沒中' : '潛伏'}。\n` +
+    `白糰糰最新動態：${ctx.recentScene}`;
+
+  if (channel === 'nature') {
+    return `${SYSTEM_PROMPT}\n\n———\n以上是角色設定，務必遵守白糰糰的身體構造（沒有耳朵、鼻子，靠觸感與顏色感知世界）。\n\n${stateLine}\n\n你是 DISCOVERY 生態紀錄片的旁白。請以科學旁觀又俏皮詼諧的科普語氣，把白糰糰「當下這一刻」的行為包裝成野生觀察紀錄（例如開場「在零下八度的清晨，一隻野生白糰糰……」）。3 到 5 句、繁體中文、只輸出旁白本身，不要加標題或前言。`;
+  }
+  if (channel === 'news') {
+    return `${stateLine}\n\n你是地方新聞台的主播，正在報導「白糰糰房間」這條荒誕又一本正經的即時新聞。根據上面的房間與狀態，用煞有介事的播報腔調寫一則短新聞（可以有誇張的記者連線感）。3 到 5 句、繁體中文、只輸出播報內容，開頭可用「插播一則最新消息——」。`;
+  }
+  // shopping
+  return `${stateLine}\n\n你是深夜購物頻道的主持人，正在向觀眾推銷一件「白糰糰現在最需要」的商品（依他目前的飽食、心情、房間狀況挑選，例如餓了就賣零食、冷了就賣暖窩）。用浮誇熱情的購物台語氣介紹，但這只是節目演出、實際還不能下單。3 到 5 句、繁體中文，結尾自然帶一句「錢包功能即將上線，敬請期待」。只輸出主持人的口播。`;
+}
+
 function dateKeyOf(date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 }
@@ -632,6 +704,28 @@ const server = http.createServer((req, res) => {
     }).catch(() => {
       res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
       res.end(JSON.stringify({ weather: null }));
+    });
+
+  } else if (req.url.startsWith('/api/tv')) {
+    // 電視頻道：玩家點頻道時即時呼叫 Gemini 回一段短文字，不改世界狀態。
+    const body = [];
+    req.on('data', chunk => body.push(chunk));
+    req.on('end', async () => {
+      try {
+        const data = JSON.parse(Buffer.concat(body).toString() || '{}');
+        const channel = ['nature', 'news', 'shopping'].includes(data.channel) ? data.channel : 'nature';
+        const ctx = buildTvContext();
+        const result = await callGemini(buildTvPrompt(channel, ctx));
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+        if (result.error) {
+          res.end(JSON.stringify({ ok: false, error: result.error }));
+        } else {
+          res.end(JSON.stringify({ ok: true, channel, text: result.text }));
+        }
+      } catch (e) {
+        res.writeHead(500);
+        res.end('error');
+      }
     });
 
   } else if (req.url.startsWith('/api/day')) {
