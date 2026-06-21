@@ -13,6 +13,13 @@ const LEGACY_LOG_FILE = path.join(__dirname, 'log.txt');
 const LOGS_DIR = path.join(DATA_DIR, 'logs');
 const MIGRATION_MARKER = path.join(LOGS_DIR, '.migrated');
 
+// 避免寫到一半被中斷導致 world.json 截斷成不合法 JSON：先寫暫存檔再 rename（同一磁區內 rename 是原子操作）。
+function writeWorldFile(world) {
+  const tmp = `${WORLD_FILE}.tmp`;
+  fs.writeFileSync(tmp, JSON.stringify(world, null, 2));
+  fs.renameSync(tmp, WORLD_FILE);
+}
+
 // Volume 剛掛載時是空的，用 repo 內建的 world.json 當初始值種一份過去。
 function ensureWorldFile() {
   if (!fs.existsSync(WORLD_FILE)) {
@@ -619,7 +626,7 @@ const server = http.createServer((req, res) => {
         if ('env_desc' in data) {
           world.room.env_desc_time = data.env_desc ? getRealTime().display : '';
         }
-        fs.writeFileSync(WORLD_FILE, JSON.stringify(world, null, 2));
+        writeWorldFile(world);
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ ok: true }));
       });
@@ -643,7 +650,7 @@ const server = http.createServer((req, res) => {
           world.owner_action_read = !data.input;
         }
         if (data.type === 'away') world.owner_away = !!data.away;
-        fs.writeFileSync(WORLD_FILE, JSON.stringify(world, null, 2));
+        writeWorldFile(world);
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ ok: true }));
       });
@@ -685,7 +692,7 @@ const server = http.createServer((req, res) => {
         }
 
         world.fragments = fragState;
-        fs.writeFileSync(WORLD_FILE, JSON.stringify(world, null, 2));
+        writeWorldFile(world);
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ ok: true, bonusHint }));
       });
@@ -703,7 +710,7 @@ const server = http.createServer((req, res) => {
         const text = (data.text || '').trim().slice(0, 60);
         const world = JSON.parse(fs.readFileSync(WORLD_FILE, 'utf8'));
         pushPendingNote(world, text);
-        fs.writeFileSync(WORLD_FILE, JSON.stringify(world, null, 2));
+        writeWorldFile(world);
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ ok: true }));
       });
@@ -720,7 +727,7 @@ const server = http.createServer((req, res) => {
         const data = JSON.parse(Buffer.concat(body).toString());
         const world = JSON.parse(fs.readFileSync(WORLD_FILE, 'utf8'));
         world.visitor_messages = (world.visitor_messages || []).filter(m => m.id !== data.id);
-        fs.writeFileSync(WORLD_FILE, JSON.stringify(world, null, 2));
+        writeWorldFile(world);
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ ok: true }));
       });
@@ -747,7 +754,7 @@ const server = http.createServer((req, res) => {
         const { display } = getRealTime();
         const id = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
         world.visitor_messages = [...(world.visitor_messages || []), { id, name: name || '匿名訪客', message, time: display, color }];
-        fs.writeFileSync(WORLD_FILE, JSON.stringify(world, null, 2));
+        writeWorldFile(world);
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ ok: true, id }));
       });
@@ -1027,7 +1034,7 @@ async function tick() {
       newWorld.pending_notes = [];
     }
 
-    fs.writeFileSync(WORLD_FILE, JSON.stringify(newWorld, null, 2));
+    writeWorldFile(newWorld);
 
     const furNote = result.baituantuan.fur && result.baituantuan.fur !== '正常'
       ? ` · ${result.baituantuan.fur}` : '';
@@ -1049,7 +1056,14 @@ async function tick() {
 
   } catch (e) {
     console.error('錯誤：', e.message);
-    const world2 = JSON.parse(fs.readFileSync(WORLD_FILE, 'utf8'));
+    // world.json 萬一損毀，這裡重讀也會炸；退回 tick 開頭讀到的 world，至少能把 nextTickAt 寫回去續命。
+    let world2;
+    try {
+      world2 = JSON.parse(fs.readFileSync(WORLD_FILE, 'utf8'));
+    } catch (readErr) {
+      console.error('world.json 讀取/解析失敗，改用記憶體中的版本回寫：', readErr.message);
+      world2 = world;
+    }
     world2.nextTickAt = Date.now() + delay;
     if (weather) world2.weather = weather;
 
@@ -1064,7 +1078,7 @@ async function tick() {
       console.error('偵測到額度/金鑰問題，進入吉屋出租狀態。');
     }
 
-    fs.writeFileSync(WORLD_FILE, JSON.stringify(world2, null, 2));
+    writeWorldFile(world2);
   }
 console.log(`下次更新：${Math.round(delay/60000)} 分鐘後（${new Date(Date.now()+delay).toLocaleString('zh-TW',{timeZone:'Asia/Taipei'})}）`);
 
