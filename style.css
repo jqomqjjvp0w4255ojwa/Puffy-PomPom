@@ -31,6 +31,32 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
 }
 .rent-note-title { font-size: 18px; letter-spacing: 0.3em; color: #6a5238; margin-bottom: 10px; font-weight: 500; }
 .rent-note-text { font-size: 12px; color: #9a8a72; line-height: 1.9; }
+
+.death-overlay {
+  position: absolute; inset: 0;
+  background: rgba(16,18,26,0.72);
+  backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px);
+  display: flex; align-items: center; justify-content: center; z-index: 6;
+}
+.death-note {
+  background: #1c2030; border: 1px solid #3a4258; border-radius: 6px;
+  box-shadow: 0 8px 28px rgba(0,0,0,0.55); padding: 1.5rem 1.75rem;
+  text-align: center; max-width: 82%; color: #c8cfe0;
+}
+.death-note-title { font-size: 18px; letter-spacing: 0.3em; color: #9fb4e6; margin-bottom: 12px; font-weight: 500; }
+.death-note-text { font-size: 12px; color: #9aa3bd; line-height: 1.9; }
+.death-countdown { font-size: 12px; color: #7fa0d8; margin: 14px 0 4px; letter-spacing: 0.05em; }
+.death-actions { display: flex; gap: 10px; justify-content: center; margin-top: 16px; }
+.death-btn { font-size: 12px; padding: 7px 14px; border-radius: 5px; cursor: pointer; border: 1px solid #3a4258; }
+.death-wait { background: #2a3146; color: #c8cfe0; }
+.death-reset { background: transparent; color: #b08a8a; border-color: #5a3a3a; }
+
+/* 特殊事件腳本卡：原文顯示在 AI 續寫之前，與日常動態區隔 */
+.entry-event-card {
+  font-size: 13px; color: #5a4a6a; line-height: 1.9; white-space: pre-line;
+  background: #f3eef8; border-left: 3px solid #b9a3d8; border-radius: 4px;
+  padding: 8px 12px; margin-bottom: 8px;
+}
 .notebook-header { padding: 1.25rem 1.5rem 1rem; border-bottom: 2px solid #e8c84a; }
 .header-label {
   display: flex;
@@ -274,28 +300,34 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
 }
 .switch-tile:hover { background: #f7f3ec; }
 .ac-tile:has(.switch.on) {
-  grid-column: span 2;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 4px;
+  grid-column: 1 / -1;
+  justify-content: space-between;
+  gap: 10px;
 }
 .ac-tile-header { display: contents; }
-.ac-tile:has(.switch.on) .ac-tile-header {
+.ac-tile:has(.switch.on) .ac-tile-header { display: flex; flex-shrink: 0; }
+.ac-tile:has(.switch.on) .switch-icon-label { flex-direction: row; gap: 6px; }
+.ac-tile-pills {
+  display: none;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  cursor: pointer;
+}
+.ac-tile:has(.switch.on) .ac-tile-pills { display: flex; }
+.ac-pill {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  width: 100%;
+  gap: 3px;
+  font-size: 10px;
+  color: #6a5a4a;
+  background: #eee7db;
+  border-radius: 999px;
+  padding: 4px 9px;
+  white-space: nowrap;
 }
-.ac-tile:has(.switch.on) .switch-icon-label { flex-direction: row; gap: 6px; }
-.ac-tile-info {
-  display: none;
-  font-size: 11px;
-  color: #9a8a7a;
-  text-align: left;
-  cursor: pointer;
-  padding-left: 2px;
-}
-.ac-tile:has(.switch.on) .ac-tile-info { display: block; }
+.ac-pill.active { background: #cfe3f0; color: #3a6a8a; }
+.ac-pill i { font-size: 11px; }
 .switch-icon-label {
   display: flex;
   flex-direction: column;
@@ -337,6 +369,53 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
 .switch.on .switch-knob { left: 14px; }
 .switch-tile:has(.switch.on) { background: #fdf6e3; }
 .switch-tile:has(.switch.on) .switch-icon-label i { color: #e8a020; }
+
+/* 電視 */
+.tv-remote { width: 320px; }
+.tv-screen {
+  background: #1c1a18;
+  border-radius: 12px;
+  min-height: 132px;
+  margin: 0.9rem 0;
+  padding: 14px 15px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: inset 0 0 0 3px #4a4038, inset 0 0 24px rgba(0,0,0,0.6);
+}
+.tv-screen-static {
+  color: #8a8278;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-align: center;
+}
+.tv-program {
+  color: #e8e0d2;
+  font-size: 13px;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  text-align: left;
+}
+.tv-channels { display: flex; gap: 8px; }
+.tv-channel-btn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 9px 4px;
+  border: none;
+  border-radius: 12px;
+  background: #e8ddcb;
+  color: #6a5a4a;
+  font-family: 'Noto Serif TC', serif;
+  font-size: 11px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.tv-channel-btn i { font-size: 17px; }
+.tv-channel-btn:hover { background: #ded0b8; }
+.tv-channel-btn.active { background: #c08050; color: #fff; }
 
 /* 冷氣遙控 */
 .ac-overlay {

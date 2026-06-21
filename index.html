@@ -32,8 +32,6 @@
         <span id="val-food">—</span>
       </div>
       <div class="status-line" id="fur-line" style="display:none;"><span class="status-label">外觀</span><span id="fur-tag">—</span></div>
-      <div class="status-line" id="nick-line" style="display:none;"><span class="status-label">稱呼</span><span id="nick-tag">—</span></div>
-      <div class="status-line" id="mood-line" style="display:none;"><span class="status-label">心情</span><span class="mood-dot" id="mood-dot"></span><span id="mood-tag">—</span></div>
     </div>
     <div class="shadow-active" id="shadow-tag"></div>
   </div>
@@ -49,6 +47,25 @@
     <div class="rent-note">
       <div class="rent-note-title">吉屋出租</div>
       <div class="rent-note-text">房間暫時空著。<br>白糰糰不在，沒有人在觀察。</div>
+    </div>
+  </div>
+
+  <div class="rent-overlay" id="pause-overlay" style="display:none;">
+    <div class="rent-note">
+      <div class="rent-note-title">時間停止</div>
+      <div class="rent-note-text">這一刻被你按下了暫停。<br>白糰糰靜止在此，等你回來。</div>
+    </div>
+  </div>
+
+  <div class="death-overlay" id="death-overlay" style="display:none;">
+    <div class="death-note">
+      <div class="death-note-title">冥影・霜解</div>
+      <div class="death-note-text" id="death-note-text">白糰糰無聲崩解，化作毛毛與冰屑。<br>小黑影自陰影浮現，展開報復。</div>
+      <div class="death-countdown" id="death-countdown"></div>
+      <div class="death-actions">
+        <button class="death-btn death-wait" onclick="closeDeathOverlay()">等待糰糰歸來</button>
+        <button class="death-btn death-reset" onclick="resetWorld()">放棄紀錄（重啟）</button>
+      </div>
     </div>
   </div>
 </div>
@@ -67,6 +84,9 @@
     <button class="panel-close" onclick="closePanel()">
       <i class="ti ti-chevron-right"></i> 收合
     </button>
+    <button class="panel-away" id="pause-btn" onclick="togglePause()" title="時間停止（暫停生成）">
+      <i class="ti ti-player-pause"></i>
+    </button>
     <button class="panel-away" id="away-btn" onclick="toggleAway()" title="外出中">
       <i class="ti ti-door-exit"></i>
     </button>
@@ -78,7 +98,7 @@
         <div class="card-badge profile-avatar"><i class="ti ti-paw"></i></div>
         <div class="card-main">
           <div class="profile-name-row">
-            <span class="profile-name">巨怪</span>
+            <span class="profile-name" id="profile-name">巨怪</span>
             <span class="status-icons" id="status-icons">
               <i class="ti ti-pencil" onclick="editStatus()" title="編輯"></i>
             </span>
@@ -167,12 +187,19 @@
           <div class="switch-icon-label"><i class="ti ti-window"></i><span>窗戶</span></div>
           <div class="switch" id="it-window"><div class="switch-knob"></div></div>
         </div>
-        <div class="switch-tile ac-tile" id="ac-tile" onclick="acTogglePower()">
-          <div class="ac-tile-header">
+        <div class="switch-tile ac-tile" id="ac-tile">
+          <div class="ac-tile-header" onclick="acTogglePower()">
             <div class="switch-icon-label"><i class="ti ti-snowflake"></i><span>空調</span></div>
-            <div class="switch" id="it-ac"><div class="switch-knob"></div></div>
           </div>
-          <div class="ac-tile-info" id="ac-tile-info" onclick="event.stopPropagation(); openAcRemote();"></div>
+          <div class="ac-tile-pills" id="ac-tile-pills" onclick="openAcRemote()">
+            <span class="ac-pill ac-pill-mode" id="ac-pill-mode"></span>
+            <span class="ac-pill ac-pill-temp" id="ac-pill-temp"></span>
+            <span class="ac-pill ac-pill-fan" id="ac-pill-fan"><i class="ti ti-wind"></i><span></span></span>
+          </div>
+          <div class="switch" id="it-ac" onclick="acTogglePower()"><div class="switch-knob"></div></div>
+        </div>
+        <div class="switch-tile" onclick="openTv()">
+          <div class="switch-icon-label"><i class="ti ti-device-tv"></i><span>電視</span></div>
         </div>
       </div>
     </div>
@@ -232,6 +259,22 @@
       <span class="ac-section-label">舒眠</span>
       <div class="switch" id="ac-sleep-switch" onclick="acToggleSleep()"><div class="switch-knob"></div></div>
     </div>
+  </div>
+</div>
+
+<div class="ac-overlay" id="tv-overlay" onclick="closeTv()"></div>
+<div class="ac-remote tv-remote" id="tv-remote">
+  <div class="ac-remote-head">
+    <span class="ac-remote-title">電視</span>
+    <button class="ac-power" id="tv-close" onclick="closeTv()" aria-label="關閉"><i class="ti ti-x"></i></button>
+  </div>
+  <div class="tv-screen" id="tv-screen">
+    <div class="tv-screen-static" id="tv-static">— 選一個頻道 —</div>
+  </div>
+  <div class="tv-channels">
+    <button class="tv-channel-btn" data-channel="nature" onclick="playChannel('nature')"><i class="ti ti-paw"></i><span>生物頻道</span></button>
+    <button class="tv-channel-btn" data-channel="news" onclick="playChannel('news')"><i class="ti ti-broadcast"></i><span>新聞頻道</span></button>
+    <button class="tv-channel-btn" data-channel="shopping" onclick="playChannel('shopping')"><i class="ti ti-shopping-cart"></i><span>購物頻道</span></button>
   </div>
 </div>
 

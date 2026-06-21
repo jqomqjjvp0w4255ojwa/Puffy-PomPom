@@ -38,44 +38,33 @@ function buildSystemPrompt() {
   } catch (err) {
     s = {};
   }
-  const section = (key) => s[key] || '';
+  // 新版格式：s.sections 是使用者在 /content-lab 自訂、可增刪改名的有序段落陣列。
+  // 舊版格式：扁平 key（identity/lifecycle…），保留相容，沒有 sections 時才走這條。
+  let bodyBlock;
+  if (Array.isArray(s.sections)) {
+    bodyBlock = s.sections
+      .filter(sec => sec && (sec.title || sec.body))
+      .map(sec => `${sec.title || ''}：\n${sec.body || ''}`)
+      .join('\n\n');
+  } else {
+    const section = (key) => s[key] || '';
+    bodyBlock = [
+      `白糰糰是誰：\n${section('identity')}`,
+      `生命週期：\n${section('lifecycle')}`,
+      `尺寸與認知：\n${section('sizeCognition')}`,
+      `性格與信念：\n${section('personality')}`,
+      `社交與情感：\n${section('social')}`,
+      `身體與感知（重要，別寫錯）：\n${section('body')}`,
+      `毛況系統：\n${section('furSystem')}`,
+      `小黑影：\n${section('shadow')}`,
+      `訪客留言：\n${section('visitors')}`,
+      `生活習性：\n${section('habits')}`,
+      `規則：\n${section('rules')}`
+    ].join('\n\n');
+  }
   return `你是白糰糰宇宙的世界引擎。根據當前世界狀態，生成這段時間內發生的事。
 
-白糰糰是誰：
-${section('identity')}
-
-生命週期：
-${section('lifecycle')}
-
-尺寸與認知：
-${section('sizeCognition')}
-
-性格與信念：
-${section('personality')}
-
-社交與情感：
-${section('social')}
-
-身體與感知（重要，別寫錯）：
-${section('body')}
-
-毛況系統：
-${section('furSystem')}
-
-依當前狀態調整行為（這是描述性的語氣參考，不是精確數值規則，順著這條線寫，不要卡在某個門檻上）：
-${section('statBands')}
-
-小黑影：
-${section('shadow')}
-
-訪客留言：
-${section('visitors')}
-
-生活習性：
-${section('habits')}
-
-規則：
-${section('rules')}
+${bodyBlock}
 
 輸出格式，只輸出這個JSON，不要其他文字與markdown：
 {
@@ -100,33 +89,63 @@ ${section('rules')}
 }
 const SYSTEM_PROMPT = buildSystemPrompt();
 
-// 特殊事件旁白文案，可在 /content-lab 編輯並自動上傳覆蓋 data/events.json。
-const EVENT_PROMPTS_BUILTIN = {
-  ascension: `特殊事件・飛升篇（健康與飽食同時滿值，這次更新請完整呈現此事件，不要寫成日常動態）：
-白糰糰進入「渡劫」狀態：全身絨毛微顫，靜坐窗邊仰望天空，雷雲湧動。
-隨機二選一決定結局並寫入scene：
+// 特殊事件＝「腳本卡（card，主頁直接顯示的固定劇情，保證演出）」＋「prompt（AI 接著寫的餘波指示）」。
+// 可在 /content-lab 編輯並自動上傳覆蓋 data/events.json。舊版 events.json 是「key→字串」，
+// 會被當成只有 prompt、沒有 card 來相容處理。
+const EVENT_DEFS_BUILTIN = {
+  ascension: {
+    card: `【飛升・渡劫】白糰糰全身絨毛微顫，靜坐窗邊仰望天空，雷雲湧動。一道光自他身上亮起。`,
+    prompt: `承接上面的渡劫劇情卡，只寫「之後的餘波」，隨機二選一並寫入scene：
 A. 度劫失敗（電糰糰）：遭雷擊，絨毛焦捲變黑，靜電纏身，動作僵硬，沉默放電躲回角落。
-B. 度劫成功（法喜糰糰）：升空發光後「啪」一聲落地，異常開心，於地板施展誇張街舞動作。`,
-  shadowRevenge: `特殊事件・冥影與霜解篇（健康與飽食同時歸零，這次更新請完整呈現此事件，不要寫成日常動態）：
-白糰糰無聲崩解，只留下毛毛與冰屑，小黑影自陰影浮現，與殘骸融合成「冰晶暗影」，展開一場正義與荒誕共行的審判：室內異常降溫結霜、巨型Mr.DUST夜行騷擾、如影隨形的精神干擾。
-終局：小黑影在無人處吐出白糰糰遺骸，俠魂等待再生。
-shadow.active設為true，shadow.dust_count明顯增加。`,
-  observation: `特殊事件・觀察篇（玩家輸入觸發旁白模式）：
+B. 度劫成功（法喜糰糰）：升空發光後「啪」一聲落地，異常開心，於地板施展誇張街舞動作。`
+  },
+  shadowRevenge: {
+    card: `【冥影・霜解】白糰糰無聲崩解，只留下毛毛與冰屑。小黑影自陰影浮現，與殘骸融合成「冰晶暗影」。室內異常降溫結霜。`,
+    prompt: `承接上面的冥影劇情卡，只寫「之後的餘波」：冰晶暗影展開一場正義與荒誕共行的審判——巨型Mr.DUST夜行騷擾、如影隨形的精神干擾。不要重述卡片已寫的崩解過程。shadow.active設為true，shadow.dust_count明顯增加。`
+  },
+  rebirth: {
+    card: `【再生】涼濕的角落裡，散落的毛毛與冰屑悄悄聚攏。一顆小小的白糰糰重新成形，墨色豆眼緩緩睜開。冰晶暗影悄然退回影子。`,
+    prompt: `承接上面的再生劇情卡，只寫「之後的餘波」：白糰糰帶著模糊的舊記憶重新醒來，動作還有點生疏小心。小黑影回到平時潛伏狀態，shadow.active設為false。`
+  },
+  observation: {
+    card: ``,
+    prompt: `特殊事件・觀察篇（玩家輸入觸發旁白模式）：
 本次scene改用DISCOVERY紀錄片風格書寫：科學旁觀的趣味、俏皮詼諧的科普語氣，把白糰糰的行為包裝成「野生觀察紀錄」（例如：「在零下八度的清晨，一隻野生白糰糰⋯⋯」），但內容仍要符合他平時的行為邏輯。`
-};
-function loadEventPrompts() {
-  try {
-    const data = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'events.json'), 'utf8'));
-    return { ...EVENT_PROMPTS_BUILTIN, ...data };
-  } catch (err) {
-    return EVENT_PROMPTS_BUILTIN;
   }
+};
+function loadEventDefs() {
+  let data = {};
+  try {
+    data = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'events.json'), 'utf8'));
+  } catch (err) {
+    data = {};
+  }
+  const out = {};
+  const keys = new Set([...Object.keys(EVENT_DEFS_BUILTIN), ...Object.keys(data)]);
+  for (const k of keys) {
+    const b = EVENT_DEFS_BUILTIN[k] || { card: '', prompt: '' };
+    const d = data[k];
+    if (typeof d === 'string') out[k] = { card: b.card || '', prompt: d };                 // 舊版字串＝只有 prompt
+    else if (d && typeof d === 'object') out[k] = { card: d.card ?? b.card ?? '', prompt: d.prompt ?? b.prompt ?? '' };
+    else out[k] = { card: b.card || '', prompt: b.prompt || '' };
+  }
+  return out;
 }
-const EVENT_PROMPTS = loadEventPrompts();
+const EVENT_DEFS = loadEventDefs();
+function getEventCard(key) { return (EVENT_DEFS[key] || {}).card || ''; }
+function buildEventInput(key) {
+  const def = EVENT_DEFS[key] || {};
+  const card = def.card || '';
+  const prompt = def.prompt || '';
+  // 腳本卡已「發生」並會原文顯示在主頁，AI 只接著寫餘波，不要重述卡片。
+  if (card) return `【這段劇情卡已經發生，且會原文顯示給讀者，請勿重述卡片內容，只接著寫「之後」的餘波反應】\n${card}\n\n【接續指示】\n${prompt}`;
+  return prompt;
+}
 
+// 死亡（健康＋飽食歸零）改由 tick 內的死亡狀態機處理（要管重生倒數與小黑影好感），
+// 這裡只負責偵測飛升與觀察兩種即時事件。
 function detectTriggeredEvent(bt, combinedPlayerText) {
   if (bt.hp >= 100 && bt.food >= 100) return 'ascension';
-  if (bt.hp <= 0 && bt.food <= 0) return 'shadowRevenge';
   if (/📺|觀察日誌|研究|旁白啟動/.test(combinedPlayerText)) return 'observation';
   return null;
 }
@@ -239,6 +258,78 @@ async function fetchWeather() {
   }
 }
 
+// ===== Gemini（電視頻道專用，獨立於主世界的 Claude 呼叫）=====
+// 玩家主動點頻道才觸發，回傳一段短文字，不改世界數值、不佔 tick 預算。
+const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+
+async function callGemini(prompt, maxTokens = 400) {
+  const key = process.env.GEMINI_API_KEY;
+  if (!key) return { error: 'no_key' };
+  try {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${key}`;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 20000);
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { temperature: 1.0, maxOutputTokens: maxTokens }
+      }),
+      signal: controller.signal
+    });
+    clearTimeout(timer);
+    if (!res.ok) {
+      const detail = await res.text().catch(() => '');
+      console.error(`Gemini 回應錯誤 ${res.status}：${detail.slice(0, 200)}`);
+      return { error: `http_${res.status}` };
+    }
+    const data = await res.json();
+    const text = data?.candidates?.[0]?.content?.parts?.map(p => p.text).join('').trim();
+    if (!text) return { error: 'empty' };
+    return { text };
+  } catch (e) {
+    console.error('Gemini 呼叫失敗：', e.message);
+    return { error: 'exception' };
+  }
+}
+
+// 把目前世界狀態整理成電視頻道要用的上下文。
+function buildTvContext() {
+  const world = JSON.parse(fs.readFileSync(WORLD_FILE, 'utf8'));
+  const bt = world.characters.baituantuan;
+  const room = world.room || {};
+  const recentScene = (bt.memory || []).slice(-1)[0] || '（暫無最新動態）';
+  const moodColor = getMoodColorFor(typeof bt.mood === 'number' ? bt.mood : 0);
+  return {
+    recentScene,
+    food: bt.food,
+    hp: bt.hp,
+    location: bt.location || '',
+    mood: moodColor ? moodColor.name : '平靜',
+    cleanliness: room.cleanliness,
+    windowOpen: !!room.window_open,
+    lightOn: room.light_on !== false,
+    acOn: !!(room.ac && room.ac.on),
+    shadowActive: !!(world.characters.shadow && world.characters.shadow.active)
+  };
+}
+
+function buildTvPrompt(channel, ctx) {
+  const stateLine = `白糰糰目前狀態：飽食${ctx.food}、健康${ctx.hp}、心情「${ctx.mood}」、位置「${ctx.location}」。\n` +
+    `房間：清潔度${ctx.cleanliness}、窗戶${ctx.windowOpen ? '開' : '關'}、燈${ctx.lightOn ? '開' : '關'}、空調${ctx.acOn ? '開' : '關'}、小黑影${ctx.shadowActive ? '出沒中' : '潛伏'}。\n` +
+    `白糰糰最新動態：${ctx.recentScene}`;
+
+  if (channel === 'nature') {
+    return `${SYSTEM_PROMPT}\n\n———\n以上是角色設定，務必遵守白糰糰的身體構造（沒有耳朵、鼻子，靠觸感與顏色感知世界）。\n\n${stateLine}\n\n你是 DISCOVERY 生態紀錄片的旁白。請以科學旁觀又俏皮詼諧的科普語氣，把白糰糰「當下這一刻」的行為包裝成一段野生觀察紀錄（例如開場「在零下八度的清晨，一隻野生白糰糰……」）。寫成一篇約 150 到 250 字的完整旁白短文，有起承轉合、可穿插偽科學的觀察評論。繁體中文、只輸出旁白本身，不要加標題或前言。`;
+  }
+  if (channel === 'news') {
+    return `${stateLine}\n\n你是地方新聞台的主播，正在報導「白糰糰房間」這條荒誕又一本正經的即時新聞。根據上面的房間與狀態，用煞有介事的播報腔調寫一則約 150 到 250 字的短新聞報導（可以有主棚播報＋現場記者連線、街訪、專家分析等橋段，盡量荒誕又一本正經）。繁體中文、只輸出播報內容，開頭可用「插播一則最新消息——」。`;
+  }
+  // shopping
+  return `${stateLine}\n\n你是深夜購物頻道的主持人，正在向觀眾推銷一件「白糰糰現在最需要」的商品（依他目前的飽食、心情、房間狀況挑選，例如餓了就賣零食、冷了就賣暖窩）。用浮誇熱情的購物台語氣介紹，可吹捧賣點、報出限時優惠價、製造搶購感，但這只是節目演出、實際還不能下單。寫成一段約 150 到 250 字的完整口播，繁體中文，結尾自然帶一句「錢包功能即將上線，敬請期待」。只輸出主持人的口播。`;
+}
+
 function dateKeyOf(date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 }
@@ -283,7 +374,7 @@ function loadHiddenStats() {
   try {
     hiddenStatsCache = JSON.parse(fs.readFileSync(HIDDEN_STATS_FILE, 'utf8'));
   } catch (err) {
-    hiddenStatsCache = { fam: { min: 0, max: 100, bands: 7 }, aff: { min: -100, max: 100, bands: 7 }, unit: { min: 0, max: 100, bands: 7 }, nicknameGrid: [], textureGrid: [], moodBands: [] };
+    hiddenStatsCache = { fam: { min: 0, max: 100, bands: 7 }, aff: { min: -100, max: 100, bands: 7 }, unit: { min: 0, max: 100, bands: 7 }, stat: { min: 0, max: 100, bands: 7 }, nicknameGrid: [], textureGrid: [], moodBands: [], statGrid: [] };
   }
   return hiddenStatsCache;
 }
@@ -313,6 +404,16 @@ function getTextureFor(shape, hardness) {
   if (!grid || !grid.length) return null;
   const i = bandIndex(shape, stats.unit);
   const j = bandIndex(hardness, stats.unit);
+  return (grid[i] && grid[i][j]) || null;
+}
+
+function getStatBandFor(food, hp) {
+  const stats = loadHiddenStats();
+  const grid = stats.statGrid;
+  if (!grid || !grid.length) return null;
+  const statAxis = stats.stat || { min: 0, max: 100, bands: 7 };
+  const i = bandIndex(hp, statAxis);
+  const j = bandIndex(food, statAxis);
   return (grid[i] && grid[i][j]) || null;
 }
 
@@ -510,6 +611,7 @@ const BALANCE_BUILTIN = {
   moodVisitor: 8,
   textureEase: 0.05,
   ownerFeedFoodBoost: 35,
+  rebirthTicks: 4,
   tickNightMinMin: 180,
   tickNightMaxMin: 360,
   tickDayMinMin: 15,
@@ -604,6 +706,28 @@ const server = http.createServer((req, res) => {
       res.end(JSON.stringify({ weather: null }));
     });
 
+  } else if (req.url.startsWith('/api/tv')) {
+    // 電視頻道：玩家點頻道時即時呼叫 Gemini 回一段短文字，不改世界狀態。
+    const body = [];
+    req.on('data', chunk => body.push(chunk));
+    req.on('end', async () => {
+      try {
+        const data = JSON.parse(Buffer.concat(body).toString() || '{}');
+        const channel = ['nature', 'news', 'shopping'].includes(data.channel) ? data.channel : 'nature';
+        const ctx = buildTvContext();
+        const result = await callGemini(buildTvPrompt(channel, ctx), 900);
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+        if (result.error) {
+          res.end(JSON.stringify({ ok: false, error: result.error }));
+        } else {
+          res.end(JSON.stringify({ ok: true, channel, text: result.text }));
+        }
+      } catch (e) {
+        res.writeHead(500);
+        res.end('error');
+      }
+    });
+
   } else if (req.url.startsWith('/api/day')) {
     try {
       const url = new URL(req.url, 'http://localhost');
@@ -650,6 +774,7 @@ const server = http.createServer((req, res) => {
           world.owner_action_read = !data.input;
         }
         if (data.type === 'away') world.owner_away = !!data.away;
+        if (data.type === 'pause') world.paused = !!data.paused;
         writeWorldFile(world);
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ ok: true }));
@@ -853,6 +978,14 @@ async function tick() {
     return;
   }
 
+  if (world.paused) {
+    // 時間停止：玩家手動凍結世界，不生成、不衰減、不呼叫 API。解除前一直保持原狀。
+    const delay = getNextDelay();
+    console.log(`時間停止中，跳過這次更新。下次檢查：${Math.round(delay/60000)} 分鐘後`);
+    setTimeout(tick, delay);
+    return;
+  }
+
   world = applyNaturalDecay(world);
 
   const { display } = getRealTime();
@@ -909,20 +1042,54 @@ async function tick() {
 
   const combinedPlayerText = [world.owner_status, ownerActionUnread ? world.owner_action : null, ...visitorMessages.map(m => m.message)]
     .filter(Boolean).join(' ');
-  const triggeredEvent = detectTriggeredEvent(bt, combinedPlayerText);
-  const eventInput = triggeredEvent ? '\n' + EVENT_PROMPTS[triggeredEvent] : '';
-  if (triggeredEvent) console.log(`特殊事件觸發：${triggeredEvent}`);
+
+  // 小黑影好感（對糰糰）＝事件驅動：平時 0，糰糰死亡 -100（觸發報復循環），飛升 +1。
+  if (typeof world.characters.shadow.affection !== 'number') world.characters.shadow.affection = 0;
+  // 死亡狀態機：{ active, ticksLeft }。死亡後每個 tick 都是暗影復仇，倒數歸零時自動再生。
+  if (!world.death || typeof world.death !== 'object') world.death = { active: false, ticksLeft: 0 };
+
+  let triggeredEvent = detectTriggeredEvent(bt, combinedPlayerText); // ascension / observation / null
+  if (world.death.active) {
+    // 復仇期間：還有倒數就繼續復仇，最後一格改成再生事件並結束死亡。
+    if (world.death.ticksLeft > 1) {
+      world.death.ticksLeft -= 1;
+      triggeredEvent = 'shadowRevenge';
+    } else {
+      world.death.ticksLeft = 0;
+      world.death.active = false;
+      world.characters.shadow.affection = 0; // 糰糰歸來，小黑影好感回到平時的 0
+      triggeredEvent = 'rebirth';
+    }
+  } else if (bt.hp <= 0 && bt.food <= 0) {
+    // 剛死亡：進入復仇倒數，小黑影好感砸到 -100。
+    world.death = { active: true, ticksLeft: Math.max(1, balance.rebirthTicks) };
+    world.characters.shadow.affection = -100;
+    triggeredEvent = 'shadowRevenge';
+  } else if (triggeredEvent === 'ascension') {
+    world.characters.shadow.affection = (world.characters.shadow.affection || 0) + 1;
+  }
+
+  const eventCard = triggeredEvent ? getEventCard(triggeredEvent) : '';
+  const eventInput = triggeredEvent ? '\n' + buildEventInput(triggeredEvent) : '';
+  if (triggeredEvent) console.log(`特殊事件觸發：${triggeredEvent}（死亡倒數剩 ${world.death.ticksLeft}）`);
 
   // 健康/飽食完全由機制決定（衰減、餵食加成、特殊事件強制值），AI不再直接控制這兩個數字，
   // 只透過一句簡短狀態描述去理解該怎麼寫，避免被硬數值門檻卡住敘述。
+  // 注意：vitalLine 必須用「觸發當下」的真實數值（例如歸零瀕死）來描述，讓AI寫出對應的危急/狂喜場景；
+  // 強制值是給「這次事件結束後」的重生/復原狀態存檔用，順序顛倒會讓AI同時收到矛盾訊號（叙述死亡又被告知健康穩定）。
+  // 觸發特殊事件時一律用內建的危急/狂喜句子（statGrid 是給日常波動用的，事件需要更強烈的固定敘述）。
+  const customVitalLine = triggeredEvent ? null : getStatBandFor(bt.food, bt.hp);
+  const vitalLine = customVitalLine || describeVital(bt.hp, bt.food);
   if (triggeredEvent === 'ascension') {
     world.characters.baituantuan = { ...bt, food: 50, hp: 120 };
     bt = world.characters.baituantuan;
   } else if (triggeredEvent === 'shadowRevenge') {
     world.characters.baituantuan = { ...bt, food: 60, hp: 60 };
     bt = world.characters.baituantuan;
+  } else if (triggeredEvent === 'rebirth') {
+    world.characters.baituantuan = { ...bt, food: 80, hp: 80 }; // 再生＝回到初始健康/飽食
+    bt = world.characters.baituantuan;
   }
-  const vitalLine = describeVital(bt.hp, bt.food);
 
   const weather = await fetchWeather() || world.weather || null;
   const weatherInput = weather
@@ -949,7 +1116,7 @@ async function tick() {
 窗戶：${world.room.window_open ? '開' : '關'} 冷氣：${acLabel} 燈：${world.room.light_on ? '開' : '關'} 廁所門：${world.room.toilet_open ? '開' : '關'}
 巨怪對房間環境的描述：${world.room.env_desc || '無'}
 今天已發生：${world.room.events_today.join('，') || '無'}
-近期記憶：${(bt.memory || []).slice(-3).join(' / ') || '無'}${weatherInput}${climateInput}${ownerInput}${awayInput}${visitorInput}${eventInput}${pendingNotesInput}${hiddenInput}
+近期記憶：${(bt.memory || []).slice(-5).join(' / ') || '無'}${weatherInput}${climateInput}${ownerInput}${awayInput}${visitorInput}${eventInput}${pendingNotesInput}${hiddenInput}
 
 生成這段時間白糰糰的動態。`;
 
@@ -1049,6 +1216,9 @@ async function tick() {
       location: result.baituantuan.location,
       fur: result.baituantuan.fur && result.baituantuan.fur !== '正常' ? result.baituantuan.fur : null,
       shadowActive: !!result.shadow.active,
+      // 特殊事件的腳本卡：主頁會用特殊框原文顯示在 AI 續寫的 scene 之前。
+      eventKey: triggeredEvent || null,
+      eventCard: eventCard || null,
       tokens: { input: usage.input_tokens || 0, output: usage.output_tokens || 0 }
     }]);
 

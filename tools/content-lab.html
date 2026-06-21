@@ -64,6 +64,10 @@
   .field { margin-bottom: 18px; }
   .field label { display: block; font-size: 13px; font-weight: 500; margin-bottom: 5px; color: #6a4a2a; }
   .field .field-desc { font-size: 11px; color: #a08868; margin-bottom: 7px; line-height: 1.5; }
+  .field-head { display: flex; gap: 6px; align-items: center; margin-bottom: 5px; }
+  .field-title { flex: 1; font-size: 13px; font-weight: 500; color: #6a4a2a; padding: 4px 6px; border: 1px solid #e6dfd5; border-radius: 4px; background: #faf9f6; }
+  .field-group { font-size: 12px; padding: 4px 6px; border: 1px solid #e6dfd5; border-radius: 4px; background: #fff; color: #6a4a2a; }
+  .field-del { font-size: 11px; color: #a05a4a; padding: 4px 8px; }
   textarea {
     width: 100%; font-family: inherit; font-size: 14px;
     line-height: 1.8; border: 1px solid #e8c8b0; border-radius: 8px; padding: 12px 14px;
@@ -77,15 +81,15 @@
   }
   input:focus, select:focus { outline: 2px solid #e8a070; }
 
-  .num-grid { display: grid; grid-template-columns: 1fr; gap: 8px; }
-  @media (min-width: 520px) { .num-grid { grid-template-columns: 1fr 1fr; } }
-  .num-card { background: #fff; border: 1px solid #e8c8b0; border-radius: 8px; padding: 10px 12px; }
-  .num-card > .title { font-size: 12px; font-weight: 600; color: #5a3a2a; margin-bottom: 8px; }
-  .num-card > .fields { display: flex; gap: 8px; flex-wrap: wrap; }
-  .num-card .field-item { flex: 1; min-width: 100px; display: flex; flex-direction: column; }
-  .num-card label { display: block; font-size: 11px; color: #6a4a2a; margin-bottom: 2px; font-weight: 500; }
-  .num-card .field-desc { font-size: 10px; color: #a08868; margin-bottom: 4px; line-height: 1.3; }
-  .num-card input { width: 100%; padding: 6px 8px; font-size: 13px; }
+  /* 方正緊湊的迷你小卡：每組一張卡，欄位直排（標籤＋右對齊等寬輸入框） */
+  .num-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; max-width: 760px; }
+  .mini-tile { background: #fff; border: 1px solid #e8c8b0; border-radius: 6px; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; box-shadow: 0 1px 3px rgba(90,75,65,0.04); }
+  .tile-header { border-bottom: 1px solid #f2ede6; padding-bottom: 6px; }
+  .tile-title { font-size: 13px; font-weight: 600; color: #5a3a2a; }
+  .tile-adjust { display: flex; align-items: center; justify-content: flex-start; gap: 8px; }
+  .adjust-label { font-size: 12px; color: #8a766a; width: 96px; }
+  .input-control { width: 56px; padding: 3px 6px; border: 1px solid #e8c8b0; border-radius: 4px; text-align: right; font-family: monospace; background: #faf9f6; font-size: 13px; color: #4a3a2a; }
+  .input-control:focus { outline: 2px solid #e8a070; background: #fff; }
 
   .dev-section { background: #fff; border: 1px solid #e8c8b0; border-radius: 10px; padding: 14px 16px; margin-bottom: 14px; }
   .dev-section h3 { font-size: 13px; color: #5a3a2a; margin: 0 0 6px; }
@@ -200,26 +204,54 @@
 
 <main>
   <div class="tabs">
-    <button class="tab-btn active" data-tab="prompt" onclick="switchTab('prompt')">性格設定</button>
+    <button class="tab-btn active" data-tab="basic" onclick="switchTab('basic')">基本設定</button>
+    <button class="tab-btn" data-tab="world" onclick="switchTab('world')">世界設定</button>
+    <button class="tab-btn" data-tab="trait" onclick="switchTab('trait')">數值映射</button>
+    <button class="tab-btn" data-tab="system" onclick="switchTab('system')">系統規則</button>
     <button class="tab-btn" data-tab="balance" onclick="switchTab('balance')">數值平衡</button>
-    <button class="tab-btn" data-tab="trait" onclick="switchTab('trait')">暱稱實驗室</button>
     <button class="tab-btn" data-tab="frag" onclick="switchTab('frag')">紙片碎片</button>
     <button class="tab-btn" data-tab="event" onclick="switchTab('event')">特殊事件</button>
     <button class="tab-btn" data-tab="dev" onclick="switchTab('dev')">開發者專區</button>
   </div>
 
-  <!-- ============ 性格設定 ============ -->
-  <div class="tab-panel active" id="panel-prompt">
+  <!-- ============ 基本設定 / 世界設定 / 系統規則（皆為自訂 prompt 欄位，共用 system-prompt.json） ============ -->
+  <div class="tab-panel active" id="panel-basic">
     <div class="panel-head">
-      <div class="desc">這些段落會組進 world.js 的 SYSTEM_PROMPT。「依數值調整行為」段落決定糰糰健康/飽食低時演得有沒有危機感。</div>
+      <div class="desc">這些欄位會依「順序」組進 world.js 的 system prompt（欄位標題就是段落標題）。名稱、內容、分組都由你定義，可新增／刪除／改名／搬到其他分頁。</div>
       <div class="actions">
         <button class="ghost" onclick="loadFromServer('system-prompt', applyPromptData)">↻ 拉取最新</button>
-        <button class="primary" onclick="uploadJSON('data/system-prompt.json', collectPromptData(), 'system-status')">上傳</button>
+        <button class="primary" onclick="uploadJSON('data/system-prompt.json', collectPromptData(), 'system-status-basic')">上傳</button>
       </div>
     </div>
-    <div class="subtabs" id="prompt-subtabs"></div>
-    <div id="prompt-fields"></div>
-    <div class="status-line off" id="system-status"></div>
+    <div id="prompt-fields-basic"></div>
+    <button class="ghost" onclick="addPromptSection('basic')">＋ 新增欄位</button>
+    <div class="status-line off" id="system-status-basic"></div>
+  </div>
+
+  <div class="tab-panel" id="panel-world">
+    <div class="panel-head">
+      <div class="desc">配角（小黑影等）與世界觀設定。與「基本設定／系統規則」共用同一份 system-prompt.json，三頁的欄位合起來就是完整 prompt。</div>
+      <div class="actions">
+        <button class="ghost" onclick="loadFromServer('system-prompt', applyPromptData)">↻ 拉取最新</button>
+        <button class="primary" onclick="uploadJSON('data/system-prompt.json', collectPromptData(), 'system-status-world')">上傳</button>
+      </div>
+    </div>
+    <div id="prompt-fields-world"></div>
+    <button class="ghost" onclick="addPromptSection('world')">＋ 新增欄位</button>
+    <div class="status-line off" id="system-status-world"></div>
+  </div>
+
+  <div class="tab-panel" id="panel-system">
+    <div class="panel-head">
+      <div class="desc">訪客留言、生成文章風格等系統層規則。與「基本設定／世界設定」共用同一份 system-prompt.json。</div>
+      <div class="actions">
+        <button class="ghost" onclick="loadFromServer('system-prompt', applyPromptData)">↻ 拉取最新</button>
+        <button class="primary" onclick="uploadJSON('data/system-prompt.json', collectPromptData(), 'system-status-system')">上傳</button>
+      </div>
+    </div>
+    <div id="prompt-fields-system"></div>
+    <button class="ghost" onclick="addPromptSection('system')">＋ 新增欄位</button>
+    <div class="status-line off" id="system-status-system"></div>
   </div>
 
   <!-- ============ 數值平衡 ============ -->
@@ -236,10 +268,10 @@
     <div class="status-line off" id="balance-status"></div>
   </div>
 
-  <!-- ============ 暱稱實驗室（隱藏數值對照表） ============ -->
+  <!-- ============ 數值映射（隱藏數值對照表：暱稱／質地／心情／狀態象限） ============ -->
   <div class="tab-panel" id="panel-trait">
     <div class="panel-head">
-      <div class="desc">熟悉度×好感度→暱稱、形狀×硬度→質地、心情值→顏色，三張對照表會自動依互動累積的隱藏數值即時套用，不經過 AI。</div>
+      <div class="desc">數值影響下的 prompt：熟悉度×好感度→暱稱、形狀×硬度→質地、心情值→顏色、飽食×健康→狀態描述，四張對照表會自動依當下隱藏數值即時套用，不經過 AI。</div>
       <div class="actions">
         <button class="ghost" onclick="loadFromServer('hidden-stats', applyTraitData)">↻ 拉取最新</button>
         <button class="primary" onclick="uploadJSON('data/hidden-stats.json', collectTraitData(), 'trait-status')">上傳</button>
@@ -315,6 +347,29 @@
       <div class="trait-hint">每段填「最低值～最高值」「名稱」「實際顏色」，可任意新增/刪除分段。</div>
     </div>
 
+    <div class="subtab-panel" data-group="trait" data-sub="stat">
+      <div class="trait-toolbar">
+        <button class="secondary" onclick="statFillSample()">填入範例描述</button>
+        <button class="secondary" onclick="statClearAll()">清空全部</button>
+      </div>
+      <div class="trait-layout">
+        <div class="trait-panel trait-preview">
+          <div class="preview-name" id="stat-preview-name" contenteditable="true" placeholder="點擊編輯描述或直接填格子">—</div>
+          <div class="slider-row">
+            <label><span>飽食度</span><span><span id="stat-food-val">50</span> <span class="band-tag" id="stat-food-band"></span></span></label>
+            <input type="range" id="stat-food-slider" min="0" max="100" value="50" oninput="statUpdatePreview()">
+          </div>
+          <div class="slider-row">
+            <label><span>健康度</span><span><span id="stat-hp-val">50</span> <span class="band-tag" id="stat-hp-band"></span></span></label>
+            <input type="range" id="stat-hp-slider" min="0" max="100" value="50" oninput="statUpdatePreview()">
+          </div>
+          <div class="trait-hint">填了這格，AI在該數值區段時就只會讀到這句描述，不會再用內建的自動生成句子。空格仍會用內建句子當備援。</div>
+        </div>
+        <div class="trait-panel grid-wrap"><table class="grid" id="stat-grid-table"></table></div>
+      </div>
+      <div class="trait-hint">橫軸＝飽食度區段（左低右高），縱軸＝健康度區段（上低下高）。例：飽食30/健康10可填「搖搖晃晃看什麼都想咬一下」。</div>
+    </div>
+
     <div class="status-line off" id="trait-status"></div>
   </div>
 
@@ -338,7 +393,7 @@
   <!-- ============ 特殊事件文案 ============ -->
   <div class="tab-panel" id="panel-event">
     <div class="panel-head">
-      <div class="desc">飛升＝健康＋飽食同時滿；冥影＝兩者同時歸零；觀察＝玩家輸入觸發旁白。</div>
+      <div class="desc">每個事件＝腳本卡（主頁原文顯示、保證演出）＋AI 續寫指示。飛升＝健康＋飽食同時滿；冥影＝兩者同時歸零（死亡，進入報復倒數）；再生＝倒數結束自動復活；觀察＝玩家輸入觸發旁白。死亡倒數長度在「數值平衡」調整。</div>
       <div class="actions">
         <button class="ghost" onclick="loadFromServer('events', applyEventData)">↻ 拉取最新</button>
         <button class="primary" onclick="uploadJSON('data/events.json', collectEventData(), 'event-status')">上傳</button>
@@ -435,13 +490,13 @@ function refreshDevStats() {
   const scaffoldTok = estimateTokens(SYS_SCAFFOLD);
   let sysTotal = scaffoldTok;
   const rows = [`<tr><th>區塊</th><th>字數</th><th>估 token</th><th>佔比</th></tr>`];
-  const segTok = {};
-  SYS_PROMPT_KEYS.forEach(k => { segTok[k] = estimateTokens(promptData[k] || ''); sysTotal += segTok[k]; });
-  SYS_PROMPT_KEYS.forEach(k => {
-    const t = segTok[k];
+  const segTok = promptSections.map(sec => estimateTokens(promptData[sec.id] || ''));
+  segTok.forEach(t => { sysTotal += t; });
+  promptSections.forEach((sec, idx) => {
+    const t = segTok[idx];
     const pct = sysTotal ? Math.round(t / sysTotal * 100) : 0;
     const warn = t > 400 ? ' class="warn"' : '';
-    rows.push(`<tr${warn}><td>${SYS_PROMPT_LABELS[k]}</td><td class="num">${(promptData[k]||'').length}</td><td class="num">${t}</td><td class="num">${pct}%</td></tr>`);
+    rows.push(`<tr${warn}><td>${escapeHtml(sec.title)}</td><td class="num">${(promptData[sec.id]||'').length}</td><td class="num">${t}</td><td class="num">${pct}%</td></tr>`);
   });
   rows.push(`<tr><td>骨架（標題＋輸出格式）</td><td class="num">—</td><td class="num">${scaffoldTok}</td><td class="num">${Math.round(scaffoldTok/sysTotal*100)}%</td></tr>`);
   rows.push(`<tr class="total"><td>system prompt 合計</td><td class="num">—</td><td class="num">${sysTotal}</td><td class="num">100%</td></tr>`);
@@ -520,14 +575,19 @@ function exportJSON() {
 function exportMarkdown() {
   const s = collectAllSettings();
   let md = `# 白糰糰設定匯出\n\n匯出時間：${new Date().toLocaleString('zh-TW')}\n\n`;
-  md += `## 性格設定（system prompt）\n\n`;
-  SYS_PROMPT_KEYS.forEach(k => {
-    md += `### ${SYS_PROMPT_LABELS[k]}（\`${k}\`）\n\n${s.systemPrompt[k] || '（空）'}\n\n`;
+  md += `## prompt 設定（system prompt）\n\n`;
+  const groupLabel = { basic: '基本設定', world: '世界設定', system: '系統規則' };
+  (s.systemPrompt.sections || []).forEach(sec => {
+    md += `### ${sec.title}（${groupLabel[sec.group] || sec.group}）\n\n${sec.body || '（空）'}\n\n`;
   });
   md += `## 數值平衡\n\n| 參數 | 值 |\n|---|---|\n`;
   Object.entries(s.balance).forEach(([k, v]) => { md += `| ${k} | ${v} |\n`; });
-  md += `\n## 特殊事件文案\n\n`;
-  Object.entries(s.events).forEach(([k, v]) => { md += `### ${k}\n\n${v || '（空）'}\n\n`; });
+  md += `\n## 特殊事件（腳本卡＋AI 續寫）\n\n`;
+  Object.entries(s.events).forEach(([k, v]) => {
+    const card = (v && v.card) || '';
+    const prompt = (v && typeof v === 'object') ? (v.prompt || '') : (v || '');
+    md += `### ${k}\n\n**腳本卡**：${card || '（空）'}\n\n**AI 續寫**：${prompt || '（空）'}\n\n`;
+  });
   md += `## 紙片碎片\n\n`;
   const bySource = {};
   (s.fragments.fragments || []).forEach(f => { (bySource[f.source || '未分類'] ||= []).push(f); });
@@ -557,58 +617,102 @@ function switchSubTab(group, sub) {
   document.querySelectorAll(`.subtab-panel[data-group="${group}"]`).forEach(p => p.classList.toggle('active', p.dataset.sub === sub));
 }
 function subLabel(group, key) {
-  const map = { prompt: PROMPT_GROUPS, balance: BALANCE_GROUPS, event: EVENT_GROUPS, trait: TRAIT_GROUPS };
+  const map = { balance: BALANCE_GROUPS, event: EVENT_GROUPS, trait: TRAIT_GROUPS };
   const found = (map[group] || []).find(g => g.key === key);
   return found ? found.label : '';
 }
 
 // ===================== 性格設定 =====================
-const PROMPT_GROUPS = [
+// system prompt 的分組＝三個頂層分頁；欄位（段落）由使用者自訂，存在 promptSections（有序），
+// 內容存在 promptData[id]。上傳時組成 { sections:[{id,title,group,body}] } 給 world.js 依序組裝。
+const PROMPT_GROUP_DEFS = [
   { key: 'basic', label: '基本設定' },
-  { key: 'body', label: '身體與毛況' },
-  { key: 'rules', label: '互動規則' }
+  { key: 'world', label: '世界設定' },
+  { key: 'system', label: '系統規則' }
 ];
-const PROMPT_SECTIONS = [
-  { key: 'identity', label: '白糰糰是誰', rows: 6, group: 'basic' },
-  { key: 'lifecycle', label: '生命週期', rows: 4, group: 'basic' },
-  { key: 'sizeCognition', label: '尺寸與認知', rows: 4, group: 'basic' },
-  { key: 'personality', label: '性格與信念', rows: 5, group: 'basic' },
-  { key: 'social', label: '社交與情感', rows: 5, group: 'basic' },
-  { key: 'body', label: '身體與感知（重要，別寫錯）', rows: 10, group: 'body' },
-  { key: 'furSystem', label: '毛況系統', rows: 3, group: 'body' },
-  { key: 'statBands', label: '依當前狀態調整行為（健康/飽食線性描述）', rows: 6, group: 'body', desc: '糰糰的狀態現在是一句簡短描述，不是硬門檻，順著語氣寫危機感即可。' },
-  { key: 'shadow', label: '小黑影', rows: 8, group: 'rules' },
-  { key: 'visitors', label: '訪客留言', rows: 4, group: 'rules' },
-  { key: 'habits', label: '生活習性', rows: 12, group: 'rules' },
-  { key: 'rules', label: '規則', rows: 6, group: 'rules' }
+const DEFAULT_PROMPT_SECTIONS = [
+  { id: 'identity', title: '白糰糰是誰', group: 'basic' },
+  { id: 'lifecycle', title: '生命週期', group: 'basic' },
+  { id: 'sizeCognition', title: '尺寸與認知', group: 'basic' },
+  { id: 'personality', title: '性格與信念', group: 'basic' },
+  { id: 'social', title: '社交與情感', group: 'basic' },
+  { id: 'body', title: '身體與感知（重要，別寫錯）', group: 'basic' },
+  { id: 'furSystem', title: '毛況系統', group: 'basic' },
+  { id: 'shadow', title: '小黑影', group: 'world' },
+  { id: 'habits', title: '生活習性', group: 'world' },
+  { id: 'visitors', title: '訪客留言', group: 'system' },
+  { id: 'rules', title: '規則', group: 'system' }
 ];
+let promptSections = DEFAULT_PROMPT_SECTIONS.map(s => ({ ...s }));
 let promptData = {};
-let promptActiveGroup = 'basic';
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+}
 function buildPromptFields() {
-  buildSubtabs(document.getElementById('prompt-subtabs'), 'prompt', PROMPT_GROUPS, PROMPT_GROUPS.findIndex(g => g.key === promptActiveGroup));
-  const box = document.getElementById('prompt-fields');
-  box.innerHTML = '';
-  PROMPT_GROUPS.forEach(g => {
-    const groupBox = document.createElement('div');
-    groupBox.className = 'subtab-panel' + (g.key === promptActiveGroup ? ' active' : '');
-    groupBox.dataset.group = 'prompt';
-    groupBox.dataset.sub = g.key;
-    PROMPT_SECTIONS.filter(sec => sec.group === g.key).forEach(sec => {
-      const div = document.createElement('div');
-      div.className = 'field';
-      div.innerHTML = `<label>${sec.label}</label>${sec.desc ? `<div class="field-desc">${sec.desc}</div>` : ''}<textarea id="prompt-${sec.key}" rows="${sec.rows}"></textarea>`;
-      groupBox.appendChild(div);
-      div.querySelector('textarea').value = promptData[sec.key] || '';
-      div.querySelector('textarea').oninput = e => { promptData[sec.key] = e.target.value; saveLocal(); };
-    });
-    box.appendChild(groupBox);
+  PROMPT_GROUP_DEFS.forEach(g => {
+    const box = document.getElementById(`prompt-fields-${g.key}`);
+    if (!box) return;
+    box.innerHTML = '';
+    promptSections.filter(sec => sec.group === g.key).forEach(sec => box.appendChild(renderPromptSection(sec)));
   });
 }
-function applyPromptData(data) { promptData = data || {}; buildPromptFields(); }
+function renderPromptSection(sec) {
+  const div = document.createElement('div');
+  div.className = 'field';
+  div.innerHTML =
+    `<div class="field-head">` +
+      `<input class="field-title" value="${escapeHtml(sec.title)}" placeholder="欄位名稱（會變成 prompt 段落標題）">` +
+      `<select class="field-group"></select>` +
+      `<button class="ghost field-del" type="button">刪除</button>` +
+    `</div>` +
+    `<textarea rows="6"></textarea>`;
+  const titleInp = div.querySelector('.field-title');
+  const groupSel = div.querySelector('.field-group');
+  PROMPT_GROUP_DEFS.forEach(g => {
+    const o = document.createElement('option');
+    o.value = g.key; o.textContent = g.label;
+    if (g.key === sec.group) o.selected = true;
+    groupSel.appendChild(o);
+  });
+  const ta = div.querySelector('textarea');
+  ta.value = promptData[sec.id] || '';
+  titleInp.oninput = () => { sec.title = titleInp.value; saveLocal(); };
+  ta.oninput = () => { promptData[sec.id] = ta.value; saveLocal(); };
+  groupSel.onchange = () => { sec.group = groupSel.value; buildPromptFields(); saveLocal(); };
+  div.querySelector('.field-del').onclick = () => {
+    if (!confirm(`刪除欄位「${sec.title || '（未命名）'}」？這只刪這個欄位的設定，不影響其他欄位。`)) return;
+    promptSections = promptSections.filter(s => s !== sec);
+    delete promptData[sec.id];
+    buildPromptFields(); saveLocal();
+  };
+  return div;
+}
+function addPromptSection(group) {
+  const id = 'sec_' + Date.now().toString(36) + Math.floor(Math.random() * 1000);
+  promptSections.push({ id, title: '新欄位', group });
+  promptData[id] = '';
+  buildPromptFields(); saveLocal();
+}
+function applyPromptData(data) {
+  data = data || {};
+  if (Array.isArray(data.sections)) {
+    promptSections = data.sections.map(s => ({ id: s.id, title: s.title || '', group: s.group || 'basic' }));
+    promptData = {};
+    data.sections.forEach(s => { promptData[s.id] = s.body || ''; });
+  } else {
+    // 舊版扁平 key：用預設分組還原，未知 key 補成 basic 欄位，statBands 已搬到象限故略過
+    promptData = { ...data };
+    promptSections = DEFAULT_PROMPT_SECTIONS.map(s => ({ ...s }));
+    const known = new Set(DEFAULT_PROMPT_SECTIONS.map(s => s.id));
+    Object.keys(data).forEach(k => {
+      if (!known.has(k) && k !== 'statBands') promptSections.push({ id: k, title: k, group: 'basic' });
+    });
+  }
+  buildPromptFields();
+}
 function collectPromptData() {
-  const out = {};
-  PROMPT_SECTIONS.forEach(sec => { out[sec.key] = document.getElementById(`prompt-${sec.key}`).value; });
-  return out;
+  return { sections: promptSections.map(s => ({ id: s.id, title: s.title, group: s.group, body: promptData[s.id] || '' })) };
 }
 
 // ===================== 數值平衡 =====================
@@ -672,7 +776,8 @@ const BALANCE_ADV_GROUPS = [
   {
     title: '其他',
     fields: [
-      { key: 'textureEase', label: '質地靠近速度', desc: '0~1', step: 0.01 }
+      { key: 'textureEase', label: '質地靠近速度', desc: '0~1', step: 0.01 },
+      { key: 'rebirthTicks', label: '死亡後再生(次)', desc: '死亡後幾次更新自動再生', step: 1 }
     ]
   },
   {
@@ -691,23 +796,20 @@ function buildBalanceCards(box, groups) {
   box.innerHTML = '';
   groups.forEach(group => {
     const card = document.createElement('div');
-    card.className = 'num-card';
-    const title = document.createElement('div');
-    title.className = 'title';
-    title.textContent = group.title;
-    const fields = document.createElement('div');
-    fields.className = 'fields';
+    card.className = 'mini-tile';
+    const header = document.createElement('div');
+    header.className = 'tile-header';
+    header.innerHTML = `<span class="tile-title">${group.title}</span>`;
+    card.appendChild(header);
     group.fields.forEach(f => {
-      const item = document.createElement('div');
-      item.className = 'field-item';
-      item.innerHTML = `<label>${f.label}</label>${f.desc ? `<div class="field-desc">${f.desc}</div>` : ''}<input type="number" id="balance-${f.key}" step="${f.step || 1}">`;
-      fields.appendChild(item);
-      const inp = item.querySelector('input');
+      const row = document.createElement('div');
+      row.className = 'tile-adjust';
+      row.innerHTML = `<span class="adjust-label"${f.desc ? ` title="${f.desc}"` : ''}>${f.label}</span><input type="number" class="input-control" id="balance-${f.key}" step="${f.step || 1}">`;
+      card.appendChild(row);
+      const inp = row.querySelector('input');
       inp.value = balanceData[f.key] ?? 0;
       inp.oninput = e => { balanceData[f.key] = Number(e.target.value); saveLocal(); };
     });
-    card.appendChild(title);
-    card.appendChild(fields);
     box.appendChild(card);
   });
 }
@@ -742,9 +844,13 @@ function collectBalanceData() {
 const TRAIT_GROUPS = [
   { key: 'nickname', label: '暱稱實驗室' },
   { key: 'texture', label: '質地實驗室' },
-  { key: 'mood', label: '心情色彩實驗室' }
+  { key: 'mood', label: '心情色彩實驗室' },
+  { key: 'stat', label: '狀態象限實驗室' }
 ];
 const BANDS = 7;
+const FAM_BANDS = 7;
+const AFF_BANDS = 9; // 好感度含負值（反感~中立~喜愛），格數比熟悉度多，避免正負分到的格子太粗
+const UNIT_BANDS = 7;
 function makeBandHelper(min, max, bands) {
   const edges = [];
   for (let i = 0; i <= bands; i++) edges.push(Math.round(min + i * (max - min) / bands));
@@ -759,27 +865,30 @@ function makeBandHelper(min, max, bands) {
     label(i) { return `${edges[i]}–${edges[i + 1]}`; }
   };
 }
-const FAM = makeBandHelper(0, 100, BANDS);
-const AFF = makeBandHelper(-100, 100, BANDS);
-const UNIT = makeBandHelper(0, 100, BANDS);
+const STAT_BANDS = 7;
+const FAM = makeBandHelper(0, 100, FAM_BANDS);
+const AFF = makeBandHelper(-100, 100, AFF_BANDS);
+const UNIT = makeBandHelper(0, 100, UNIT_BANDS);
+const STAT = makeBandHelper(0, 100, STAT_BANDS);
 
-let nicknameGrid = Array.from({ length: BANDS }, () => Array.from({ length: BANDS }, () => ''));
-let textureGrid = Array.from({ length: BANDS }, () => Array.from({ length: BANDS }, () => ''));
+let nicknameGrid = Array.from({ length: FAM_BANDS }, () => Array.from({ length: AFF_BANDS }, () => ''));
+let textureGrid = Array.from({ length: UNIT_BANDS }, () => Array.from({ length: UNIT_BANDS }, () => ''));
 let moodBands = [];
+let statGrid = Array.from({ length: STAT_BANDS }, () => Array.from({ length: STAT_BANDS }, () => ''));
 
 function nicknameBuildTable() {
   const table = document.getElementById('nickname-grid-table');
   table.innerHTML = '';
   const headRow = document.createElement('tr');
   headRow.innerHTML = `<th class="corner">熟悉度 ＼ 好感度</th>` +
-    Array.from({ length: BANDS }, (_, j) => `<th>${AFF.label(j)}</th>`).join('');
+    Array.from({ length: AFF_BANDS }, (_, j) => `<th>${AFF.label(j)}</th>`).join('');
   table.appendChild(headRow);
-  for (let i = 0; i < BANDS; i++) {
+  for (let i = 0; i < FAM_BANDS; i++) {
     const row = document.createElement('tr');
     const th = document.createElement('th');
     th.textContent = FAM.label(i);
     row.appendChild(th);
-    for (let j = 0; j < BANDS; j++) {
+    for (let j = 0; j < AFF_BANDS; j++) {
       const td = document.createElement('td');
       td.id = `nickname-cell-${i}-${j}`;
       const input = document.createElement('input');
@@ -814,18 +923,18 @@ function nicknameUpdatePreview() {
 }
 function nicknameClearAll() {
   if (!confirm('確定清空所有暱稱？這會清掉已經填的內容，請先確定要重填。')) return;
-  nicknameGrid = Array.from({ length: BANDS }, () => Array.from({ length: BANDS }, () => ''));
+  nicknameGrid = Array.from({ length: FAM_BANDS }, () => Array.from({ length: AFF_BANDS }, () => ''));
   nicknameBuildTable(); nicknameUpdatePreview(); saveLocal();
 }
 function nicknameFillSample() {
   nicknameGrid = [
-    ['巨怪','巨怪','無毛柱','無毛柱','竿子','竿子','裸糰'],
-    ['巨怪','無毛柱','無毛柱','竿子','竿子','裸糰','裸糰'],
-    ['無毛柱','無毛柱','竿子','竿子','裸糰','裸糰','大毛巢'],
-    ['無毛柱','竿子','竿子','裸糰','裸糰','大毛巢','大毛巢'],
-    ['竿子','竿子','裸糰','裸糰','大毛巢','大毛巢','暖窩主'],
-    ['竿子','裸糰','裸糰','大毛巢','大毛巢','暖窩主','暖窩主'],
-    ['裸糰','裸糰','大毛巢','大毛巢','暖窩主','暖窩主','毛家人'],
+    ['巨怪','巨怪','巨怪','無毛柱','無毛柱','竿子','竿子','裸糰','裸糰'],
+    ['巨怪','巨怪','無毛柱','無毛柱','竿子','竿子','裸糰','裸糰','大毛巢'],
+    ['巨怪','無毛柱','無毛柱','竿子','竿子','裸糰','裸糰','大毛巢','大毛巢'],
+    ['無毛柱','無毛柱','竿子','竿子','裸糰','裸糰','大毛巢','大毛巢','暖窩主'],
+    ['無毛柱','竿子','竿子','裸糰','裸糰','大毛巢','大毛巢','暖窩主','暖窩主'],
+    ['竿子','竿子','裸糰','裸糰','大毛巢','大毛巢','暖窩主','暖窩主','毛家人'],
+    ['竿子','裸糰','裸糰','大毛巢','大毛巢','暖窩主','暖窩主','毛家人','毛家人'],
   ];
   nicknameBuildTable(); nicknameUpdatePreview(); saveLocal();
 }
@@ -886,6 +995,68 @@ function textureFillSample() {
   textureBuildTable(); textureUpdatePreview(); saveLocal();
 }
 
+function statBuildTable() {
+  const table = document.getElementById('stat-grid-table');
+  table.innerHTML = '';
+  const headRow = document.createElement('tr');
+  headRow.innerHTML = `<th class="corner">健康度 ＼ 飽食度</th>` +
+    Array.from({ length: STAT_BANDS }, (_, j) => `<th>${STAT.label(j)}</th>`).join('');
+  table.appendChild(headRow);
+  for (let i = 0; i < STAT_BANDS; i++) {
+    const row = document.createElement('tr');
+    const th = document.createElement('th');
+    th.textContent = STAT.label(i);
+    row.appendChild(th);
+    for (let j = 0; j < STAT_BANDS; j++) {
+      const td = document.createElement('td');
+      td.id = `stat-cell-${i}-${j}`;
+      const input = document.createElement('input');
+      input.value = statGrid[i][j];
+      input.placeholder = '描述';
+      input.oninput = () => { statGrid[i][j] = input.value; statUpdatePreview(); saveLocal(); };
+      td.appendChild(input);
+      row.appendChild(td);
+    }
+    table.appendChild(row);
+  }
+}
+function statUpdatePreview() {
+  const food = Number(document.getElementById('stat-food-slider').value);
+  const hp = Number(document.getElementById('stat-hp-slider').value);
+  document.getElementById('stat-food-val').textContent = food;
+  document.getElementById('stat-hp-val').textContent = hp;
+  const fj = STAT.index(food), hi = STAT.index(hp);
+  document.getElementById('stat-food-band').textContent = `(${STAT.label(fj)})`;
+  document.getElementById('stat-hp-band').textContent = `(${STAT.label(hi)})`;
+  document.querySelectorAll('#panel-trait td.active').forEach(td => td.classList.remove('active'));
+  const cell = document.getElementById(`stat-cell-${hi}-${fj}`);
+  if (cell) cell.classList.add('active');
+  const previewEl = document.getElementById('stat-preview-name');
+  const previewText = previewEl.textContent.trim();
+  if (previewText && previewText !== '—' && previewText !== '（這格還沒填，會用內建自動句子備援）') {
+    statGrid[hi][fj] = previewText;
+  } else {
+    previewEl.textContent = statGrid[hi][fj] || '（這格還沒填，會用內建自動句子備援）';
+  }
+}
+function statClearAll() {
+  if (!confirm('確定清空所有狀態描述？這會清掉已經填的內容，請先確定要重填。')) return;
+  statGrid = Array.from({ length: STAT_BANDS }, () => Array.from({ length: STAT_BANDS }, () => ''));
+  statBuildTable(); statUpdatePreview(); saveLocal();
+}
+function statFillSample() {
+  statGrid = [
+    ['極度飢餓、奄奄一息、無力動彈','極度飢餓、行為混亂、啃自己','飢餓、動作遲緩找東西啃','略餓、動作變慢','飽足、主動找小東西啃','飽足、舔冰舔竹籤','活力充沛、毛炸成球跳舞玩水'],
+    ['瀕臨崩潰、絨毛蒸發','健康危急、行為混亂','健康亮紅燈、掉毛變扁','搖搖晃晃看什麼都想咬一下','偏好躲陰影靜坐','動作平穩略顯疲態','健康飽滿、眼神銳利'],
+    ['','','','','','',''],
+    ['','','','','','',''],
+    ['','','','','','',''],
+    ['','','','','','',''],
+    ['','','','','','',''],
+  ];
+  statBuildTable(); statUpdatePreview(); saveLocal();
+}
+
 function moodAddBand(min = 0, max = 100, name = '', color = '#cccccc') {
   moodBands.push({ min, max, name, color });
   moodBands.sort((a, b) => a.min - b.min);
@@ -942,19 +1113,22 @@ function moodFillSample() {
 
 function applyTraitData(data) {
   if (!data) data = {};
-  nicknameGrid = (data.nicknameGrid && data.nicknameGrid.length === BANDS) ? data.nicknameGrid : nicknameGrid;
-  textureGrid = (data.textureGrid && data.textureGrid.length === BANDS) ? data.textureGrid : textureGrid;
+  nicknameGrid = (data.nicknameGrid && data.nicknameGrid.length === FAM_BANDS) ? data.nicknameGrid : nicknameGrid;
+  textureGrid = (data.textureGrid && data.textureGrid.length === UNIT_BANDS) ? data.textureGrid : textureGrid;
   moodBands = Array.isArray(data.moodBands) && data.moodBands.length ? data.moodBands : moodBands;
+  statGrid = (data.statGrid && data.statGrid.length === STAT_BANDS) ? data.statGrid : statGrid;
   nicknameBuildTable(); nicknameUpdatePreview();
   textureBuildTable(); textureUpdatePreview();
   moodRenderBands(); moodUpdatePreview();
+  statBuildTable(); statUpdatePreview();
 }
 function collectTraitData() {
   return {
-    fam: { min: 0, max: 100, bands: BANDS },
-    aff: { min: -100, max: 100, bands: BANDS },
-    unit: { min: 0, max: 100, bands: BANDS },
-    nicknameGrid, textureGrid, moodBands
+    fam: { min: 0, max: 100, bands: FAM_BANDS },
+    aff: { min: -100, max: 100, bands: AFF_BANDS },
+    unit: { min: 0, max: 100, bands: UNIT_BANDS },
+    stat: { min: 0, max: 100, bands: STAT_BANDS },
+    nicknameGrid, textureGrid, moodBands, statGrid
   };
 }
 
@@ -1058,18 +1232,27 @@ function collectFragData() { return fragData; }
 function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
 
 // ===================== 特殊事件文案 =====================
+// 每個特殊事件＝腳本卡（card，主頁原文顯示、保證演出）＋ AI 續寫指示（prompt，AI 接著寫餘波）。
 const EVENT_GROUPS = [
   { key: 'ascension', label: '飛升篇' },
   { key: 'shadowRevenge', label: '冥影與霜解篇' },
+  { key: 'rebirth', label: '再生篇' },
   { key: 'observation', label: '觀察篇' }
 ];
 const EVENT_FIELDS = [
-  { key: 'ascension', label: '飛升篇（健康＋飽食同時滿值）', rows: 9, group: 'ascension' },
-  { key: 'shadowRevenge', label: '冥影與霜解篇（健康＋飽食同時歸零）', rows: 7, group: 'shadowRevenge' },
-  { key: 'observation', label: '觀察篇（玩家輸入觸發旁白）', rows: 5, group: 'observation' }
+  { key: 'ascension', label: '飛升篇（健康＋飽食同時滿值）', group: 'ascension' },
+  { key: 'shadowRevenge', label: '冥影與霜解篇（健康＋飽食同時歸零＝死亡）', group: 'shadowRevenge' },
+  { key: 'rebirth', label: '再生篇（死亡倒數結束、糰糰自動再生）', group: 'rebirth' },
+  { key: 'observation', label: '觀察篇（玩家輸入觸發旁白）', group: 'observation' }
 ];
 let eventData = {};
 let eventActiveGroup = 'ascension';
+// 讀進來的 events.json 可能是舊版字串（只有 prompt），統一轉成 { card, prompt }。
+function normalizeEventEntry(v) {
+  if (typeof v === 'string') return { card: '', prompt: v };
+  if (v && typeof v === 'object') return { card: v.card || '', prompt: v.prompt || '' };
+  return { card: '', prompt: '' };
+}
 function buildEventFields() {
   buildSubtabs(document.getElementById('event-subtabs'), 'event', EVENT_GROUPS, EVENT_GROUPS.findIndex(g => g.key === eventActiveGroup));
   const box = document.getElementById('event-fields');
@@ -1080,20 +1263,41 @@ function buildEventFields() {
     groupBox.dataset.group = 'event';
     groupBox.dataset.sub = g.key;
     EVENT_FIELDS.filter(ev => ev.group === g.key).forEach(ev => {
+      const entry = normalizeEventEntry(eventData[ev.key]);
+      eventData[ev.key] = entry;
       const div = document.createElement('div');
       div.className = 'field';
-      div.innerHTML = `<label>${ev.label}</label><textarea id="event-${ev.key}" rows="${ev.rows}"></textarea>`;
+      div.innerHTML =
+        `<label>${ev.label}</label>` +
+        `<div class="field-desc">腳本卡：主頁會原文顯示這段（特殊框），保證演出。留空＝不顯示卡片。</div>` +
+        `<textarea id="event-card-${ev.key}" rows="4" placeholder="腳本卡（原文顯示）"></textarea>` +
+        `<div class="field-desc" style="margin-top:6px">AI 續寫指示：AI 接著卡片寫「之後的餘波」，不要重述卡片。</div>` +
+        `<textarea id="event-prompt-${ev.key}" rows="6" placeholder="AI 續寫指示"></textarea>`;
       groupBox.appendChild(div);
-      div.querySelector('textarea').value = eventData[ev.key] || '';
-      div.querySelector('textarea').oninput = e => { eventData[ev.key] = e.target.value; saveLocal(); };
+      const cardTa = div.querySelector(`#event-card-${ev.key}`);
+      const promptTa = div.querySelector(`#event-prompt-${ev.key}`);
+      cardTa.value = entry.card;
+      promptTa.value = entry.prompt;
+      cardTa.oninput = e => { eventData[ev.key].card = e.target.value; saveLocal(); };
+      promptTa.oninput = e => { eventData[ev.key].prompt = e.target.value; saveLocal(); };
     });
     box.appendChild(groupBox);
   });
 }
-function applyEventData(data) { eventData = data || {}; buildEventFields(); }
+function applyEventData(data) {
+  data = data || {};
+  eventData = {};
+  EVENT_FIELDS.forEach(ev => { eventData[ev.key] = normalizeEventEntry(data[ev.key]); });
+  buildEventFields();
+}
 function collectEventData() {
   const out = {};
-  EVENT_FIELDS.forEach(ev => { out[ev.key] = document.getElementById(`event-${ev.key}`).value; });
+  EVENT_FIELDS.forEach(ev => {
+    out[ev.key] = {
+      card: document.getElementById(`event-card-${ev.key}`).value,
+      prompt: document.getElementById(`event-prompt-${ev.key}`).value
+    };
+  });
   return out;
 }
 
@@ -1112,7 +1316,7 @@ function loadLocal() {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return false;
     const d = JSON.parse(raw);
-    if (d.promptData) promptData = d.promptData;
+    if (d.promptData) applyPromptData(d.promptData);
     if (d.balanceData) balanceData = d.balanceData;
     if (d.fragData) fragData = d.fragData;
     if (d.eventData) eventData = d.eventData;
@@ -1211,6 +1415,8 @@ nicknameBuildTable(); nicknameUpdatePreview();
 document.getElementById('nickname-preview-name').onblur = () => { nicknameUpdatePreview(); saveLocal(); };
 textureBuildTable(); textureUpdatePreview();
 if (!moodBands.length) moodFillSample(); else { moodRenderBands(); moodUpdatePreview(); }
+statBuildTable(); statUpdatePreview();
+document.getElementById('stat-preview-name').onblur = () => { statUpdatePreview(); saveLocal(); };
 renderFragments();
 buildEventFields();
 

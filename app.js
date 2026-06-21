@@ -49,6 +49,21 @@ function toggleAway() {
   });
 }
 
+let worldPaused = false;
+function setPauseUI(paused) {
+  document.getElementById('pause-btn').classList.toggle('away', paused);
+  document.getElementById('pause-overlay').style.display = paused ? 'flex' : 'none';
+}
+function togglePause() {
+  worldPaused = !worldPaused;
+  setPauseUI(worldPaused);
+  fetch('/api/owner', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ type: 'pause', paused: worldPaused })
+  });
+}
+
 function getCleanDesc(v) {
   if (v >= 80) return '乾淨，小黑影沒什麼動靜';
   if (v >= 50) return '有些灰塵，角落開始積東西';
@@ -76,12 +91,31 @@ function updateAllToggles() {
   }
   document.getElementById('it-ac').classList.toggle('on', !!roomState.ac.on);
   const ac = roomState.ac;
-  const info = ac.broken ? '故障' : `${AC_MODE_LABEL[ac.mode]}${ac.mode === 'fan' ? '' : ' ' + ac.temp + '℃'}`;
-  document.getElementById('ac-tile-info').textContent = info;
+  const modePill = document.getElementById('ac-pill-mode');
+  const tempPill = document.getElementById('ac-pill-temp');
+  const fanPill = document.getElementById('ac-pill-fan');
+  if (ac.broken) {
+    modePill.textContent = '故障';
+    modePill.classList.add('active');
+    tempPill.style.display = 'none';
+    fanPill.style.display = 'none';
+  } else {
+    modePill.textContent = AC_MODE_LABEL[ac.mode];
+    modePill.classList.add('active');
+    if (ac.mode === 'fan') {
+      tempPill.style.display = 'none';
+    } else {
+      tempPill.style.display = '';
+      tempPill.textContent = ac.temp + '℃';
+    }
+    fanPill.style.display = '';
+    fanPill.querySelector('span').textContent = AC_FAN_LABEL[ac.fan];
+  }
 }
 
 // ===== 空調遙控 =====
 const AC_MODE_LABEL = { cool: '製冷', heat: '暖氣', fan: '送風', dry: '除濕' };
+const AC_FAN_LABEL = { auto: '自動風', low: '弱風', mid: '中風', high: '強風' };
 
 function openAcRemote() {
   renderAcRemote();
@@ -120,6 +154,46 @@ function renderAcRemote() {
 
   // 舒眠
   document.getElementById('ac-sleep-switch').classList.toggle('on', !!ac.sleep);
+}
+
+// ===== 電視（接 Gemini，獨立小請求） =====
+const TV_CHANNEL_LABEL = { nature: '生物頻道', news: '新聞頻道', shopping: '購物頻道' };
+let tvLoading = false;
+
+function openTv() {
+  document.getElementById('tv-overlay').classList.add('open');
+  document.getElementById('tv-remote').classList.add('open');
+}
+function closeTv() {
+  document.getElementById('tv-overlay').classList.remove('open');
+  document.getElementById('tv-remote').classList.remove('open');
+}
+
+async function playChannel(channel) {
+  if (tvLoading) return;
+  tvLoading = true;
+  document.querySelectorAll('.tv-channel-btn').forEach(b =>
+    b.classList.toggle('active', b.dataset.channel === channel));
+  const screen = document.getElementById('tv-screen');
+  screen.innerHTML = `<div class="tv-screen-static">${TV_CHANNEL_LABEL[channel]}・訊號接收中…</div>`;
+  try {
+    const res = await fetch('/api/tv', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ channel })
+    });
+    const data = await res.json();
+    if (data.ok) {
+      screen.innerHTML = `<div class="tv-program">${data.text.replace(/</g, '&lt;')}</div>`;
+    } else {
+      const msg = data.error === 'no_key' ? '訊號中斷（電視台還沒設定）' : '訊號不穩，稍後再轉台看看…';
+      screen.innerHTML = `<div class="tv-screen-static">${msg}</div>`;
+    }
+  } catch (e) {
+    screen.innerHTML = `<div class="tv-screen-static">收訊失敗，雪花一片…</div>`;
+  } finally {
+    tvLoading = false;
+  }
 }
 
 function saveAc() {
@@ -512,6 +586,7 @@ function renderDiaryEntries(diary) {
   container.innerHTML = diary.slice().reverse().map(e => `
     <div class="entry">
       <div class="entry-time">${escapeHtml(e.time)}</div>
+      ${e.eventCard ? `<div class="entry-event-card">${escapeHtml(e.eventCard)}</div>` : ''}
       <div class="entry-text">${escapeHtml(e.scene)}</div>
       <div class="entry-stats">健康 ${e.hp} · 飽食 ${e.food} · ${escapeHtml(e.location)}${e.fur ? ` · ${escapeHtml(e.fur)}` : ''}</div>
       ${e.shadowActive ? '<div class="entry-shadow">⚠ 小黑影出沒中</div>' : ''}
@@ -664,24 +739,8 @@ async function load() {
       furLine.style.display = 'none';
     }
 
-    // 糰糰對巨怪的稱呼（隨熟悉度/好感度變化）
-    const nickLine = document.getElementById('nick-line');
-    if (bt.nickname) {
-      document.getElementById('nick-tag').textContent = bt.nickname;
-      nickLine.style.display = 'flex';
-    } else {
-      nickLine.style.display = 'none';
-    }
-
-    // 心情色彩
-    const moodLine = document.getElementById('mood-line');
-    if (bt.mood_color && bt.mood_color.name) {
-      document.getElementById('mood-dot').style.backgroundColor = bt.mood_color.color || '#ccc';
-      document.getElementById('mood-tag').textContent = bt.mood_color.name;
-      moodLine.style.display = 'flex';
-    } else {
-      moodLine.style.display = 'none';
-    }
+    // 糰糰對巨怪的稱呼（隨熟悉度/好感度變化）：顯示在「我的動態」卡片的名字位置，取代固定寫死的「巨怪」
+    document.getElementById('profile-name').textContent = bt.nickname || '巨怪';
     document.getElementById('shadow-tag').textContent = world.characters.shadow.active ? '⚠ 小黑影出沒中' : '';
 
     const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Taipei' }));
@@ -720,6 +779,11 @@ async function load() {
 
     document.getElementById('rent-overlay').style.display = world.for_rent ? 'flex' : 'none';
 
+    worldPaused = !!world.paused;
+    setPauseUI(worldPaused);
+
+    updateDeathOverlay(world.death);
+
     maybeShowFragmentCard(world.fragments);
 
     await refreshTodayPanels(world);
@@ -727,6 +791,38 @@ async function load() {
 
   } catch(e) {
     document.getElementById('entries').innerHTML = '<div class="empty">暫時無法連線。</div>';
+  }
+}
+
+// 死亡畫面：糰糰死亡（world.death.active）時蓋上暗色覆蓋，顯示重生倒數與兩顆按鈕。
+// 「等待糰糰歸來」只是把覆蓋收起來繼續看日記（本次工作階段內不再跳出）；倒數結束會自動再生。
+let deathDismissed = false;
+function updateDeathOverlay(death) {
+  const overlay = document.getElementById('death-overlay');
+  if (!overlay) return;
+  if (!death || !death.active) {
+    deathDismissed = false; // 已再生，重置，下次死亡再跳
+    overlay.style.display = 'none';
+    return;
+  }
+  const cd = document.getElementById('death-countdown');
+  if (cd) cd.textContent = death.ticksLeft > 0 ? `小黑影的報復還會持續約 ${death.ticksLeft} 次更新，之後糰糰會自行再生。` : '糰糰即將再生…';
+  overlay.style.display = deathDismissed ? 'none' : 'flex';
+}
+function closeDeathOverlay() {
+  deathDismissed = true;
+  const overlay = document.getElementById('death-overlay');
+  if (overlay) overlay.style.display = 'none';
+}
+async function resetWorld() {
+  if (!confirm('確定要放棄這段紀錄、重新開始嗎？\n目前的世界與所有每日紀錄會被「封存」（搬到 archive/，不會刪除），再從初始值重置。')) return;
+  try {
+    const res = await fetch('/api/reset', { method: 'POST' });
+    const data = await res.json();
+    if (data.ok) { deathDismissed = false; location.reload(); }
+    else alert('重啟失敗：' + (data.error || '未知錯誤'));
+  } catch (e) {
+    alert('重啟失敗：' + e.message);
   }
 }
 
