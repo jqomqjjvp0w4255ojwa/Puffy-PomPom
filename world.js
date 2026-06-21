@@ -680,6 +680,7 @@ const server = http.createServer((req, res) => {
           world.owner_action_read = !data.input;
         }
         if (data.type === 'away') world.owner_away = !!data.away;
+        if (data.type === 'pause') world.paused = !!data.paused;
         writeWorldFile(world);
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ ok: true }));
@@ -879,6 +880,14 @@ async function tick() {
     // 吉屋出租：房間空置，不讀取任何輸入、不呼叫 API（節省成本）
     const delay = getNextDelay();
     console.log(`吉屋出租中，跳過這次更新。下次檢查：${Math.round(delay/60000)} 分鐘後`);
+    setTimeout(tick, delay);
+    return;
+  }
+
+  if (world.paused) {
+    // 時間停止：玩家手動凍結世界，不生成、不衰減、不呼叫 API。解除前一直保持原狀。
+    const delay = getNextDelay();
+    console.log(`時間停止中，跳過這次更新。下次檢查：${Math.round(delay/60000)} 分鐘後`);
     setTimeout(tick, delay);
     return;
   }

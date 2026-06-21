@@ -50,6 +50,13 @@
     </div>
   </div>
 
+  <div class="rent-overlay" id="pause-overlay" style="display:none;">
+    <div class="rent-note">
+      <div class="rent-note-title">時間停止</div>
+      <div class="rent-note-text">這一刻被你按下了暫停。<br>白糰糰靜止在此，等你回來。</div>
+    </div>
+  </div>
+
   <div class="death-overlay" id="death-overlay" style="display:none;">
     <div class="death-note">
       <div class="death-note-title">冥影・霜解</div>
@@ -76,6 +83,9 @@
   <div class="panel-header">
     <button class="panel-close" onclick="closePanel()">
       <i class="ti ti-chevron-right"></i> 收合
+    </button>
+    <button class="panel-away" id="pause-btn" onclick="togglePause()" title="時間停止（暫停生成）">
+      <i class="ti ti-player-pause"></i>
     </button>
     <button class="panel-away" id="away-btn" onclick="toggleAway()" title="外出中">
       <i class="ti ti-door-exit"></i>

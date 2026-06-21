@@ -49,6 +49,21 @@ function toggleAway() {
   });
 }
 
+let worldPaused = false;
+function setPauseUI(paused) {
+  document.getElementById('pause-btn').classList.toggle('away', paused);
+  document.getElementById('pause-overlay').style.display = paused ? 'flex' : 'none';
+}
+function togglePause() {
+  worldPaused = !worldPaused;
+  setPauseUI(worldPaused);
+  fetch('/api/owner', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ type: 'pause', paused: worldPaused })
+  });
+}
+
 function getCleanDesc(v) {
   if (v >= 80) return '乾淨，小黑影沒什麼動靜';
   if (v >= 50) return '有些灰塵，角落開始積東西';
@@ -723,6 +738,9 @@ async function load() {
     setAwayUI(ownerAway);
 
     document.getElementById('rent-overlay').style.display = world.for_rent ? 'flex' : 'none';
+
+    worldPaused = !!world.paused;
+    setPauseUI(worldPaused);
 
     updateDeathOverlay(world.death);
 
