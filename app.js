@@ -76,12 +76,31 @@ function updateAllToggles() {
   }
   document.getElementById('it-ac').classList.toggle('on', !!roomState.ac.on);
   const ac = roomState.ac;
-  const info = ac.broken ? '故障' : `${AC_MODE_LABEL[ac.mode]}${ac.mode === 'fan' ? '' : ' ' + ac.temp + '℃'}`;
-  document.getElementById('ac-tile-info').textContent = info;
+  const modePill = document.getElementById('ac-pill-mode');
+  const tempPill = document.getElementById('ac-pill-temp');
+  const fanPill = document.getElementById('ac-pill-fan');
+  if (ac.broken) {
+    modePill.textContent = '故障';
+    modePill.classList.add('active');
+    tempPill.style.display = 'none';
+    fanPill.style.display = 'none';
+  } else {
+    modePill.textContent = AC_MODE_LABEL[ac.mode];
+    modePill.classList.add('active');
+    if (ac.mode === 'fan') {
+      tempPill.style.display = 'none';
+    } else {
+      tempPill.style.display = '';
+      tempPill.textContent = ac.temp + '℃';
+    }
+    fanPill.style.display = '';
+    fanPill.querySelector('span').textContent = AC_FAN_LABEL[ac.fan];
+  }
 }
 
 // ===== 空調遙控 =====
 const AC_MODE_LABEL = { cool: '製冷', heat: '暖氣', fan: '送風', dry: '除濕' };
+const AC_FAN_LABEL = { auto: '自動風', low: '弱風', mid: '中風', high: '強風' };
 
 function openAcRemote() {
   renderAcRemote();

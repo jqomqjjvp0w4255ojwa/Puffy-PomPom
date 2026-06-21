@@ -177,12 +177,16 @@
           <div class="switch-icon-label"><i class="ti ti-window"></i><span>窗戶</span></div>
           <div class="switch" id="it-window"><div class="switch-knob"></div></div>
         </div>
-        <div class="switch-tile ac-tile" id="ac-tile" onclick="acTogglePower()">
-          <div class="ac-tile-header">
+        <div class="switch-tile ac-tile" id="ac-tile">
+          <div class="ac-tile-header" onclick="acTogglePower()">
             <div class="switch-icon-label"><i class="ti ti-snowflake"></i><span>空調</span></div>
-            <div class="switch" id="it-ac"><div class="switch-knob"></div></div>
           </div>
-          <div class="ac-tile-info" id="ac-tile-info" onclick="event.stopPropagation(); openAcRemote();"></div>
+          <div class="ac-tile-pills" id="ac-tile-pills" onclick="openAcRemote()">
+            <span class="ac-pill ac-pill-mode" id="ac-pill-mode"></span>
+            <span class="ac-pill ac-pill-temp" id="ac-pill-temp"></span>
+            <span class="ac-pill ac-pill-fan" id="ac-pill-fan"><i class="ti ti-wind"></i><span></span></span>
+          </div>
+          <div class="switch" id="it-ac" onclick="acTogglePower()"><div class="switch-knob"></div></div>
         </div>
       </div>
     </div>
