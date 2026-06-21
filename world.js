@@ -415,6 +415,17 @@ function buildTvPrompt(channel, ctx) {
   return `${lorePrefix}${stateLine}\n\n你是深夜購物頻道的主持人，正在向觀眾推銷一件「白糰糰現在最需要」的商品（依他目前的飽食、心情、房間狀況挑選，例如餓了就賣零食、冷了就賣暖窩）。用浮誇熱情的購物台語氣介紹，可吹捧賣點、報出限時優惠價、製造搶購感，但這只是節目演出、實際還不能下單。${lengthRule}繁體中文，結尾自然帶一句「錢包功能即將上線，敬請期待」。只輸出主持人的口播。`;
 }
 
+// Gemini 偶爾會夾帶 markdown 符號、程式碼框、把設定提示或分隔線回吐進輸出，這裡清乾淨只留純播報文字。
+function cleanTvText(raw) {
+  let t = String(raw || '');
+  t = t.replace(/```[a-zA-Z]*\s*/g, '').replace(/```/g, '');     // 程式碼框
+  t = t.replace(/^[\s\-—–=*#>·•]+/, '');                          // 開頭殘留的符號／分隔線
+  t = t.replace(/[*_`#]+/g, '');                                  // 行內 markdown 強調符號
+  t = t.replace(/^(旁白|播報|口播|主持人|新聞)[：:]\s*/m, '');     // 角色標籤前綴
+  t = t.replace(/\n{3,}/g, '\n\n');                               // 多餘空行
+  return t.trim();
+}
+
 function dateKeyOf(date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 }
@@ -812,7 +823,7 @@ const server = http.createServer((req, res) => {
         if (result.error) {
           res.end(JSON.stringify({ ok: false, error: result.error, detail: result.detail || '' }));
         } else {
-          res.end(JSON.stringify({ ok: true, channel, text: result.text }));
+          res.end(JSON.stringify({ ok: true, channel, text: cleanTvText(result.text) }));
         }
       } catch (e) {
         res.writeHead(500);
