@@ -155,6 +155,21 @@
   <span class="sync-status off" id="sync-status">尚未連接，僅存在這台瀏覽器</span>
 </div>
 
+<div class="sync-bar">
+  <span>累積填好之後按這個鍵，下載檔案後到 GitHub 上覆蓋 <code>data/hidden-stats.json</code>，遊戲就會套用新表：</span>
+  <button onclick="downloadGameJSON()">下載遊戲設定檔（hidden-stats.json）</button>
+</div>
+
+<div class="sync-bar">
+  <span>GitHub Token：</span>
+  <input type="text" id="gh-token-input" placeholder="貼上 Fine-grained PAT（只需 Contents 讀寫權限）">
+  <span>分支：</span>
+  <input type="text" id="gh-branch-input" placeholder="main" style="flex:0 0 100px;min-width:80px;">
+  <button class="secondary" onclick="saveGhConfig()">儲存設定</button>
+  <button onclick="uploadToGitHub()">自動上傳並覆蓋 GitHub 上的 hidden-stats.json</button>
+  <span class="sync-status off" id="gh-status">尚未設定</span>
+</div>
+
 <div class="tabs">
   <button class="tab-btn active" data-tab="nickname" onclick="switchTab('nickname')">暱稱實驗室</button>
   <button class="tab-btn" data-tab="texture" onclick="switchTab('texture')">質地實驗室</button>
@@ -537,6 +552,98 @@ function readCSV(e, callback) {
   e.target.value = '';
 }
 
+// ===================== 匯出遊戲用設定檔（給 world.js 讀取） =====================
+function downloadGameJSON() {
+  const data = {
+    fam: { min: 0, max: 100, bands: BANDS },
+    aff: { min: -100, max: 100, bands: BANDS },
+    unit: { min: 0, max: 100, bands: BANDS },
+    nicknameGrid,
+    textureGrid,
+    moodBands
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'hidden-stats.json';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ===================== 自動上傳覆蓋 GitHub 上的 hidden-stats.json（GitHub Contents API） =====================
+const GH_TOKEN_KEY = 'puffy-trait-lab-gh-token';
+const GH_BRANCH_KEY = 'puffy-trait-lab-gh-branch';
+const GH_OWNER = 'jqomqjjvp0w4255ojwa';
+const GH_REPO = 'puffy-pompom';
+const GH_PATH = 'data/hidden-stats.json';
+
+function setGhStatus(state, text) {
+  const el = document.getElementById('gh-status');
+  el.className = `sync-status ${state}`;
+  el.textContent = text;
+}
+function saveGhConfig() {
+  const token = document.getElementById('gh-token-input').value.trim();
+  const branch = document.getElementById('gh-branch-input').value.trim() || 'main';
+  localStorage.setItem(GH_TOKEN_KEY, token);
+  localStorage.setItem(GH_BRANCH_KEY, branch);
+  setGhStatus(token ? 'ok' : 'off', token ? '已儲存（只存在這台瀏覽器）' : '尚未設定');
+}
+function utf8ToBase64(str) {
+  return btoa(unescape(encodeURIComponent(str)));
+}
+async function uploadToGitHub() {
+  const token = localStorage.getItem(GH_TOKEN_KEY);
+  const branch = localStorage.getItem(GH_BRANCH_KEY) || 'main';
+  if (!token) { setGhStatus('fail', '請先貼上 Token 並按「儲存設定」'); return; }
+
+  const data = {
+    fam: { min: 0, max: 100, bands: BANDS },
+    aff: { min: -100, max: 100, bands: BANDS },
+    unit: { min: 0, max: 100, bands: BANDS },
+    nicknameGrid,
+    textureGrid,
+    moodBands
+  };
+  const content = utf8ToBase64(JSON.stringify(data, null, 2));
+  const apiUrl = `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${GH_PATH}`;
+  const headers = {
+    Authorization: `Bearer ${token}`,
+    Accept: 'application/vnd.github+json'
+  };
+
+  setGhStatus('busy', '上傳中…');
+  try {
+    let sha;
+    const getRes = await fetch(`${apiUrl}?ref=${encodeURIComponent(branch)}`, { headers });
+    if (getRes.ok) {
+      const getData = await getRes.json();
+      sha = getData.sha;
+    } else if (getRes.status !== 404) {
+      throw new Error(`讀取現有檔案失敗：${getRes.status}`);
+    }
+
+    const putRes = await fetch(apiUrl, {
+      method: 'PUT',
+      headers: { ...headers, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        message: '由糰糰隱藏數值實驗室自動更新 hidden-stats.json',
+        content,
+        branch,
+        ...(sha ? { sha } : {})
+      })
+    });
+    if (!putRes.ok) {
+      const err = await putRes.json().catch(() => ({}));
+      throw new Error(err.message || `上傳失敗：${putRes.status}`);
+    }
+    setGhStatus('ok', '已上傳並覆蓋成功');
+  } catch (err) {
+    setGhStatus('fail', `上傳失敗：${err.message}`);
+  }
+}
+
 // ===================== 自動存檔（localStorage，僅留在這台瀏覽器，仍建議定期匯出CSV備份） =====================
 const STORAGE_KEY = 'puffy-trait-lab-v1';
 function saveToStorage() {
@@ -631,6 +738,9 @@ function loadFromSheet() {
 
 // ===================== 初始化 =====================
 document.getElementById('gas-url-input').value = gasUrl;
+document.getElementById('gh-token-input').value = localStorage.getItem(GH_TOKEN_KEY) || '';
+document.getElementById('gh-branch-input').value = localStorage.getItem(GH_BRANCH_KEY) || 'main';
+setGhStatus(localStorage.getItem(GH_TOKEN_KEY) ? 'ok' : 'off', localStorage.getItem(GH_TOKEN_KEY) ? '已設定（只存在這台瀏覽器）' : '尚未設定');
 const restored = loadFromStorage();
 nicknameBuildTable();
 nicknameUpdatePreview();

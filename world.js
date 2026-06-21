@@ -287,6 +287,55 @@ function emptyDay(dateKey) {
 // world.json 裡的 fragments 欄位可能是舊資料（不存在）或半成形，補齊成完整結構。
 const FRAGMENT_COOLDOWN_TICKS = 2; // 紙片掉落後，至少要再過這麼多次世界回應才可能再掉
 
+// ===================== 隱藏數值對照表（暱稱／質地／心情色彩，來自 tools/trait-lab.html 匯出） =====================
+const HIDDEN_STATS_FILE = path.join(__dirname, 'data', 'hidden-stats.json');
+let hiddenStatsCache = null;
+
+function loadHiddenStats() {
+  if (hiddenStatsCache) return hiddenStatsCache;
+  try {
+    hiddenStatsCache = JSON.parse(fs.readFileSync(HIDDEN_STATS_FILE, 'utf8'));
+  } catch (err) {
+    hiddenStatsCache = { fam: { min: 0, max: 100, bands: 7 }, aff: { min: -100, max: 100, bands: 7 }, unit: { min: 0, max: 100, bands: 7 }, nicknameGrid: [], textureGrid: [], moodBands: [] };
+  }
+  return hiddenStatsCache;
+}
+
+function bandIndex(value, axis) {
+  const { min, max, bands } = axis;
+  const edges = [];
+  for (let i = 0; i <= bands; i++) edges.push(min + i * (max - min) / bands);
+  for (let i = 0; i < bands; i++) {
+    if (value <= edges[i + 1] || i === bands - 1) return i;
+  }
+  return bands - 1;
+}
+
+function getNicknameFor(familiarity, affection) {
+  const stats = loadHiddenStats();
+  const grid = stats.nicknameGrid;
+  if (!grid || !grid.length) return null;
+  const i = bandIndex(familiarity, stats.fam);
+  const j = bandIndex(affection, stats.aff);
+  return (grid[i] && grid[i][j]) || null;
+}
+
+function getTextureFor(shape, hardness) {
+  const stats = loadHiddenStats();
+  const grid = stats.textureGrid;
+  if (!grid || !grid.length) return null;
+  const i = bandIndex(shape, stats.unit);
+  const j = bandIndex(hardness, stats.unit);
+  return (grid[i] && grid[i][j]) || null;
+}
+
+function getMoodColorFor(moodValue) {
+  const stats = loadHiddenStats();
+  const bands = stats.moodBands || [];
+  const band = bands.find(b => moodValue >= b.min && moodValue <= b.max);
+  return band || null;
+}
+
 function ensureFragmentsState(world) {
   if (!world.fragments) world.fragments = { collected: [], pending: null, hintsShown: [] };
   if (!Array.isArray(world.fragments.collected)) world.fragments.collected = [];
