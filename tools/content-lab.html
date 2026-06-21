@@ -89,7 +89,8 @@
   .tile-desc { font-size: 11px; color: #b0a298; margin-top: 1px; }
   .tile-adjust { display: flex; align-items: center; justify-content: flex-start; gap: 8px; }
   .adjust-label { font-size: 12px; color: #8a766a; width: 65px; }
-  .input-control { width: 52px; padding: 3px 6px; border: 1px solid #e8c8b0; border-radius: 4px; text-align: right; font-family: monospace; background: #faf9f6; font-size: 13px; color: #4a3a2a; }
+  .input-control { width: 64px; padding: 3px 6px; border: 1px solid #e8c8b0; border-radius: 4px; text-align: right; font-family: monospace; background: #faf9f6; font-size: 13px; color: #4a3a2a; -moz-appearance: textfield; }
+  .input-control::-webkit-outer-spin-button, .input-control::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
   .input-control:focus { outline: 2px solid #e8a070; background: #fff; }
 
   .dev-section { background: #fff; border: 1px solid #e8c8b0; border-radius: 10px; padding: 14px 16px; margin-bottom: 14px; }
@@ -790,9 +791,10 @@ const BALANCE_ADV_GROUPS = [
   },
   {
     title: '其他',
-    desc: '質地與再生節奏',
+    desc: '質地、餵食與再生節奏',
     fields: [
       { key: 'textureEase', label: '質地靠近速度', desc: '0~1', step: 0.01 },
+      { key: 'ownerFeedFoodBoost', label: '餵食加成', desc: 'AI判斷有餵食時，飽食每輪+多少', step: 1 },
       { key: 'rebirthTicks', label: '死亡後再生(次)', desc: '死亡後幾次更新自動再生', step: 1 }
     ]
   },
