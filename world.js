@@ -260,7 +260,7 @@ async function fetchWeather() {
 
 // ===== Gemini（電視頻道專用，獨立於主世界的 Claude 呼叫）=====
 // 玩家主動點頻道才觸發，回傳一段短文字，不改世界數值、不佔 tick 預算。
-const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.0-flash';
 
 async function callGemini(prompt, maxTokens = 400) {
   const key = process.env.GEMINI_API_KEY;
@@ -281,16 +281,21 @@ async function callGemini(prompt, maxTokens = 400) {
     clearTimeout(timer);
     if (!res.ok) {
       const detail = await res.text().catch(() => '');
-      console.error(`Gemini 回應錯誤 ${res.status}：${detail.slice(0, 200)}`);
-      return { error: `http_${res.status}` };
+      console.error(`Gemini 回應錯誤 ${res.status}：${detail.slice(0, 300)}`);
+      return { error: `http_${res.status}`, detail: detail.slice(0, 300) };
     }
     const data = await res.json();
-    const text = data?.candidates?.[0]?.content?.parts?.map(p => p.text).join('').trim();
-    if (!text) return { error: 'empty' };
+    const cand = data?.candidates?.[0];
+    const text = cand?.content?.parts?.map(p => p.text).filter(Boolean).join('').trim();
+    if (!text) {
+      const reason = cand?.finishReason || data?.promptFeedback?.blockReason || 'unknown';
+      console.error(`Gemini 空回應，finishReason=${reason}：`, JSON.stringify(data).slice(0, 300));
+      return { error: 'empty', detail: `finishReason=${reason}` };
+    }
     return { text };
   } catch (e) {
     console.error('Gemini 呼叫失敗：', e.message);
-    return { error: 'exception' };
+    return { error: 'exception', detail: e.message };
   }
 }
 
@@ -718,7 +723,7 @@ const server = http.createServer((req, res) => {
         const result = await callGemini(buildTvPrompt(channel, ctx), 900);
         res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
         if (result.error) {
-          res.end(JSON.stringify({ ok: false, error: result.error }));
+          res.end(JSON.stringify({ ok: false, error: result.error, detail: result.detail || '' }));
         } else {
           res.end(JSON.stringify({ ok: true, channel, text: result.text }));
         }

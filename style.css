@@ -420,6 +420,14 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
   letter-spacing: 0.08em;
   text-align: center;
 }
+.tv-screen-detail {
+  margin-top: 8px;
+  font-size: 10px;
+  color: #6a655c;
+  font-family: monospace;
+  letter-spacing: 0;
+  word-break: break-all;
+}
 .tv-program {
   color: #e8e0d2;
   font-size: 13px;
