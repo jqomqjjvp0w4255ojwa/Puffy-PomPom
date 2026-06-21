@@ -19,7 +19,26 @@ function randomPlaceholder() {
   return ROOM_PLACEHOLDERS[Math.floor(Math.random() * ROOM_PLACEHOLDERS.length)];
 }
 
-function openPanel() {
+// 同居人面板密碼保護：密碼存在 Railway 環境變數 OWNER_PANEL_PASSWORD（沒設就不擋）。
+// 驗證過一次後存在 sessionStorage，同一個瀏覽器分頁不用每次都輸入。
+async function openPanel() {
+  if (sessionStorage.getItem('ownerPanelAuthed') !== '1') {
+    const password = prompt('請輸入同居人面板密碼：');
+    if (password === null) return;
+    try {
+      const res = await fetch('/api/owner-auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password })
+      });
+      const data = await res.json();
+      if (!data.ok) { alert('密碼錯誤'); return; }
+      sessionStorage.setItem('ownerPanelAuthed', '1');
+    } catch (e) {
+      alert('驗證失敗，請再試一次。');
+      return;
+    }
+  }
   document.getElementById('side-panel').classList.add('open');
   document.getElementById('overlay').classList.add('open');
   document.getElementById('room-action-input').placeholder = randomPlaceholder();

@@ -850,7 +850,24 @@ const server = http.createServer((req, res) => {
       res.writeHead(500);
       res.end('error');
     }
-} else if (req.url.startsWith('/api/owner')) {
+} else if (req.url === '/api/owner-auth' && req.method === 'POST') {
+    try {
+      const body = [];
+      req.on('data', chunk => body.push(chunk));
+      req.on('end', () => {
+        const data = JSON.parse(Buffer.concat(body).toString());
+        const expected = process.env.OWNER_PANEL_PASSWORD;
+        // 沒設密碼變數時不擋，方便本機開發；正式環境在 Railway Variables 設 OWNER_PANEL_PASSWORD 即會啟用密碼保護。
+        const ok = !expected || data.password === expected;
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ ok }));
+      });
+    } catch (e) {
+      res.writeHead(500);
+      res.end('error');
+    }
+
+  } else if (req.url.startsWith('/api/owner')) {
     try {
       const body = [];
       req.on('data', chunk => body.push(chunk));
