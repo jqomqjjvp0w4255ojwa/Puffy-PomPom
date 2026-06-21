@@ -499,6 +499,7 @@ const BALANCE_BUILTIN = {
   moodAway: -5,
   moodVisitor: 8,
   textureEase: 0.05,
+  ownerFeedFoodBoost: 35,
   tickNightMinMin: 180,
   tickNightMaxMin: 360,
   tickDayMinMin: 15,
@@ -538,6 +539,17 @@ const server = http.createServer((req, res) => {
       const world = JSON.parse(fs.readFileSync(WORLD_FILE, 'utf8'));
       res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
       res.end(JSON.stringify({ world }));
+    } catch (e) {
+      res.writeHead(500);
+      res.end('error');
+    }
+
+  } else if (req.url.startsWith('/api/usage')) {
+    try {
+      const world = JSON.parse(fs.readFileSync(WORLD_FILE, 'utf8'));
+      const usage = world.tokenUsage || { inputTokens: 0, outputTokens: 0, calls: 0 };
+      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ usage }));
     } catch (e) {
       res.writeHead(500);
       res.end('error');
@@ -814,11 +826,23 @@ async function tick() {
   world = applyNaturalDecay(world);
 
   const { display } = getRealTime();
-  const bt = world.characters.baituantuan;
+  let bt = world.characters.baituantuan;
 
   // owner_action 只在第一次被 AI 讀到時納入 prompt；讀過一次就只是顯示用的唯讀文字，
   // 直到玩家送出新的一則才會再次變成「未讀」。
   const ownerActionUnread = !!world.owner_action && !world.owner_action_read;
+
+  // 巨怪的行為描述若提到餵食/留置食物，機制上直接加飽食度，不完全依賴 AI 自行判斷給多少。
+  // 否則每一輪 applyNaturalDecay 持續扣飽食，玩家明明餵了東西，數值卻沒有反映。
+  const FEED_KEYWORDS = /冰棒|冰塊|水|麵包|食物|餵|放.*吃|留.*吃|奶|點心|零食/;
+  if (ownerActionUnread && FEED_KEYWORDS.test(world.owner_action)) {
+    const bal = loadBalance();
+    const newFood = Math.min(100, bt.food + bal.ownerFeedFoodBoost);
+    world.characters.baituantuan = { ...bt, food: newFood };
+    bt = world.characters.baituantuan;
+    console.log(`偵測到餵食行為，飽食 +${bal.ownerFeedFoodBoost} → ${newFood}`);
+  }
+
   const ownerStatus = world.owner_status ? `巨怪狀態：${world.owner_status}` : '';
   const ownerAction = ownerActionUnread ? `巨怪對房間的行為：${world.owner_action}` : '';
   const ownerInput = (ownerStatus || ownerAction) ? '\n' + [ownerStatus, ownerAction].filter(Boolean).join('\n') : '';
@@ -902,10 +926,19 @@ async function tick() {
     text = text.replace(/^```json\s*/, '').replace(/```\s*$/, '');
     const result = JSON.parse(text);
 
+    const usage = response.usage || {};
+    const prevUsage = world.tokenUsage || { inputTokens: 0, outputTokens: 0, calls: 0 };
+    const tokenUsage = {
+      inputTokens: prevUsage.inputTokens + (usage.input_tokens || 0),
+      outputTokens: prevUsage.outputTokens + (usage.output_tokens || 0),
+      calls: prevUsage.calls + 1
+    };
+
     const newWorld = {
       ...world,
       nextTickAt: Date.now() + delay,
       weather: weather || world.weather || null,
+      tokenUsage,
       characters: {
         baituantuan: {
           ...world.characters.baituantuan,
@@ -972,10 +1005,11 @@ async function tick() {
       food: result.baituantuan.food,
       location: result.baituantuan.location,
       fur: result.baituantuan.fur && result.baituantuan.fur !== '正常' ? result.baituantuan.fur : null,
-      shadowActive: !!result.shadow.active
+      shadowActive: !!result.shadow.active,
+      tokens: { input: usage.input_tokens || 0, output: usage.output_tokens || 0 }
     }]);
 
-    console.log(`【${display}】\n${result.scene}\n健康 ${result.baituantuan.hp} · 飽食 ${result.baituantuan.food}${furNote} · ${result.baituantuan.location}\n${result.shadow.active ? '⚠️ 小黑影出沒中' : ''}`);
+    console.log(`【${display}】\n${result.scene}\n健康 ${result.baituantuan.hp} · 飽食 ${result.baituantuan.food}${furNote} · ${result.baituantuan.location}\n${result.shadow.active ? '⚠️ 小黑影出沒中' : ''}\ntoken：本次input${usage.input_tokens || 0}/output${usage.output_tokens || 0} · 累計input${tokenUsage.inputTokens}/output${tokenUsage.outputTokens}（共${tokenUsage.calls}次）`);
 
   } catch (e) {
     console.error('錯誤：', e.message);
