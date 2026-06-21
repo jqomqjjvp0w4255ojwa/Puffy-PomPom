@@ -37,11 +37,17 @@ function buildSystemPrompt() {
 白糰糰是誰：
 ${section('identity')}
 
+生命週期：
+${section('lifecycle')}
+
 尺寸與認知：
 ${section('sizeCognition')}
 
 性格與信念：
 ${section('personality')}
+
+社交與情感：
+${section('social')}
 
 身體與感知（重要，別寫錯）：
 ${section('body')}
