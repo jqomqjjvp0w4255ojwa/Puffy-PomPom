@@ -82,13 +82,14 @@
   input:focus, select:focus { outline: 2px solid #e8a070; }
 
   /* 方正緊湊的迷你小卡：每組一張卡，欄位直排（標籤＋右對齊等寬輸入框） */
-  .num-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(165px, 1fr)); gap: 10px; max-width: 700px; }
+  .num-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; max-width: 700px; }
   .mini-tile { background: #fff; border: 1px solid #e8c8b0; border-radius: 6px; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; box-shadow: 0 1px 3px rgba(90,75,65,0.04); }
-  .tile-header { border-bottom: 1px solid #f2ede6; padding-bottom: 6px; }
-  .tile-title { font-size: 12px; font-weight: 600; color: #5a3a2a; }
+  .tile-header { border-bottom: 1px solid #f2ede6; padding-bottom: 6px; display: flex; flex-direction: column; }
+  .tile-title { font-size: 13px; font-weight: 700; color: #5a3a2a; }
+  .tile-desc { font-size: 11px; color: #b0a298; margin-top: 1px; }
   .tile-adjust { display: flex; align-items: center; justify-content: flex-start; gap: 8px; }
-  .adjust-label { font-size: 11px; color: #8a766a; width: 64px; }
-  .input-control { width: 46px; padding: 3px 5px; border: 1px solid #e8c8b0; border-radius: 4px; text-align: right; font-family: monospace; background: #faf9f6; font-size: 12px; color: #4a3a2a; }
+  .adjust-label { font-size: 12px; color: #8a766a; width: 65px; }
+  .input-control { width: 45px; padding: 3px 5px; border: 1px solid #e8c8b0; border-radius: 4px; text-align: right; font-family: monospace; background: #faf9f6; font-size: 12px; color: #4a3a2a; }
   .input-control:focus { outline: 2px solid #e8a070; background: #fff; }
 
   .dev-section { background: #fff; border: 1px solid #e8c8b0; border-radius: 10px; padding: 14px 16px; margin-bottom: 14px; }
@@ -730,24 +731,27 @@ const BALANCE_GROUPS = [
 ];
 const BALANCE_BASIC_GROUPS = [
   {
-    title: '飽食變化',
+    title: '飽食基礎衰減',
+    desc: '每 Tick 固定消耗',
     fields: [
-      { key: 'foodDeltaWindowOpen', label: '窗開', desc: '增減值' },
-      { key: 'foodDeltaWindowClosed', label: '窗關', desc: '掉得更快' }
+      { key: 'foodDeltaWindowOpen', label: '開窗環境', desc: '增減值' },
+      { key: 'foodDeltaWindowClosed', label: '關窗環境', desc: '掉得更快' }
     ]
   },
   {
-    title: '飽食過低',
+    title: '飽食過低懲罰',
+    desc: '飢餓時扣除健康',
     fields: [
-      { key: 'lowFoodThreshold', label: '門檻', desc: '低於此扣健康' },
-      { key: 'lowFoodHpDelta', label: '健康變化', desc: '通常負數' }
+      { key: 'lowFoodThreshold', label: '觸發門檻', desc: '低於此扣健康' },
+      { key: 'lowFoodHpDelta', label: '健康變動', desc: '通常負數' }
     ]
   },
   {
-    title: '飽食充足',
+    title: '飽食充足補償',
+    desc: '飽食時自動回血',
     fields: [
-      { key: 'highFoodThreshold', label: '門檻', desc: '高於此回血' },
-      { key: 'highFoodHpDelta', label: '健康變化', desc: '通常正數' }
+      { key: 'highFoodThreshold', label: '觸發門檻', desc: '高於此回血' },
+      { key: 'highFoodHpDelta', label: '健康變動', desc: '通常正數' }
     ]
   }
 ];
@@ -755,6 +759,7 @@ const BALANCE_BASIC_GROUPS = [
 const BALANCE_ADV_GROUPS = [
   {
     title: '熟悉度',
+    desc: '相處久了越熟',
     fields: [
       { key: 'familiarityPresent', label: '在場', desc: '每回合加', step: 1 },
       { key: 'familiarityInteract', label: '有互動', desc: '額外加', step: 1 },
@@ -763,6 +768,7 @@ const BALANCE_ADV_GROUPS = [
   },
   {
     title: '好感度',
+    desc: '被照顧好則上升',
     fields: [
       { key: 'affectionInteract', label: '互動加', desc: '每回合', step: 1 },
       { key: 'affectionWellCared', label: '照顧好', desc: '健康飽食', step: 1 },
@@ -772,6 +778,7 @@ const BALANCE_ADV_GROUPS = [
   },
   {
     title: '心情',
+    desc: '短期波動、會慢慢回歸',
     fields: [
       { key: 'moodDecay', label: '回歸速度', desc: '0~1', step: 0.05 },
       { key: 'moodInteract', label: '互動加', desc: '有動作', step: 1 },
@@ -783,6 +790,7 @@ const BALANCE_ADV_GROUPS = [
   },
   {
     title: '其他',
+    desc: '質地與再生節奏',
     fields: [
       { key: 'textureEase', label: '質地靠近速度', desc: '0~1', step: 0.01 },
       { key: 'rebirthTicks', label: '死亡後再生(次)', desc: '死亡後幾次更新自動再生', step: 1 }
@@ -790,6 +798,7 @@ const BALANCE_ADV_GROUPS = [
   },
   {
     title: '回覆頻率',
+    desc: '每次更新的間隔分鐘',
     fields: [
       { key: 'tickDayMinMin', label: '白天最短(分)', desc: '下限', step: 1 },
       { key: 'tickDayMaxMin', label: '白天最長(分)', desc: '上限', step: 1 },
@@ -807,7 +816,7 @@ function buildBalanceCards(box, groups) {
     card.className = 'mini-tile';
     const header = document.createElement('div');
     header.className = 'tile-header';
-    header.innerHTML = `<span class="tile-title">${group.title}</span>`;
+    header.innerHTML = `<span class="tile-title">${group.title}</span>${group.desc ? `<span class="tile-desc">${group.desc}</span>` : ''}`;
     card.appendChild(header);
     group.fields.forEach(f => {
       const row = document.createElement('div');
@@ -859,9 +868,11 @@ const BANDS = 7;
 const FAM_BANDS = 7;
 const AFF_BANDS = 9; // 好感度含負值（反感~中立~喜愛），格數比熟悉度多，避免正負分到的格子太粗
 const UNIT_BANDS = 7;
-function makeBandHelper(min, max, bands) {
-  const edges = [];
-  for (let i = 0; i <= bands; i++) edges.push(Math.round(min + i * (max - min) / bands));
+function makeBandHelper(min, max, bands, customEdges) {
+  // customEdges（可選）：自訂分界點，讓中間區間更寬、兩端更窄（山坡曲線）。需 bands+1 個遞增值。
+  const edges = (Array.isArray(customEdges) && customEdges.length === bands + 1)
+    ? customEdges.slice()
+    : (() => { const e = []; for (let i = 0; i <= bands; i++) e.push(Math.round(min + i * (max - min) / bands)); return e; })();
   return {
     edges,
     index(value) {
@@ -877,7 +888,8 @@ const STAT_BANDS = 7;
 const FAM = makeBandHelper(0, 100, FAM_BANDS);
 const AFF = makeBandHelper(-100, 100, AFF_BANDS);
 const UNIT = makeBandHelper(0, 100, UNIT_BANDS);
-const STAT = makeBandHelper(0, 100, STAT_BANDS);
+const STAT_EDGES = [0, 8, 20, 38, 62, 80, 92, 100]; // 山坡曲線：中央正常區寬、兩端極值窄
+const STAT = makeBandHelper(0, 100, STAT_BANDS, STAT_EDGES);
 
 let nicknameGrid = Array.from({ length: FAM_BANDS }, () => Array.from({ length: AFF_BANDS }, () => ''));
 let textureGrid = Array.from({ length: UNIT_BANDS }, () => Array.from({ length: UNIT_BANDS }, () => ''));
@@ -1149,7 +1161,7 @@ function collectTraitData() {
     fam: { min: 0, max: 100, bands: FAM_BANDS },
     aff: { min: -100, max: 100, bands: AFF_BANDS },
     unit: { min: 0, max: 100, bands: UNIT_BANDS },
-    stat: { min: 0, max: 100, bands: STAT_BANDS },
+    stat: { min: 0, max: 100, bands: STAT_BANDS, edges: STAT_EDGES },
     nicknameGrid, textureGrid, moodBands, statGrid
   };
 }

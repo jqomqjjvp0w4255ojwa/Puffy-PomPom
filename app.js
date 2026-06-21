@@ -591,6 +591,7 @@ function renderDiaryEntries(diary) {
       <div class="entry-text">${escapeHtml(e.scene)}</div>
       <div class="entry-stats">健康 ${e.hp} · 飽食 ${e.food} · ${escapeHtml(e.location)}${e.fur ? ` · ${escapeHtml(e.fur)}` : ''}</div>
       ${e.shadowActive ? '<div class="entry-shadow">⚠ 小黑影出沒中</div>' : ''}
+      ${e.mechanismLog ? `<div class="entry-mechanism">機制：${escapeHtml(e.mechanismLog)}</div>` : ''}
     </div>
   `).join('');
 }
