@@ -728,7 +728,7 @@ const server = http.createServer((req, res) => {
         const data = JSON.parse(Buffer.concat(body).toString() || '{}');
         const channel = ['nature', 'news', 'shopping'].includes(data.channel) ? data.channel : 'nature';
         const ctx = buildTvContext();
-        const result = await callGemini(buildTvPrompt(channel, ctx), 900);
+        const result = await callGemini(buildTvPrompt(channel, ctx), 500);
         res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
         if (result.error) {
           res.end(JSON.stringify({ ok: false, error: result.error, detail: result.detail || '' }));
