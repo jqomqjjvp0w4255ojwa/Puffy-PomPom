@@ -399,6 +399,20 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
   font-size: 24px;
 }
 .pause-label { font-size: 13px; letter-spacing: 0.2em; color: #8a5a3a; }
+.pause-resume-btn {
+  margin-top: 8px;
+  padding: 9px 20px;
+  border-radius: 999px;
+  border: none;
+  background: #8a5a3a;
+  color: #fff;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  box-shadow: 0 4px 14px rgba(120,100,80,0.3);
+  cursor: pointer;
+}
 
 /* 電視 */
 .tv-remote { width: 320px; }
