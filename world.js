@@ -20,6 +20,29 @@ function writeWorldFile(world) {
   fs.renameSync(tmp, WORLD_FILE);
 }
 
+// 把目前 world.json 跟所有 logs 封存到 archive/<timestamp>/，再用種子檔重置 world.json。
+// 不刪除任何資料，只是搬走，未來想回顧還能找到。回傳封存路徑。
+function archiveAndResetWorld() {
+  const stamp = getRealTime().display.replace(/[\/: ]/g, '-') + '_' + Date.now();
+  const archiveDir = path.join(DATA_DIR, 'archive', stamp);
+  fs.mkdirSync(archiveDir, { recursive: true });
+  if (fs.existsSync(WORLD_FILE)) {
+    fs.copyFileSync(WORLD_FILE, path.join(archiveDir, 'world.json'));
+  }
+  if (fs.existsSync(LOGS_DIR)) {
+    const archiveLogsDir = path.join(archiveDir, 'logs');
+    fs.mkdirSync(archiveLogsDir, { recursive: true });
+    for (const file of fs.readdirSync(LOGS_DIR)) {
+      const src = path.join(LOGS_DIR, file);
+      if (fs.statSync(src).isFile()) {
+        fs.renameSync(src, path.join(archiveLogsDir, file));
+      }
+    }
+  }
+  fs.copyFileSync(SEED_WORLD_FILE, WORLD_FILE);
+  return `archive/${stamp}`;
+}
+
 // Volume 剛掛載時是空的，用 repo 內建的 world.json 當初始值種一份過去。
 function ensureWorldFile() {
   if (!fs.existsSync(WORLD_FILE)) {
@@ -175,7 +198,7 @@ function buildLoreInput(text) {
 function detectTriggeredEvent(world, bt, combinedPlayerText) {
   if (bt.hp >= 100 && bt.food >= 100) return 'ascension';
   const farewell = world.farewell;
-  if (!farewell || (!farewell.pending && !farewell.locked)) {
+  if (!farewell || !farewell.pending) {
     if (/放下|結束|祝福|告別|不會再回來/.test(combinedPlayerText)) return 'farewell';
   }
   if (/📺|觀察日誌|研究|旁白啟動/.test(combinedPlayerText)) return 'observation';
@@ -844,17 +867,21 @@ const server = http.createServer((req, res) => {
         }
         if (data.type === 'away') world.owner_away = !!data.away;
         if (data.type === 'pause') world.paused = !!data.paused;
+        let archivedTo = null;
         if (data.type === 'farewell_choice' && world.farewell && world.farewell.pending) {
           if (data.plant) {
             world.farewell = { pending: false, planted: true, spawned: false, spawnAt: Date.now() + 30 * 24 * 60 * 60 * 1000 };
+            writeWorldFile(world);
           } else {
-            world.farewell = { pending: false, locked: true };
-            world.characters.shadow.active = false;
+            // 不種＝放棄這份紀錄，重新開始：先把目前紀錄完整封存，再用種子檔重置 world.json。
+            writeWorldFile(world);
+            archivedTo = archiveAndResetWorld();
           }
+        } else {
+          writeWorldFile(world);
         }
-        writeWorldFile(world);
         res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ ok: true }));
+        res.end(JSON.stringify({ ok: true, archivedTo }));
       });
     } catch (e) {
       res.writeHead(500);
@@ -966,28 +993,10 @@ const server = http.createServer((req, res) => {
     }
 
   } else if (req.url === '/api/reset' && req.method === 'POST') {
-    // 重啟：把目前 world.json 跟所有 logs 封存到 archive/<timestamp>/，再用種子檔重置 world.json。
-    // 不刪除任何資料，只是搬走，未來想回顧還能找到。
     try {
-      const stamp = getRealTime().display.replace(/[\/: ]/g, '-') + '_' + Date.now();
-      const archiveDir = path.join(DATA_DIR, 'archive', stamp);
-      fs.mkdirSync(archiveDir, { recursive: true });
-      if (fs.existsSync(WORLD_FILE)) {
-        fs.copyFileSync(WORLD_FILE, path.join(archiveDir, 'world.json'));
-      }
-      if (fs.existsSync(LOGS_DIR)) {
-        const archiveLogsDir = path.join(archiveDir, 'logs');
-        fs.mkdirSync(archiveLogsDir, { recursive: true });
-        for (const file of fs.readdirSync(LOGS_DIR)) {
-          const src = path.join(LOGS_DIR, file);
-          if (fs.statSync(src).isFile()) {
-            fs.renameSync(src, path.join(archiveLogsDir, file));
-          }
-        }
-      }
-      fs.copyFileSync(SEED_WORLD_FILE, WORLD_FILE);
+      const archivedTo = archiveAndResetWorld();
       res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ ok: true, archivedTo: `archive/${stamp}` }));
+      res.end(JSON.stringify({ ok: true, archivedTo }));
     } catch (e) {
       res.writeHead(500, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ ok: false, error: String(e) }));
@@ -1059,13 +1068,6 @@ async function tick() {
     // 時間停止：玩家手動凍結世界，不生成、不衰減、不呼叫 API。解除前一直保持原狀。
     const delay = getNextDelay();
     console.log(`時間停止中，跳過這次更新。下次檢查：${Math.round(delay/60000)} 分鐘後`);
-    setTimeout(tick, delay);
-    return;
-  }
-
-  if (world.farewell && world.farewell.locked) {
-    // 永別事件選了「不種」：世界永久結束，不再生成任何動態。
-    const delay = getNextDelay();
     setTimeout(tick, delay);
     return;
   }

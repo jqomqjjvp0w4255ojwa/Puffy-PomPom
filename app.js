@@ -827,12 +827,11 @@ function closeDeathOverlay() {
   if (overlay) overlay.style.display = 'none';
 }
 // 永別事件：卡片顯示後等飼主選「種下蕈菇／不種」。選完前世界暫停生成（見 world.js tick()）。
+// 不種＝放棄這份紀錄並封存，世界會重新開始，所以選完後直接整頁重新載入。
 function updateFarewellOverlay(farewell) {
   const pendingOverlay = document.getElementById('farewell-overlay');
-  const endedOverlay = document.getElementById('ended-overlay');
-  if (!pendingOverlay || !endedOverlay) return;
+  if (!pendingOverlay) return;
   pendingOverlay.style.display = (farewell && farewell.pending) ? 'flex' : 'none';
-  endedOverlay.style.display = (farewell && farewell.locked) ? 'flex' : 'none';
 }
 async function farewellChoice(plant) {
   try {
@@ -841,7 +840,7 @@ async function farewellChoice(plant) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ type: 'farewell_choice', plant })
     });
-    load();
+    location.reload();
   } catch (e) {
     alert('選擇送出失敗，請再試一次。');
   }
