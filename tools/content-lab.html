@@ -509,11 +509,39 @@ const SYS_PROMPT_LABELS = {
   social:'社交與情感', body:'身體與感知', furSystem:'毛況系統', statBands:'狀態描述',
   shadow:'小黑影', visitors:'訪客留言', habits:'生活習性', rules:'規則'
 };
-// 每回合動態世界狀態（時間/狀態/房間/天氣/隱藏數值）的概估，非特殊事件時的典型值。
-const PERTICK_WORLD_EST = 320;   // tokens，當回合 user prompt 的世界狀態描述
-const OUTPUT_EST = 320;          // tokens，scene 2-4 句的典型輸出
+// 每回合動態世界狀態的概估，作為抓不到即時 world.json 時的備援值（非特殊事件時的典型值）。
+const PERTICK_WORLD_EST_FALLBACK = 320;   // tokens，當回合 user prompt 的世界狀態描述
+const OUTPUT_EST_FALLBACK = 320;          // tokens，scene 2-4 句的典型輸出
+
+// 用目前 world.json 的實際資料（近期記憶等）估算當回合 user prompt 的動態部分大小。
+// 比固定猜測值準，因為記憶會隨遊戲進行越寫越長，固定值不會跟著變。
+function estimatePerTickFromWorld(world) {
+  const bt = (world.characters && world.characters.baituantuan) || {};
+  const room = world.room || {};
+  const memory = (bt.memory || []).slice(-5);
+  const memoryTok = memory.reduce((sum, m) => sum + estimateTokens(m), 0);
+  // 其餘隨回合變化的輸入：時間/狀態數值行、房間描述、天氣、今天事件、訪客留言、隱藏數值、世界書命中等。
+  const otherDynamic = estimateTokens(room.env_desc || '') + estimateTokens((room.events_today || []).join('，')) +
+    estimateTokens(((world.visitor_messages || []).map(m => m.message).join(' '))) + 80; // 80 = 數值行/天氣等固定格式開銷的粗估
+  const outputSample = memory.length ? memory[memory.length - 1] : '';
+  return {
+    inEst: memoryTok + otherDynamic,
+    outEst: outputSample ? estimateTokens(outputSample) : OUTPUT_EST_FALLBACK,
+    memoryTok, otherDynamic, sampleCount: memory.length
+  };
+}
 
 function refreshDevStats() {
+  fetch('/api/world').then(r => r.json()).then(({ world }) => {
+    refreshDevStatsWithWorld(estimatePerTickFromWorld(world));
+  }).catch(() => {
+    refreshDevStatsWithWorld({ inEst: PERTICK_WORLD_EST_FALLBACK, outEst: OUTPUT_EST_FALLBACK, memoryTok: 0, otherDynamic: PERTICK_WORLD_EST_FALLBACK, sampleCount: 0 });
+  });
+}
+
+function refreshDevStatsWithWorld(est) {
+  const PERTICK_WORLD_EST = est.inEst || PERTICK_WORLD_EST_FALLBACK;
+  const OUTPUT_EST = est.outEst || OUTPUT_EST_FALLBACK;
   // ① system prompt 逐段
   const scaffoldTok = estimateTokens(SYS_SCAFFOLD);
   let sysTotal = scaffoldTok;
@@ -534,9 +562,9 @@ function refreshDevStats() {
   const inPerTick = sysTotal + PERTICK_WORLD_EST;
   const p2 = [`<tr><th>項目</th><th>估 token</th><th>說明</th></tr>`];
   p2.push(`<tr><td>system prompt（固定）</td><td class="num">${sysTotal}</td><td>每次更新都完整送出</td></tr>`);
-  p2.push(`<tr><td>當回合世界狀態</td><td class="num">${PERTICK_WORLD_EST}</td><td>時間/狀態/房間/天氣/隱藏數值，估計值</td></tr>`);
+  p2.push(`<tr><td>當回合世界狀態（含近期記憶）</td><td class="num">${PERTICK_WORLD_EST}</td><td>近期記憶 ${est.memoryTok} + 其他動態欄位 ${est.otherDynamic}，依目前 world.json 第 ${est.sampleCount} 則記憶實測估算</td></tr>`);
   p2.push(`<tr class="total"><td>input 小計</td><td class="num">${inPerTick}</td><td>＝送進 API 的輸入</td></tr>`);
-  p2.push(`<tr><td>output（scene 輸出）</td><td class="num">${OUTPUT_EST}</td><td>2-4 句的典型輸出，估計值</td></tr>`);
+  p2.push(`<tr><td>output（scene 輸出）</td><td class="num">${OUTPUT_EST}</td><td>取最近一則 scene 實際字數估算</td></tr>`);
   document.getElementById('dev-pertick-table').innerHTML = p2.join('');
 
   // ③ 費用預測（依數值平衡的更新頻率推算每天 tick 次數）
