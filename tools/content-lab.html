@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>糰糰文案實驗室</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: 'Noto Serif TC', 'PingFang TC', sans-serif;
+    background: #f5f0e8;
+    color: #4a3a2a;
+    margin: 0;
+    padding: 0 0 40px;
+    -webkit-text-size-adjust: 100%;
+  }
+  header {
+    background: #8a5a3a; color: #fdf6ee; padding: 14px 16px;
+    display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;
+  }
+  header h1 { font-size: 16px; margin: 0; }
+  header button {
+    background: rgba(255,255,255,0.15); color: #fdf6ee; border: 1px solid rgba(255,255,255,0.4);
+    border-radius: 6px; padding: 6px 10px; font-size: 12px; cursor: pointer;
+  }
+
+  .gh-panel {
+    background: #fff; border-bottom: 1px solid #e8c8b0; padding: 12px 16px;
+    display: none;
+  }
+  .gh-panel.open { display: block; }
+  .gh-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 8px; }
+  .gh-row label { font-size: 12px; color: #6a4a2a; flex: 0 0 90px; }
+  .gh-row input { flex: 1; min-width: 160px; font-family: inherit; font-size: 12px; border: 1px solid #e8c8b0; border-radius: 6px; padding: 7px 9px; }
+
+  main { padding: 16px; max-width: 760px; margin: 0 auto; }
+
+  .tabs { display: flex; gap: 4px; margin-bottom: 4px; border-bottom: 1px solid #e8c8b0; overflow-x: auto; }
+  .tab-btn {
+    font-family: inherit; font-size: 13px; background: none; border: none;
+    padding: 10px 12px; cursor: pointer; color: #8a7a6a; border-bottom: 2px solid transparent; white-space: nowrap;
+  }
+  .tab-btn.active { color: #8a5a3a; border-bottom-color: #8a5a3a; font-weight: 500; }
+  .tab-panel { display: none; padding-top: 12px; }
+  .tab-panel.active { display: block; }
+
+  .panel-head {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap;
+    margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px dashed #e8c8b0;
+  }
+  .panel-head .desc { font-size: 12px; color: #8a7a6a; line-height: 1.5; flex: 1 1 100%; }
+  .panel-head .actions { display: flex; gap: 6px; align-items: center; }
+
+  .field { margin-bottom: 14px; }
+  .field label { display: block; font-size: 13px; font-weight: 500; margin-bottom: 4px; color: #6a4a2a; }
+  .field .field-desc { font-size: 11px; color: #a08868; margin-bottom: 6px; line-height: 1.5; }
+  textarea {
+    width: 100%; font-family: inherit; font-size: 13px;
+    line-height: 1.6; border: 1px solid #e8c8b0; border-radius: 8px; padding: 10px;
+    background: #fff; color: #4a3a2a; resize: vertical;
+  }
+  textarea:focus { outline: 1px solid #e8a070; background: #fffdf8; }
+
+  input[type=text], input[type=number], input[type=password], select {
+    font-family: inherit; font-size: 13px; border: 1px solid #e8c8b0; border-radius: 6px;
+    padding: 7px 9px; background: #fff; color: #4a3a2a;
+  }
+
+  .num-grid { display: grid; grid-template-columns: 1fr; gap: 10px; }
+  @media (min-width: 520px) { .num-grid { grid-template-columns: 1fr 1fr; } }
+  .num-card { background: #fff; border: 1px solid #e8c8b0; border-radius: 10px; padding: 10px 12px; }
+  .num-card label { display: block; font-size: 12px; color: #6a4a2a; margin-bottom: 3px; }
+  .num-card .field-desc { font-size: 11px; color: #a08868; margin: 2px 0 6px; line-height: 1.4; }
+  .num-card input { width: 100%; }
+
+  .frag-search-row { display: flex; gap: 8px; margin-bottom: 10px; }
+  .frag-search-row input { flex: 1; }
+  .frag-search-row button { white-space: nowrap; }
+
+  .frag-card { background: #fff; border: 1px solid #e8c8b0; border-radius: 10px; margin-bottom: 8px; overflow: hidden; }
+  .frag-summary {
+    display: flex; align-items: center; gap: 8px; padding: 10px 12px; cursor: pointer; user-select: none;
+  }
+  .frag-summary .idx { font-size: 11px; color: #b07a4a; flex: 0 0 28px; }
+  .frag-summary .preview { flex: 1; font-size: 12px; color: #4a3a2a; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .frag-summary .preview .src { color: #a08868; }
+  .frag-summary .chevron { font-size: 11px; color: #a08868; transition: transform 0.15s; }
+  .frag-card.expanded .chevron { transform: rotate(90deg); }
+  .frag-body { display: none; padding: 0 12px 12px; border-top: 1px solid #f0e4d4; }
+  .frag-card.expanded .frag-body { display: block; padding-top: 10px; }
+  .frag-body .row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+  .frag-body .row > div { flex: 1; min-width: 130px; }
+  .frag-body label { display: block; font-size: 11px; color: #8a7a6a; margin-bottom: 2px; }
+  .frag-body input, .frag-body select, .frag-body textarea { width: 100%; font-size: 12px; padding: 6px 8px; }
+  .frag-body .del { background: #c05a3a; color: #fff; border: none; border-radius: 6px; padding: 6px 12px; cursor: pointer; font-family: inherit; font-size: 12px; }
+
+  button.primary, .panel-head button.primary {
+    font-family: inherit; font-size: 12px; background: #8a5a3a; color: #f5f0e8;
+    border: none; border-radius: 6px; padding: 8px 14px; cursor: pointer;
+  }
+  button.ghost {
+    font-family: inherit; font-size: 12px; background: #fff; color: #8a5a3a;
+    border: 1px solid #e8c8b0; border-radius: 6px; padding: 8px 12px; cursor: pointer;
+  }
+  button:active { opacity: 0.85; }
+
+  .status-line { font-size: 11px; margin-top: 8px; min-height: 1.4em; }
+  .status-line.ok { color: #5a8a4a; }
+  .status-line.fail { color: #c05a3a; }
+  .status-line.busy { color: #b07a4a; }
+  .status-line.off { color: #a08868; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>糰糰文案實驗室</h1>
+  <button onclick="toggleGhPanel()">⚙ 連線設定</button>
+</header>
+
+<div class="gh-panel" id="gh-panel">
+  <div class="gh-row">
+    <label>GitHub Token</label>
+    <input type="password" id="gh-token-input" placeholder="貼上 Fine-grained PAT（只需 Contents 讀寫權限）">
+  </div>
+  <div class="gh-row">
+    <label>分支</label>
+    <input type="text" id="gh-branch-input" placeholder="main">
+    <button class="primary" onclick="saveGhConfig()">儲存</button>
+    <span class="status-line off" id="gh-status">尚未設定</span>
+  </div>
+</div>
+
+<main>
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="prompt" onclick="switchTab('prompt')">性格設定</button>
+    <button class="tab-btn" data-tab="balance" onclick="switchTab('balance')">數值平衡</button>
+    <button class="tab-btn" data-tab="frag" onclick="switchTab('frag')">紙片碎片</button>
+    <button class="tab-btn" data-tab="event" onclick="switchTab('event')">特殊事件</button>
+  </div>
+
+  <!-- ============ 性格設定 ============ -->
+  <div class="tab-panel active" id="panel-prompt">
+    <div class="panel-head">
+      <div class="desc">這些段落會組進 world.js 的 SYSTEM_PROMPT。「依數值調整行為」段落決定糰糰健康/飽食低時演得有沒有危機感。</div>
+      <div class="actions">
+        <button class="ghost" onclick="loadFromServer('system-prompt', applyPromptData)">↻ 拉取最新</button>
+        <button class="primary" onclick="uploadJSON('data/system-prompt.json', collectPromptData(), 'system-status')">上傳</button>
+      </div>
+    </div>
+    <div id="prompt-fields"></div>
+    <div class="status-line off" id="system-status"></div>
+  </div>
+
+  <!-- ============ 數值平衡 ============ -->
+  <div class="tab-panel" id="panel-balance">
+    <div class="panel-head">
+      <div class="desc">控制健康/飽食每次世界更新的機械式增減，純數字、不經過 AI，跟「性格設定」是分開的兩層。</div>
+      <div class="actions">
+        <button class="ghost" onclick="loadFromServer('balance', applyBalanceData)">↻ 拉取最新</button>
+        <button class="primary" onclick="uploadJSON('data/balance.json', collectBalanceData(), 'balance-status')">上傳</button>
+      </div>
+    </div>
+    <div class="num-grid" id="balance-fields"></div>
+    <div class="status-line off" id="balance-status"></div>
+  </div>
+
+  <!-- ============ 紙片碎片 ============ -->
+  <div class="tab-panel" id="panel-frag">
+    <div class="panel-head">
+      <div class="desc">關鍵字命中（scene 或玩家輸入）後依機率掉落；match=and 需兩邊都命中。點卡片可展開編輯。</div>
+      <div class="actions">
+        <button class="ghost" onclick="loadFromServer('fragments', applyFragData)">↻ 拉取最新</button>
+        <button class="primary" onclick="uploadJSON('data/fragments.json', collectFragData(), 'frag-status')">上傳</button>
+      </div>
+    </div>
+    <div class="frag-search-row">
+      <input type="text" id="frag-search" placeholder="搜尋 id／來源／內容…" oninput="renderFragments()">
+      <button class="ghost" onclick="addFragment()">＋ 新增</button>
+    </div>
+    <div id="frag-list"></div>
+    <div class="status-line off" id="frag-status"></div>
+  </div>
+
+  <!-- ============ 特殊事件文案 ============ -->
+  <div class="tab-panel" id="panel-event">
+    <div class="panel-head">
+      <div class="desc">飛升＝健康＋飽食同時滿；冥影＝兩者同時歸零；觀察＝玩家輸入觸發旁白。</div>
+      <div class="actions">
+        <button class="ghost" onclick="loadFromServer('events', applyEventData)">↻ 拉取最新</button>
+        <button class="primary" onclick="uploadJSON('data/events.json', collectEventData(), 'event-status')">上傳</button>
+      </div>
+    </div>
+    <div id="event-fields"></div>
+    <div class="status-line off" id="event-status"></div>
+  </div>
+</main>
+
+<script>
+function switchTab(name) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id === `panel-${name}`));
+}
+function toggleGhPanel() { document.getElementById('gh-panel').classList.toggle('open'); }
+
+// ===================== 性格設定 =====================
+const PROMPT_SECTIONS = [
+  { key: 'identity', label: '白糰糰是誰', rows: 4 },
+  { key: 'sizeCognition', label: '尺寸與認知', rows: 4 },
+  { key: 'personality', label: '性格與信念', rows: 5 },
+  { key: 'body', label: '身體與感知（重要，別寫錯）', rows: 7 },
+  { key: 'furSystem', label: '毛況系統', rows: 3 },
+  { key: 'statBands', label: '依當前數值調整行為（健康/飽食分級）', rows: 9, desc: '糰糰的求生反應就在這段，低數值要寫出明顯危機感。' },
+  { key: 'shadow', label: '小黑影', rows: 8 },
+  { key: 'visitors', label: '訪客留言', rows: 4 },
+  { key: 'foodSource', label: '食物來源邏輯', rows: 6 },
+  { key: 'rules', label: '規則', rows: 6 }
+];
+let promptData = {};
+function buildPromptFields() {
+  const box = document.getElementById('prompt-fields');
+  box.innerHTML = '';
+  PROMPT_SECTIONS.forEach(sec => {
+    const div = document.createElement('div');
+    div.className = 'field';
+    div.innerHTML = `<label>${sec.label}</label>${sec.desc ? `<div class="field-desc">${sec.desc}</div>` : ''}<textarea id="prompt-${sec.key}" rows="${sec.rows}"></textarea>`;
+    box.appendChild(div);
+    div.querySelector('textarea').value = promptData[sec.key] || '';
+    div.querySelector('textarea').oninput = e => { promptData[sec.key] = e.target.value; saveLocal(); };
+  });
+}
+function applyPromptData(data) { promptData = data || {}; buildPromptFields(); }
+function collectPromptData() {
+  const out = {};
+  PROMPT_SECTIONS.forEach(sec => { out[sec.key] = document.getElementById(`prompt-${sec.key}`).value; });
+  return out;
+}
+
+// ===================== 數值平衡 =====================
+const BALANCE_FIELDS = [
+  { key: 'foodDeltaWindowOpen', label: '飽食變化／窗開', desc: '每次更新增減值，通常是負數' },
+  { key: 'foodDeltaWindowClosed', label: '飽食變化／窗關', desc: '窗關通常掉更快' },
+  { key: 'lowFoodThreshold', label: '飽食過低門檻', desc: '低於這個值會開始扣健康' },
+  { key: 'lowFoodHpDelta', label: '低飽食時健康變化', desc: '通常是負數' },
+  { key: 'highFoodThreshold', label: '飽食充足門檻', desc: '高於這個值健康會緩慢回復' },
+  { key: 'highFoodHpDelta', label: '高飽食時健康變化', desc: '通常是正數' }
+];
+let balanceData = {};
+function buildBalanceFields() {
+  const box = document.getElementById('balance-fields');
+  box.innerHTML = '';
+  BALANCE_FIELDS.forEach(f => {
+    const card = document.createElement('div');
+    card.className = 'num-card';
+    card.innerHTML = `<label>${f.label}</label><div class="field-desc">${f.desc}</div><input type="number" id="balance-${f.key}" step="1">`;
+    box.appendChild(card);
+    card.querySelector('input').value = balanceData[f.key] ?? 0;
+    card.querySelector('input').oninput = e => { balanceData[f.key] = Number(e.target.value); saveLocal(); };
+  });
+}
+function applyBalanceData(data) { balanceData = data || {}; buildBalanceFields(); }
+function collectBalanceData() {
+  const out = {};
+  BALANCE_FIELDS.forEach(f => { out[f.key] = Number(document.getElementById(`balance-${f.key}`).value); });
+  return out;
+}
+
+// ===================== 紙片碎片 =====================
+let fragData = { fragments: [], collectionHints: {} };
+let fragExpanded = new Set();
+function addFragment() {
+  const id = 'new-' + Date.now();
+  fragData.fragments.unshift({ id, source: '', label: '', text: '', scene_keywords: [], player_keywords: [], match: 'or', probability: 0.25 });
+  fragExpanded.add(id);
+  renderFragments();
+}
+function applyFragData(data) {
+  fragData = { fragments: (data && data.fragments) || [], collectionHints: (data && data.collectionHints) || {} };
+  fragExpanded = new Set();
+  renderFragments();
+}
+function renderFragments() {
+  const list = document.getElementById('frag-list');
+  const q = (document.getElementById('frag-search').value || '').trim().toLowerCase();
+  list.innerHTML = '';
+  fragData.fragments.forEach((f, idx) => {
+    const hay = `${f.id} ${f.source} ${f.label} ${f.text}`.toLowerCase();
+    if (q && !hay.includes(q)) return;
+    const isOpen = fragExpanded.has(f.id);
+    const card = document.createElement('div');
+    card.className = 'frag-card' + (isOpen ? ' expanded' : '');
+    card.innerHTML = `
+      <div class="frag-summary">
+        <span class="idx">#${idx + 1}</span>
+        <span class="preview"><span class="src">${esc(f.source || '未分類')}</span> ｜ ${esc(f.text || '（空白）')}</span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="frag-body">
+        <div class="row">
+          <div><label>id（唯一）</label><input data-k="id" value="${esc(f.id)}"></div>
+          <div><label>來源（分組）</label><input data-k="source" value="${esc(f.source)}"></div>
+          <div><label>小標 label</label><input data-k="label" value="${esc(f.label)}"></div>
+        </div>
+        <div class="row"><div style="flex-basis:100%"><label>紙片文字</label><textarea data-k="text" rows="2">${esc(f.text)}</textarea></div></div>
+        <div class="row">
+          <div><label>scene 關鍵字（逗號分隔）</label><input data-k="scene_keywords" value="${esc((f.scene_keywords||[]).join(','))}"></div>
+          <div><label>玩家關鍵字（逗號分隔）</label><input data-k="player_keywords" value="${esc((f.player_keywords||[]).join(','))}"></div>
+        </div>
+        <div class="row">
+          <div style="flex:0 0 120px"><label>命中條件</label><select data-k="match"><option value="or">or（其一）</option><option value="and">and（兩邊）</option></select></div>
+          <div style="flex:0 0 120px"><label>掉落機率 0~1</label><input data-k="probability" type="number" step="0.05" min="0" max="1" value="${f.probability ?? 0.25}"></div>
+          <div style="flex:0 0 auto;align-self:end"><button class="del">刪除這張</button></div>
+        </div>
+      </div>`;
+    card.querySelector('.frag-summary').onclick = () => {
+      if (isOpen) fragExpanded.delete(f.id); else fragExpanded.add(f.id);
+      renderFragments();
+    };
+    card.querySelector('select[data-k="match"]').value = f.match === 'and' ? 'and' : 'or';
+    card.querySelectorAll('[data-k]').forEach(el => {
+      el.onclick = ev => ev.stopPropagation();
+      el.oninput = () => {
+        const k = el.dataset.k;
+        if (k === 'scene_keywords' || k === 'player_keywords') fragData.fragments[idx][k] = el.value.split(',').map(s => s.trim()).filter(Boolean);
+        else if (k === 'probability') fragData.fragments[idx][k] = Number(el.value);
+        else fragData.fragments[idx][k] = el.value;
+        if (k === 'source' || k === 'text') {
+          const preview = card.querySelector('.preview');
+          preview.innerHTML = `<span class="src">${esc(fragData.fragments[idx].source || '未分類')}</span> ｜ ${esc(fragData.fragments[idx].text || '（空白）')}`;
+        }
+        saveLocal();
+      };
+    });
+    card.querySelector('.del').onclick = ev => {
+      ev.stopPropagation();
+      if (!confirm('確定刪除這張紙片？')) return;
+      fragExpanded.delete(f.id);
+      fragData.fragments.splice(idx, 1); renderFragments(); saveLocal();
+    };
+    list.appendChild(card);
+  });
+  const status = document.getElementById('frag-status');
+  status.textContent = `共 ${fragData.fragments.length} 張`;
+}
+function collectFragData() { return fragData; }
+function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+
+// ===================== 特殊事件文案 =====================
+const EVENT_FIELDS = [
+  { key: 'ascension', label: '飛升篇（健康＋飽食同時滿值）', rows: 7 },
+  { key: 'shadowRevenge', label: '冥影與霜解篇（健康＋飽食同時歸零）', rows: 5 },
+  { key: 'observation', label: '觀察篇（玩家輸入觸發旁白）', rows: 3 }
+];
+let eventData = {};
+function buildEventFields() {
+  const box = document.getElementById('event-fields');
+  box.innerHTML = '';
+  EVENT_FIELDS.forEach(ev => {
+    const div = document.createElement('div');
+    div.className = 'field';
+    div.innerHTML = `<label>${ev.label}</label><textarea id="event-${ev.key}" rows="${ev.rows}"></textarea>`;
+    box.appendChild(div);
+    div.querySelector('textarea').value = eventData[ev.key] || '';
+    div.querySelector('textarea').oninput = e => { eventData[ev.key] = e.target.value; saveLocal(); };
+  });
+}
+function applyEventData(data) { eventData = data || {}; buildEventFields(); }
+function collectEventData() {
+  const out = {};
+  EVENT_FIELDS.forEach(ev => { out[ev.key] = document.getElementById(`event-${ev.key}`).value; });
+  return out;
+}
+
+// ===================== 本地暫存（localStorage） =====================
+const STORAGE_KEY = 'puffy-content-lab-v2';
+function saveLocal() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify({ promptData: collectPromptData(), balanceData: collectBalanceData(), fragData, eventData: collectEventData() })); } catch (e) {}
+}
+function loadLocal() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return false;
+    const d = JSON.parse(raw);
+    if (d.promptData) promptData = d.promptData;
+    if (d.balanceData) balanceData = d.balanceData;
+    if (d.fragData) fragData = d.fragData;
+    if (d.eventData) eventData = d.eventData;
+    return true;
+  } catch (e) { return false; }
+}
+
+// ===================== 從遊戲伺服器拉目前線上的 data/*.json =====================
+function loadFromServer(name, apply) {
+  fetch(`/api/content/${name}`)
+    .then(r => r.json())
+    .then(data => { apply(data); saveLocal(); })
+    .catch(() => alert('拉取失敗，可能是還沒部署或不在遊戲網域下開啟。'));
+}
+
+// ===================== GitHub 自動上傳 =====================
+const GH_TOKEN_KEY = 'puffy-content-lab-gh-token';
+const GH_BRANCH_KEY = 'puffy-content-lab-gh-branch';
+const GH_OWNER = 'jqomqjjvp0w4255ojwa';
+const GH_REPO = 'puffy-pompom';
+
+function setStatus(id, state, text) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.className = `status-line ${state}`;
+  el.textContent = text;
+}
+function saveGhConfig() {
+  const token = document.getElementById('gh-token-input').value.trim();
+  const branch = document.getElementById('gh-branch-input').value.trim() || 'main';
+  localStorage.setItem(GH_TOKEN_KEY, token);
+  localStorage.setItem(GH_BRANCH_KEY, branch);
+  setStatus('gh-status', token ? 'ok' : 'off', token ? '已儲存（只存在這台瀏覽器）' : '尚未設定');
+}
+function utf8ToBase64(str) { return btoa(unescape(encodeURIComponent(str))); }
+async function uploadJSON(filePath, obj, statusId) {
+  const token = localStorage.getItem(GH_TOKEN_KEY);
+  const branch = localStorage.getItem(GH_BRANCH_KEY) || 'main';
+  if (!token) { setStatus(statusId, 'fail', '請先在「連線設定」貼 Token 並儲存'); toggleGhPanel(); return; }
+
+  const content = utf8ToBase64(JSON.stringify(obj, null, 2));
+  const apiUrl = `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${filePath}`;
+  const headers = { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json' };
+
+  setStatus(statusId, 'busy', '上傳中…');
+  try {
+    let sha;
+    const getRes = await fetch(`${apiUrl}?ref=${encodeURIComponent(branch)}`, { headers });
+    if (getRes.ok) { sha = (await getRes.json()).sha; }
+    else if (getRes.status !== 404) throw new Error(`讀取現有檔案失敗：${getRes.status}`);
+
+    const putRes = await fetch(apiUrl, {
+      method: 'PUT',
+      headers: { ...headers, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: `由糰糰文案實驗室更新 ${filePath}`, content, branch, ...(sha ? { sha } : {}) })
+    });
+    if (!putRes.ok) {
+      const err = await putRes.json().catch(() => ({}));
+      throw new Error(err.message || `上傳失敗：${putRes.status}`);
+    }
+    setStatus(statusId, 'ok', '已上傳並覆蓋成功，下次部署生效');
+  } catch (err) {
+    setStatus(statusId, 'fail', `上傳失敗：${err.message}`);
+  }
+}
+
+// ===================== 初始化 =====================
+document.getElementById('gh-token-input').value = localStorage.getItem(GH_TOKEN_KEY) || '';
+document.getElementById('gh-branch-input').value = localStorage.getItem(GH_BRANCH_KEY) || 'main';
+setStatus('gh-status', localStorage.getItem(GH_TOKEN_KEY) ? 'ok' : 'off', localStorage.getItem(GH_TOKEN_KEY) ? '已設定（只存在這台瀏覽器）' : '尚未設定');
+
+const restored = loadLocal();
+buildPromptFields();
+buildBalanceFields();
+renderFragments();
+buildEventFields();
+
+if (!restored) {
+  loadFromServer('system-prompt', applyPromptData);
+  loadFromServer('balance', applyBalanceData);
+  loadFromServer('fragments', applyFragData);
+  loadFromServer('events', applyEventData);
+}
+</script>
+
+</body>
+</html>
