@@ -306,15 +306,21 @@ function buildTvContext() {
   const world = JSON.parse(fs.readFileSync(WORLD_FILE, 'utf8'));
   const bt = world.characters.baituantuan;
   const room = world.room || {};
-  const recentScene = (bt.memory || []).slice(-1)[0] || '（暫無最新動態）';
+  const recentMemory = (bt.memory || []).slice(-5);
+  const recentScene = recentMemory.slice(-1)[0] || '（暫無最新動態）';
   const moodColor = getMoodColorFor(typeof bt.mood === 'number' ? bt.mood : 0);
   return {
     recentScene,
+    recentMemory,
+    fur: bt.fur || '正常',
     food: bt.food,
     hp: bt.hp,
     location: bt.location || '',
     mood: moodColor ? moodColor.name : '平靜',
     cleanliness: room.cleanliness,
+    envDesc: room.env_desc || '',
+    weather: world.weather ? `${world.weather.desc} ${world.weather.temp}℃` : '',
+    eventsToday: (room.events_today || []).join('，'),
     windowOpen: !!room.window_open,
     lightOn: room.light_on !== false,
     acOn: !!(room.ac && room.ac.on),
@@ -323,18 +329,22 @@ function buildTvContext() {
 }
 
 function buildTvPrompt(channel, ctx) {
-  const stateLine = `白糰糰目前狀態：飽食${ctx.food}、健康${ctx.hp}、心情「${ctx.mood}」、位置「${ctx.location}」。\n` +
-    `房間：清潔度${ctx.cleanliness}、窗戶${ctx.windowOpen ? '開' : '關'}、燈${ctx.lightOn ? '開' : '關'}、空調${ctx.acOn ? '開' : '關'}、小黑影${ctx.shadowActive ? '出沒中' : '潛伏'}。\n` +
-    `白糰糰最新動態：${ctx.recentScene}`;
+  const stateLine = `白糰糰目前狀態：飽食${ctx.food}、健康${ctx.hp}、心情「${ctx.mood}」、位置「${ctx.location}」、毛況「${ctx.fur}」。\n` +
+    `房間：清潔度${ctx.cleanliness}（${ctx.envDesc || '無特別描述'}）、窗戶${ctx.windowOpen ? '開' : '關'}、燈${ctx.lightOn ? '開' : '關'}、空調${ctx.acOn ? '開' : '關'}、小黑影${ctx.shadowActive ? '出沒中' : '潛伏'}。\n` +
+    (ctx.weather ? `戶外天氣：${ctx.weather}。\n` : '') +
+    (ctx.eventsToday ? `今天已發生：${ctx.eventsToday}。\n` : '') +
+    `白糰糰最近的動態紀錄（由舊到新）：\n${(ctx.recentMemory && ctx.recentMemory.length ? ctx.recentMemory : [ctx.recentScene]).map((m, i) => `${i + 1}. ${m}`).join('\n')}`;
+
+  const lengthRule = '請嚴格控制在 120 字以內，不要超過，寧可短也不要長；只能根據上面提供的資訊發揮，不要編造與設定矛盾的內容。';
 
   if (channel === 'nature') {
-    return `${SYSTEM_PROMPT}\n\n———\n以上是角色設定，務必遵守白糰糰的身體構造（沒有耳朵、鼻子，靠觸感與顏色感知世界）。\n\n${stateLine}\n\n你是 DISCOVERY 生態紀錄片的旁白。請以科學旁觀又俏皮詼諧的科普語氣，把白糰糰「當下這一刻」的行為包裝成一段野生觀察紀錄（例如開場「在零下八度的清晨，一隻野生白糰糰……」）。寫成一篇約 150 到 250 字的完整旁白短文，有起承轉合、可穿插偽科學的觀察評論。繁體中文、只輸出旁白本身，不要加標題或前言。`;
+    return `${SYSTEM_PROMPT}\n\n———\n以上是角色設定，務必遵守白糰糰的身體構造（沒有耳朵、鼻子，靠觸感與顏色感知世界）。\n\n${stateLine}\n\n你是 DISCOVERY 生態紀錄片的旁白。請以科學旁觀又俏皮詼諧的科普語氣，把白糰糰「當下這一刻」的行為包裝成一段野生觀察紀錄（例如開場「在零下八度的清晨，一隻野生白糰糰……」）。${lengthRule}繁體中文、只輸出旁白本身，不要加標題或前言。`;
   }
   if (channel === 'news') {
-    return `${stateLine}\n\n你是地方新聞台的主播，正在報導「白糰糰房間」這條荒誕又一本正經的即時新聞。根據上面的房間與狀態，用煞有介事的播報腔調寫一則約 150 到 250 字的短新聞報導（可以有主棚播報＋現場記者連線、街訪、專家分析等橋段，盡量荒誕又一本正經）。繁體中文、只輸出播報內容，開頭可用「插播一則最新消息——」。`;
+    return `${stateLine}\n\n你是地方新聞台的主播，正在報導「白糰糰房間」這條荒誕又一本正經的即時新聞。根據上面的房間與狀態，用煞有介事的播報腔調寫一則短新聞報導。${lengthRule}繁體中文、只輸出播報內容，開頭可用「插播一則最新消息——」。`;
   }
   // shopping
-  return `${stateLine}\n\n你是深夜購物頻道的主持人，正在向觀眾推銷一件「白糰糰現在最需要」的商品（依他目前的飽食、心情、房間狀況挑選，例如餓了就賣零食、冷了就賣暖窩）。用浮誇熱情的購物台語氣介紹，可吹捧賣點、報出限時優惠價、製造搶購感，但這只是節目演出、實際還不能下單。寫成一段約 150 到 250 字的完整口播，繁體中文，結尾自然帶一句「錢包功能即將上線，敬請期待」。只輸出主持人的口播。`;
+  return `${stateLine}\n\n你是深夜購物頻道的主持人，正在向觀眾推銷一件「白糰糰現在最需要」的商品（依他目前的飽食、心情、房間狀況挑選，例如餓了就賣零食、冷了就賣暖窩）。用浮誇熱情的購物台語氣介紹，可吹捧賣點、報出限時優惠價、製造搶購感，但這只是節目演出、實際還不能下單。${lengthRule}繁體中文，結尾自然帶一句「錢包功能即將上線，敬請期待」。只輸出主持人的口播。`;
 }
 
 function dateKeyOf(date) {
@@ -729,7 +739,7 @@ const server = http.createServer((req, res) => {
         const data = JSON.parse(Buffer.concat(body).toString() || '{}');
         const channel = ['nature', 'news', 'shopping'].includes(data.channel) ? data.channel : 'nature';
         const ctx = buildTvContext();
-        const result = await callGemini(buildTvPrompt(channel, ctx), 500);
+        const result = await callGemini(buildTvPrompt(channel, ctx), 280);
         res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
         if (result.error) {
           res.end(JSON.stringify({ ok: false, error: result.error, detail: result.detail || '' }));
