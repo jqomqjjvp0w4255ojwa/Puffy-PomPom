@@ -82,13 +82,13 @@
   input:focus, select:focus { outline: 2px solid #e8a070; }
 
   /* 方正緊湊的迷你小卡：每組一張卡，欄位直排（標籤＋右對齊等寬輸入框） */
-  .num-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; max-width: 760px; }
+  .num-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(165px, 1fr)); gap: 10px; max-width: 700px; }
   .mini-tile { background: #fff; border: 1px solid #e8c8b0; border-radius: 6px; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; box-shadow: 0 1px 3px rgba(90,75,65,0.04); }
   .tile-header { border-bottom: 1px solid #f2ede6; padding-bottom: 6px; }
-  .tile-title { font-size: 13px; font-weight: 600; color: #5a3a2a; }
+  .tile-title { font-size: 12px; font-weight: 600; color: #5a3a2a; }
   .tile-adjust { display: flex; align-items: center; justify-content: flex-start; gap: 8px; }
-  .adjust-label { font-size: 12px; color: #8a766a; width: 96px; }
-  .input-control { width: 56px; padding: 3px 6px; border: 1px solid #e8c8b0; border-radius: 4px; text-align: right; font-family: monospace; background: #faf9f6; font-size: 13px; color: #4a3a2a; }
+  .adjust-label { font-size: 11px; color: #8a766a; width: 64px; }
+  .input-control { width: 46px; padding: 3px 5px; border: 1px solid #e8c8b0; border-radius: 4px; text-align: right; font-family: monospace; background: #faf9f6; font-size: 12px; color: #4a3a2a; }
   .input-control:focus { outline: 2px solid #e8a070; background: #fff; }
 
   .dev-section { background: #fff; border: 1px solid #e8c8b0; border-radius: 10px; padding: 14px 16px; margin-bottom: 14px; }
@@ -185,8 +185,10 @@
 
 <header>
   <h1>糰糰文案實驗室</h1>
+  <button class="primary" onclick="uploadAll()" title="把所有分頁的變更一次推上 GitHub">⇪ 全部上傳</button>
   <button class="danger" onclick="resetWorld()" title="封存目前進度，重新開始">↺ 重啟</button>
   <button onclick="toggleGhPanel()">⚙ 連線設定</button>
+  <span class="status-line off" id="upload-all-status"></span>
 </header>
 
 <div class="gh-panel" id="gh-panel">
@@ -286,7 +288,7 @@
       </div>
       <div class="trait-layout">
         <div class="trait-panel trait-preview">
-          <div class="preview-name" id="nickname-preview-name" contenteditable="true" placeholder="點擊編輯暱稱或直接填格子">—</div>
+          <div class="preview-name" id="nickname-preview-name" contenteditable="true" placeholder="點擊編輯暱稱或直接填格子" oninput="nicknamePreviewEdited()">—</div>
           <div class="slider-row">
             <label><span>熟悉度</span><span><span id="nickname-fam-val">50</span> <span class="band-tag" id="nickname-fam-band"></span></span></label>
             <input type="range" id="nickname-fam-slider" min="0" max="100" value="50" oninput="nicknameUpdatePreview()">
@@ -354,7 +356,7 @@
       </div>
       <div class="trait-layout">
         <div class="trait-panel trait-preview">
-          <div class="preview-name" id="stat-preview-name" contenteditable="true" placeholder="點擊編輯描述或直接填格子">—</div>
+          <div class="preview-name" id="stat-preview-name" contenteditable="true" placeholder="點擊編輯描述或直接填格子" oninput="statPreviewEdited()">—</div>
           <div class="slider-row">
             <label><span>飽食度</span><span><span id="stat-food-val">50</span> <span class="band-tag" id="stat-food-band"></span></span></label>
             <input type="range" id="stat-food-slider" min="0" max="100" value="50" oninput="statUpdatePreview()">
@@ -411,6 +413,12 @@
       <div class="actions">
         <button class="ghost" onclick="refreshDevStats()">↻ 重新計算</button>
       </div>
+    </div>
+
+    <div class="dev-section">
+      <h3>⓪ 目前糰糰即時數值（來自伺服器，調平衡/對照表時可對照參考）</h3>
+      <div class="actions" style="margin-bottom:8px"><button class="ghost" onclick="refreshLiveStats()">↻ 抓最新狀態</button></div>
+      <div class="num-grid" id="dev-live-stats"><div class="dev-note">按「↻ 抓最新狀態」載入。</div></div>
     </div>
 
     <div class="dev-section">
@@ -912,14 +920,21 @@ function nicknameUpdatePreview() {
   document.querySelectorAll('#panel-trait td.active').forEach(td => td.classList.remove('active'));
   const cell = document.getElementById(`nickname-cell-${fi}-${aj}`);
   if (cell) cell.classList.add('active');
+  // 移動滑桿＝切換到新格子：一律載入該格的暱稱到預覽，不要把舊文字寫回去。
   const previewEl = document.getElementById('nickname-preview-name');
-  const previewText = previewEl.textContent.trim();
-  // 如果預覽被編輯了（內容不是預設值），保存到 grid
-  if (previewText && previewText !== '—' && previewText !== '（這格還沒填）') {
-    nicknameGrid[fi][aj] = previewText;
-  } else {
-    previewEl.textContent = nicknameGrid[fi][aj] || '（這格還沒填）';
-  }
+  previewEl.textContent = nicknameGrid[fi][aj] || '（這格還沒填）';
+}
+// 直接在預覽大字上編輯時，寫回「目前滑桿對應的那一格」。
+function nicknamePreviewEdited() {
+  const fam = Number(document.getElementById('nickname-fam-slider').value);
+  const aff = Number(document.getElementById('nickname-aff-slider').value);
+  const fi = FAM.index(fam), aj = AFF.index(aff);
+  const text = document.getElementById('nickname-preview-name').textContent.trim();
+  nicknameGrid[fi][aj] = (text === '（這格還沒填）') ? '' : text;
+  const cell = document.getElementById(`nickname-cell-${fi}-${aj}`);
+  const input = cell && cell.querySelector('input');
+  if (input) input.value = nicknameGrid[fi][aj];
+  saveLocal();
 }
 function nicknameClearAll() {
   if (!confirm('確定清空所有暱稱？這會清掉已經填的內容，請先確定要重填。')) return;
@@ -1031,13 +1046,20 @@ function statUpdatePreview() {
   document.querySelectorAll('#panel-trait td.active').forEach(td => td.classList.remove('active'));
   const cell = document.getElementById(`stat-cell-${hi}-${fj}`);
   if (cell) cell.classList.add('active');
-  const previewEl = document.getElementById('stat-preview-name');
-  const previewText = previewEl.textContent.trim();
-  if (previewText && previewText !== '—' && previewText !== '（這格還沒填，會用內建自動句子備援）') {
-    statGrid[hi][fj] = previewText;
-  } else {
-    previewEl.textContent = statGrid[hi][fj] || '（這格還沒填，會用內建自動句子備援）';
-  }
+  // 移動滑桿＝切換格子：一律載入該格描述到預覽，不要把舊文字寫回去。
+  document.getElementById('stat-preview-name').textContent = statGrid[hi][fj] || '（這格還沒填，會用內建自動句子備援）';
+}
+// 直接在預覽大字上編輯時，寫回目前滑桿對應的那一格。
+function statPreviewEdited() {
+  const food = Number(document.getElementById('stat-food-slider').value);
+  const hp = Number(document.getElementById('stat-hp-slider').value);
+  const fj = STAT.index(food), hi = STAT.index(hp);
+  const text = document.getElementById('stat-preview-name').textContent.trim();
+  statGrid[hi][fj] = (text === '（這格還沒填，會用內建自動句子備援）') ? '' : text;
+  const cell = document.getElementById(`stat-cell-${hi}-${fj}`);
+  const input = cell && cell.querySelector('input, textarea');
+  if (input) input.value = statGrid[hi][fj];
+  saveLocal();
 }
 function statClearAll() {
   if (!confirm('確定清空所有狀態描述？這會清掉已經填的內容，請先確定要重填。')) return;
@@ -1329,6 +1351,31 @@ function loadLocal() {
   } catch (e) { return false; }
 }
 
+// ===================== 開發者專區：抓目前糰糰即時數值 =====================
+function liveTile(title, rows) {
+  const body = rows.map(([k, v]) => `<div class="tile-adjust"><span class="adjust-label" style="width:auto">${k}</span><span style="font-family:monospace;color:#4a3a2a">${v}</span></div>`).join('');
+  return `<div class="mini-tile"><div class="tile-header"><span class="tile-title">${title}</span></div>${body}</div>`;
+}
+function refreshLiveStats() {
+  const box = document.getElementById('dev-live-stats');
+  box.innerHTML = '<div class="dev-note">抓取中…</div>';
+  fetch('/api/world')
+    .then(r => r.json())
+    .then(({ world }) => {
+      const bt = (world.characters && world.characters.baituantuan) || {};
+      const room = world.room || {};
+      const sh = (world.characters && world.characters.shadow) || {};
+      const fix = n => (typeof n === 'number' ? Math.round(n * 10) / 10 : '—');
+      box.innerHTML =
+        liveTile('生理', [['飽食 food', fix(bt.food)], ['健康 hp', fix(bt.hp)], ['位置', bt.location || '—']]) +
+        liveTile('關係/心情', [['熟悉度 fam', fix(bt.familiarity)], ['好感度 aff', fix(bt.affection)], ['心情 mood', fix(bt.mood)]]) +
+        liveTile('質地', [['形狀 shape', fix(bt.shape)], ['硬度 hardness', fix(bt.hardness)]]) +
+        liveTile('房間', [['清潔度', fix(room.cleanliness)], ['窗', room.window_open ? '開' : '關'], ['空調', (room.ac && room.ac.on) ? '開' : '關']]) +
+        liveTile('小黑影/狀態', [['小黑影', sh.active ? '出沒中' : '潛伏'], ['暗影好感', fix(sh.affection)], ['暫停', world.paused ? '是' : '否'], ['外出', world.owner_away ? '是' : '否']]);
+    })
+    .catch(() => { box.innerHTML = '<div class="dev-note">抓取失敗，可能是還沒部署或不在遊戲網域下開啟。</div>'; });
+}
+
 // ===================== 從遊戲伺服器拉目前線上的 data/*.json =====================
 function loadFromServer(name, apply) {
   fetch(`/api/content/${name}`)
@@ -1400,6 +1447,33 @@ async function uploadJSON(filePath, obj, statusId) {
   } catch (err) {
     setStatus(statusId, 'fail', `上傳失敗：${err.message}`);
   }
+}
+
+// 一鍵把所有分頁的資料檔依序上傳，省得每頁各按一次。
+async function uploadAll() {
+  const token = localStorage.getItem(GH_TOKEN_KEY);
+  if (!token) { setStatus('upload-all-status', 'fail', '請先在「連線設定」貼 Token 並儲存'); toggleGhPanel(); return; }
+  const jobs = [
+    ['data/system-prompt.json', collectPromptData, 'system-status-basic'],
+    ['data/balance.json', collectBalanceData, 'balance-status'],
+    ['data/hidden-stats.json', collectTraitData, 'trait-status'],
+    ['data/fragments.json', collectFragData, 'frag-status'],
+    ['data/events.json', collectEventData, 'event-status'],
+  ];
+  let done = 0, failed = 0;
+  setStatus('upload-all-status', 'busy', `全部上傳中… 0/${jobs.length}`);
+  for (const [filePath, collect, statusId] of jobs) {
+    try {
+      await uploadJSON(filePath, collect(), statusId);
+      const el = document.getElementById(statusId);
+      if (el && el.classList.contains('fail')) failed++; else done++;
+    } catch (e) {
+      failed++;
+    }
+    setStatus('upload-all-status', 'busy', `全部上傳中… ${done + failed}/${jobs.length}`);
+  }
+  setStatus('upload-all-status', failed ? 'fail' : 'ok',
+    failed ? `完成 ${done} 項，失敗 ${failed} 項（看各分頁狀態）` : `全部 ${done} 項已上傳，下次部署生效`);
 }
 
 // ===================== 初始化 =====================
