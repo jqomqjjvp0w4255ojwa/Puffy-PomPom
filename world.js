@@ -321,13 +321,13 @@ function buildTvPrompt(channel, ctx) {
     `白糰糰最新動態：${ctx.recentScene}`;
 
   if (channel === 'nature') {
-    return `${SYSTEM_PROMPT}\n\n———\n以上是角色設定，務必遵守白糰糰的身體構造（沒有耳朵、鼻子，靠觸感與顏色感知世界）。\n\n${stateLine}\n\n你是 DISCOVERY 生態紀錄片的旁白。請以科學旁觀又俏皮詼諧的科普語氣，把白糰糰「當下這一刻」的行為包裝成野生觀察紀錄（例如開場「在零下八度的清晨，一隻野生白糰糰……」）。3 到 5 句、繁體中文、只輸出旁白本身，不要加標題或前言。`;
+    return `${SYSTEM_PROMPT}\n\n———\n以上是角色設定，務必遵守白糰糰的身體構造（沒有耳朵、鼻子，靠觸感與顏色感知世界）。\n\n${stateLine}\n\n你是 DISCOVERY 生態紀錄片的旁白。請以科學旁觀又俏皮詼諧的科普語氣，把白糰糰「當下這一刻」的行為包裝成一段野生觀察紀錄（例如開場「在零下八度的清晨，一隻野生白糰糰……」）。寫成一篇約 150 到 250 字的完整旁白短文，有起承轉合、可穿插偽科學的觀察評論。繁體中文、只輸出旁白本身，不要加標題或前言。`;
   }
   if (channel === 'news') {
-    return `${stateLine}\n\n你是地方新聞台的主播，正在報導「白糰糰房間」這條荒誕又一本正經的即時新聞。根據上面的房間與狀態，用煞有介事的播報腔調寫一則短新聞（可以有誇張的記者連線感）。3 到 5 句、繁體中文、只輸出播報內容，開頭可用「插播一則最新消息——」。`;
+    return `${stateLine}\n\n你是地方新聞台的主播，正在報導「白糰糰房間」這條荒誕又一本正經的即時新聞。根據上面的房間與狀態，用煞有介事的播報腔調寫一則約 150 到 250 字的短新聞報導（可以有主棚播報＋現場記者連線、街訪、專家分析等橋段，盡量荒誕又一本正經）。繁體中文、只輸出播報內容，開頭可用「插播一則最新消息——」。`;
   }
   // shopping
-  return `${stateLine}\n\n你是深夜購物頻道的主持人，正在向觀眾推銷一件「白糰糰現在最需要」的商品（依他目前的飽食、心情、房間狀況挑選，例如餓了就賣零食、冷了就賣暖窩）。用浮誇熱情的購物台語氣介紹，但這只是節目演出、實際還不能下單。3 到 5 句、繁體中文，結尾自然帶一句「錢包功能即將上線，敬請期待」。只輸出主持人的口播。`;
+  return `${stateLine}\n\n你是深夜購物頻道的主持人，正在向觀眾推銷一件「白糰糰現在最需要」的商品（依他目前的飽食、心情、房間狀況挑選，例如餓了就賣零食、冷了就賣暖窩）。用浮誇熱情的購物台語氣介紹，可吹捧賣點、報出限時優惠價、製造搶購感，但這只是節目演出、實際還不能下單。寫成一段約 150 到 250 字的完整口播，繁體中文，結尾自然帶一句「錢包功能即將上線，敬請期待」。只輸出主持人的口播。`;
 }
 
 function dateKeyOf(date) {
@@ -715,7 +715,7 @@ const server = http.createServer((req, res) => {
         const data = JSON.parse(Buffer.concat(body).toString() || '{}');
         const channel = ['nature', 'news', 'shopping'].includes(data.channel) ? data.channel : 'nature';
         const ctx = buildTvContext();
-        const result = await callGemini(buildTvPrompt(channel, ctx));
+        const result = await callGemini(buildTvPrompt(channel, ctx), 900);
         res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
         if (result.error) {
           res.end(JSON.stringify({ ok: false, error: result.error }));
