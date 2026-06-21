@@ -60,6 +60,7 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
 .bar-hp { height: 100%; background: #7ab87a; border-radius: 2px; transition: width 0.5s; }
 .bar-food { height: 100%; background: #e8b45a; border-radius: 2px; transition: width 0.5s; }
 .shadow-active { font-size: 11px; color: #c07050; margin-top: 4px; }
+.mood-dot { display: inline-block; width: 11px; height: 11px; border-radius: 50%; background: #ccc; flex-shrink: 0; border: 1px solid rgba(0,0,0,0.1); }
 
 .pagination { display: flex; align-items: center; justify-content: space-between; padding: 10px 1.5rem; border-bottom: 1px solid #ede8e0; }
 .page-btn {

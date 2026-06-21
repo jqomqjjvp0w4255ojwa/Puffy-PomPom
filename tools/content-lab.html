@@ -23,6 +23,7 @@
     background: rgba(255,255,255,0.15); color: #fdf6ee; border: 1px solid rgba(255,255,255,0.4);
     border-radius: 6px; padding: 6px 10px; font-size: 12px; cursor: pointer;
   }
+  header button.danger { background: rgba(200,60,40,0.35); border-color: rgba(255,200,180,0.6); }
 
   .gh-panel {
     background: #fff; border-bottom: 1px solid #e8c8b0; padding: 12px 16px;
@@ -72,6 +73,9 @@
   .num-card label { display: block; font-size: 12px; color: #6a4a2a; margin-bottom: 3px; }
   .num-card .field-desc { font-size: 11px; color: #a08868; margin: 2px 0 6px; line-height: 1.4; }
   .num-card input { width: 100%; }
+  .adv-block { margin-top: 14px; background: #fff; border: 1px solid #e8c8b0; border-radius: 10px; padding: 4px 12px 12px; }
+  .adv-block summary { cursor: pointer; font-size: 13px; color: #8a5a3a; padding: 8px 0; font-weight: 500; }
+  .adv-desc { font-size: 11px; color: #a08868; line-height: 1.5; margin: 4px 0 10px; }
 
   .frag-search-row { display: flex; gap: 8px; margin-bottom: 10px; }
   .frag-search-row input { flex: 1; }
@@ -115,6 +119,7 @@
 
 <header>
   <h1>糰糰文案實驗室</h1>
+  <button class="danger" onclick="resetWorld()" title="封存目前進度，重新開始">↺ 重啟</button>
   <button onclick="toggleGhPanel()">⚙ 連線設定</button>
 </header>
 
@@ -162,6 +167,11 @@
       </div>
     </div>
     <div class="num-grid" id="balance-fields"></div>
+    <details class="adv-block">
+      <summary>進階：隱藏數值累積速度（熟悉度／好感度／心情／質地）</summary>
+      <div class="adv-desc">控制糰糰對巨怪的暱稱與心情怎麼隨互動變化。數字越大變化越快。互動＝巨怪當回合對房間有新動作；照顧良好＝飽食高於充足門檻且健康&gt;60；受苦＝飽食或健康過低。</div>
+      <div class="num-grid" id="balance-adv-fields"></div>
+    </details>
     <div class="status-line off" id="balance-status"></div>
   </div>
 
@@ -245,23 +255,46 @@ const BALANCE_FIELDS = [
   { key: 'highFoodThreshold', label: '飽食充足門檻', desc: '高於這個值健康會緩慢回復' },
   { key: 'highFoodHpDelta', label: '高飽食時健康變化', desc: '通常是正數' }
 ];
+const BALANCE_ADV_FIELDS = [
+  { key: 'familiarityPresent', label: '熟悉度／巨怪在場', desc: '巨怪沒外出時每回合加', step: 1 },
+  { key: 'familiarityInteract', label: '熟悉度／有互動加成', desc: '當回合有新動作時額外加', step: 1 },
+  { key: 'familiarityAwayDecay', label: '熟悉度／外出變化', desc: '外出時的增減，預設0（不倒退）', step: 1 },
+  { key: 'affectionInteract', label: '好感度／有互動', desc: '當回合有新動作時加', step: 1 },
+  { key: 'affectionWellCared', label: '好感度／照顧良好', desc: '飽食足且健康好時加', step: 1 },
+  { key: 'affectionAway', label: '好感度／外出冷落', desc: '外出時的變化，通常負數', step: 1 },
+  { key: 'affectionNeglect', label: '好感度／受苦', desc: '飽食或健康過低時，通常負數', step: 1 },
+  { key: 'moodDecay', label: '心情回歸速度 0~1', desc: '每回合朝中性回歸的比例', step: 0.05 },
+  { key: 'moodInteract', label: '心情／有互動', desc: '當回合有新動作時加', step: 1 },
+  { key: 'moodWellCared', label: '心情／照顧良好', desc: '飽食足且健康好時加', step: 1 },
+  { key: 'moodCrisis', label: '心情／受苦', desc: '飽食或健康過低時，通常負數', step: 1 },
+  { key: 'moodAway', label: '心情／外出', desc: '外出時的變化，通常負數', step: 1 },
+  { key: 'moodVisitor', label: '心情／有訪客', desc: '當回合有訪客留言時加', step: 1 },
+  { key: 'textureEase', label: '質地靠近速度 0~1', desc: '形狀/硬度朝目標靠近的比例', step: 0.01 },
+  { key: 'tickDayMinMin', label: '回覆頻率／白天最短(分)', desc: '06:00~22:00 之間，每次更新間隔下限', step: 1 },
+  { key: 'tickDayMaxMin', label: '回覆頻率／白天最長(分)', desc: '06:00~22:00 之間，每次更新間隔上限', step: 1 },
+  { key: 'tickNightMinMin', label: '回覆頻率／夜間最短(分)', desc: '22:00~06:00 之間，每次更新間隔下限', step: 1 },
+  { key: 'tickNightMaxMin', label: '回覆頻率／夜間最長(分)', desc: '22:00~06:00 之間，每次更新間隔上限', step: 1 }
+];
 let balanceData = {};
-function buildBalanceFields() {
-  const box = document.getElementById('balance-fields');
+function buildBalanceCards(box, fields) {
   box.innerHTML = '';
-  BALANCE_FIELDS.forEach(f => {
+  fields.forEach(f => {
     const card = document.createElement('div');
     card.className = 'num-card';
-    card.innerHTML = `<label>${f.label}</label><div class="field-desc">${f.desc}</div><input type="number" id="balance-${f.key}" step="1">`;
+    card.innerHTML = `<label>${f.label}</label><div class="field-desc">${f.desc}</div><input type="number" id="balance-${f.key}" step="${f.step || 1}">`;
     box.appendChild(card);
     card.querySelector('input').value = balanceData[f.key] ?? 0;
     card.querySelector('input').oninput = e => { balanceData[f.key] = Number(e.target.value); saveLocal(); };
   });
 }
+function buildBalanceFields() {
+  buildBalanceCards(document.getElementById('balance-fields'), BALANCE_FIELDS);
+  buildBalanceCards(document.getElementById('balance-adv-fields'), BALANCE_ADV_FIELDS);
+}
 function applyBalanceData(data) { balanceData = data || {}; buildBalanceFields(); }
 function collectBalanceData() {
   const out = {};
-  BALANCE_FIELDS.forEach(f => { out[f.key] = Number(document.getElementById(`balance-${f.key}`).value); });
+  [...BALANCE_FIELDS, ...BALANCE_ADV_FIELDS].forEach(f => { out[f.key] = Number(document.getElementById(`balance-${f.key}`).value); });
   return out;
 }
 
@@ -395,6 +428,20 @@ function loadFromServer(name, apply) {
     .then(r => r.json())
     .then(data => { apply(data); saveLocal(); })
     .catch(() => alert('拉取失敗，可能是還沒部署或不在遊戲網域下開啟。'));
+}
+
+// ===================== 重啟（封存後重置）=====================
+async function resetWorld() {
+  if (!confirm('確定要重啟嗎？\n目前的世界狀態跟所有每日紀錄會被「封存」（搬到 archive/ 資料夾，不會刪除），然後重新從初始值開始。')) return;
+  if (!confirm('再次確認：這會讓糰糰現在的健康/飽食/熟悉度/心情全部重置成初始值。封存的舊資料只能用來回顧，不會自動復原。要繼續嗎？')) return;
+  try {
+    const res = await fetch('/api/reset', { method: 'POST' });
+    const data = await res.json();
+    if (data.ok) alert(`已封存並重啟。封存位置：${data.archivedTo}`);
+    else alert('重啟失敗：' + (data.error || '未知錯誤'));
+  } catch (e) {
+    alert('重啟失敗，可能不在遊戲網域下開啟這個頁面。');
+  }
 }
 
 // ===================== GitHub 自動上傳 =====================
