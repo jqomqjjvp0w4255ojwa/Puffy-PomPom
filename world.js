@@ -1112,7 +1112,8 @@ async function tick() {
 
   const visitorMessages = world.visitor_messages || [];
   const visitorInput = visitorMessages.length > 0
-    ? '\n訪客留言：\n' + visitorMessages.map(m => `${m.name || '匿名訪客'}：${m.message}`).join('\n')
+    ? '\n訪客留言（白糰糰不懂上面寫什麼，留言對牠僅是一陣動靜或聲響。牠可能因此有反應：轉頭看一下、警戒、好奇湊近、被嚇到躲起來，也可能完全沒反應、自顧自做自己的事）：\n' +
+      visitorMessages.map(m => `${m.name || '匿名訪客'}：${m.message}`).join('\n')
     : '';
 
   const pendingNotes = world.pending_notes || [];
