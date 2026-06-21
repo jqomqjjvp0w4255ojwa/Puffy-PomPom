@@ -155,6 +155,11 @@
   <span class="sync-status off" id="sync-status">尚未連接，僅存在這台瀏覽器</span>
 </div>
 
+<div class="sync-bar">
+  <span>累積填好之後按這個鍵，下載檔案後到 GitHub 上覆蓋 <code>data/hidden-stats.json</code>，遊戲就會套用新表：</span>
+  <button onclick="downloadGameJSON()">下載遊戲設定檔（hidden-stats.json）</button>
+</div>
+
 <div class="tabs">
   <button class="tab-btn active" data-tab="nickname" onclick="switchTab('nickname')">暱稱實驗室</button>
   <button class="tab-btn" data-tab="texture" onclick="switchTab('texture')">質地實驗室</button>
@@ -535,6 +540,25 @@ function readCSV(e, callback) {
   };
   reader.readAsText(file);
   e.target.value = '';
+}
+
+// ===================== 匯出遊戲用設定檔（給 world.js 讀取） =====================
+function downloadGameJSON() {
+  const data = {
+    fam: { min: 0, max: 100, bands: BANDS },
+    aff: { min: -100, max: 100, bands: BANDS },
+    unit: { min: 0, max: 100, bands: BANDS },
+    nicknameGrid,
+    textureGrid,
+    moodBands
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'hidden-stats.json';
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 // ===================== 自動存檔（localStorage，僅留在這台瀏覽器，仍建議定期匯出CSV備份） =====================

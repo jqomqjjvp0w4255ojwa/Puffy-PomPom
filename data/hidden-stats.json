@@ -1,0 +1,8 @@
+{
+  "fam": { "min": 0, "max": 100, "bands": 7 },
+  "aff": { "min": -100, "max": 100, "bands": 7 },
+  "unit": { "min": 0, "max": 100, "bands": 7 },
+  "nicknameGrid": [],
+  "textureGrid": [],
+  "moodBands": []
+}
