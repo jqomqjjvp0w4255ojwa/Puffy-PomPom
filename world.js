@@ -172,10 +172,11 @@ function getNextDelay() {
   const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Taipei' }));
   const hour = now.getHours();
   const isNight = hour >= 22 || hour < 6;
+  const bal = loadBalance();
   if (isNight) {
-    return getRandomMinutes(180, 360) * 60 * 1000;
+    return getRandomMinutes(bal.tickNightMinMin, bal.tickNightMaxMin) * 60 * 1000;
   } else {
-    return getRandomMinutes(15, 60) * 60 * 1000;
+    return getRandomMinutes(bal.tickDayMinMin, bal.tickDayMaxMin) * 60 * 1000;
   }
 }
 
@@ -497,7 +498,11 @@ const BALANCE_BUILTIN = {
   moodCrisis: -20,
   moodAway: -5,
   moodVisitor: 8,
-  textureEase: 0.05
+  textureEase: 0.05,
+  tickNightMinMin: 180,
+  tickNightMaxMin: 360,
+  tickDayMinMin: 15,
+  tickDayMaxMin: 60
 };
 function loadBalance() {
   try {
@@ -716,6 +721,33 @@ const server = http.createServer((req, res) => {
       res.end('error');
     }
 
+  } else if (req.url === '/api/reset' && req.method === 'POST') {
+    // 重啟：把目前 world.json 跟所有 logs 封存到 archive/<timestamp>/，再用種子檔重置 world.json。
+    // 不刪除任何資料，只是搬走，未來想回顧還能找到。
+    try {
+      const stamp = getRealTime().display.replace(/[\/: ]/g, '-') + '_' + Date.now();
+      const archiveDir = path.join(DATA_DIR, 'archive', stamp);
+      fs.mkdirSync(archiveDir, { recursive: true });
+      if (fs.existsSync(WORLD_FILE)) {
+        fs.copyFileSync(WORLD_FILE, path.join(archiveDir, 'world.json'));
+      }
+      if (fs.existsSync(LOGS_DIR)) {
+        const archiveLogsDir = path.join(archiveDir, 'logs');
+        fs.mkdirSync(archiveLogsDir, { recursive: true });
+        for (const file of fs.readdirSync(LOGS_DIR)) {
+          const src = path.join(LOGS_DIR, file);
+          if (fs.statSync(src).isFile()) {
+            fs.renameSync(src, path.join(archiveLogsDir, file));
+          }
+        }
+      }
+      fs.copyFileSync(SEED_WORLD_FILE, WORLD_FILE);
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ ok: true, archivedTo: `archive/${stamp}` }));
+    } catch (e) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ ok: false, error: String(e) }));
+    }
   } else if (req.url === '/' || req.url === '/index.html') {
     try {
       const html = fs.readFileSync('index.html', 'utf8');

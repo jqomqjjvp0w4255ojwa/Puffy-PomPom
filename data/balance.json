@@ -22,5 +22,10 @@
   "moodAway": -5,
   "moodVisitor": 8,
 
-  "textureEase": 0.05
+  "textureEase": 0.05,
+
+  "tickNightMinMin": 180,
+  "tickNightMaxMin": 360,
+  "tickDayMinMin": 15,
+  "tickDayMaxMin": 60
 }
