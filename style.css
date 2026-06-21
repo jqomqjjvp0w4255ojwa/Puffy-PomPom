@@ -109,6 +109,7 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
 .entry-text { font-size: 14px; color: #4a3a2a; line-height: 2; white-space: pre-line; }
 .entry-stats { font-size: 11px; color: #b0a090; margin-top: 6px; }
 .entry-shadow { font-size: 11px; color: #c07050; margin-top: 3px; }
+.entry-mechanism { font-size: 10px; color: #c0b8ac; margin-top: 3px; font-family: monospace; }
 .empty { padding: 3rem 1.5rem; text-align: center; font-size: 13px; color: #b0a090; line-height: 2; }
 
 .panel-btn {

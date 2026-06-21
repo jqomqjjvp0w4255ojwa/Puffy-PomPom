@@ -69,6 +69,7 @@ ${bodyBlock}
 輸出格式，只輸出這個JSON，不要其他文字與markdown：
 {
   "scene": "這段時間發生的事，2-4句，漫畫分鏡風格，句與句之間換行",
+  "fed": true或false（只負責判斷「巨怪這次的行為／這段敘述裡，白糰糰是否正在吃東西或被餵食」，不要管數值，飽食度增減完全由程式處理，你只要誠實判斷有沒有吃就好；巨怪持續餵食的場景如果還沒結束，這裡要持續回true，不是只有第一次才算）,
   "baituantuan": {
     "location": "地點",
     "fur": "正常，或簡短描述（4-8字內，例如：微髒、右耳禿一塊、毛打結）"
@@ -991,25 +992,20 @@ async function tick() {
     return;
   }
 
+  const preDecay = { food: world.characters.baituantuan.food, hp: world.characters.baituantuan.hp };
   world = applyNaturalDecay(world);
 
   const { display } = getRealTime();
   let bt = world.characters.baituantuan;
+  const decayFoodDelta = bt.food - preDecay.food;
+  const decayHpDelta = bt.hp - preDecay.hp;
 
   // owner_action 只在第一次被 AI 讀到時納入 prompt；讀過一次就只是顯示用的唯讀文字，
   // 直到玩家送出新的一則才會再次變成「未讀」。
   const ownerActionUnread = !!world.owner_action && !world.owner_action_read;
 
-  // 巨怪的行為描述若提到餵食/留置食物，機制上直接加飽食度，不完全依賴 AI 自行判斷給多少。
-  // 否則每一輪 applyNaturalDecay 持續扣飽食，玩家明明餵了東西，數值卻沒有反映。
-  const FEED_KEYWORDS = /冰棒|冰塊|水|麵包|食物|餵|放.*吃|留.*吃|奶|點心|零食/;
-  if (ownerActionUnread && FEED_KEYWORDS.test(world.owner_action)) {
-    const bal = loadBalance();
-    const newFood = Math.min(100, bt.food + bal.ownerFeedFoodBoost);
-    world.characters.baituantuan = { ...bt, food: newFood };
-    bt = world.characters.baituantuan;
-    console.log(`偵測到餵食行為，飽食 +${bal.ownerFeedFoodBoost} → ${newFood}`);
-  }
+  // 飽食加成的「有沒有吃」交給AI每輪判斷（result.fed），「加多少」固定由程式決定，
+  // 套用時機放在拿到AI回應之後（見下方），避免巨怪持續餵食的多輪場景只在第一輪加到分。
 
   const ownerStatus = world.owner_status ? `巨怪狀態：${world.owner_status}` : '';
   const ownerAction = ownerActionUnread ? `巨怪對房間的行為：${world.owner_action}` : '';
@@ -1147,6 +1143,13 @@ async function tick() {
       calls: prevUsage.calls + 1
     };
 
+    // 「有沒有吃」交給AI（result.fed）判斷，「加多少」固定由程式決定，套在自然衰減之後的飽食值上。
+    const feedDelta = result.fed ? balance.ownerFeedFoodBoost : 0;
+    const finalFood = Math.min(100, bt.food + feedDelta);
+    if (feedDelta > 0) console.log(`AI 判斷本輪有餵食，飽食 +${feedDelta} → ${finalFood}`);
+
+    const mechanismLog = `自然衰減 飽食${decayFoodDelta >= 0 ? '+' : ''}${decayFoodDelta}/健康${decayHpDelta >= 0 ? '+' : ''}${decayHpDelta}、餵食 飽食${feedDelta >= 0 ? '+' : ''}${feedDelta}`;
+
     const newWorld = {
       ...world,
       nextTickAt: Date.now() + delay,
@@ -1157,6 +1160,7 @@ async function tick() {
           ...world.characters.baituantuan,
           ...(({ hp, food, ...rest }) => rest)(result.baituantuan || {}),
           ...hidden,
+          food: finalFood,
           nickname,
           texture,
           mood_color: moodColor ? { name: moodColor.name, color: moodColor.color } : null,
@@ -1224,10 +1228,11 @@ async function tick() {
       // 特殊事件的腳本卡：主頁會用特殊框原文顯示在 AI 續寫的 scene 之前。
       eventKey: triggeredEvent || null,
       eventCard: eventCard || null,
+      mechanismLog: triggeredEvent ? `特殊事件強制設值，不走一般機制` : mechanismLog,
       tokens: { input: usage.input_tokens || 0, output: usage.output_tokens || 0 }
     }]);
 
-    console.log(`【${display}】\n${result.scene}\n健康 ${finalBt.hp} · 飽食 ${finalBt.food}${furNote} · ${result.baituantuan.location}\n${result.shadow.active ? '⚠️ 小黑影出沒中' : ''}\ntoken：本次input${usage.input_tokens || 0}/output${usage.output_tokens || 0} · 累計input${tokenUsage.inputTokens}/output${tokenUsage.outputTokens}（共${tokenUsage.calls}次）`);
+    console.log(`【${display}】\n${result.scene}\n健康 ${finalBt.hp} · 飽食 ${finalBt.food}${furNote} · ${result.baituantuan.location}\n${result.shadow.active ? '⚠️ 小黑影出沒中' : ''}\n機制：${mechanismLog}\ntoken：本次input${usage.input_tokens || 0}/output${usage.output_tokens || 0} · 累計input${tokenUsage.inputTokens}/output${tokenUsage.outputTokens}（共${tokenUsage.calls}次）`);
 
   } catch (e) {
     console.error('錯誤：', e.message);
