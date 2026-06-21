@@ -859,9 +859,11 @@ const BANDS = 7;
 const FAM_BANDS = 7;
 const AFF_BANDS = 9; // 好感度含負值（反感~中立~喜愛），格數比熟悉度多，避免正負分到的格子太粗
 const UNIT_BANDS = 7;
-function makeBandHelper(min, max, bands) {
-  const edges = [];
-  for (let i = 0; i <= bands; i++) edges.push(Math.round(min + i * (max - min) / bands));
+function makeBandHelper(min, max, bands, customEdges) {
+  // customEdges（可選）：自訂分界點，讓中間區間更寬、兩端更窄（山坡曲線）。需 bands+1 個遞增值。
+  const edges = (Array.isArray(customEdges) && customEdges.length === bands + 1)
+    ? customEdges.slice()
+    : (() => { const e = []; for (let i = 0; i <= bands; i++) e.push(Math.round(min + i * (max - min) / bands)); return e; })();
   return {
     edges,
     index(value) {
@@ -877,7 +879,8 @@ const STAT_BANDS = 7;
 const FAM = makeBandHelper(0, 100, FAM_BANDS);
 const AFF = makeBandHelper(-100, 100, AFF_BANDS);
 const UNIT = makeBandHelper(0, 100, UNIT_BANDS);
-const STAT = makeBandHelper(0, 100, STAT_BANDS);
+const STAT_EDGES = [0, 8, 20, 38, 62, 80, 92, 100]; // 山坡曲線：中央正常區寬、兩端極值窄
+const STAT = makeBandHelper(0, 100, STAT_BANDS, STAT_EDGES);
 
 let nicknameGrid = Array.from({ length: FAM_BANDS }, () => Array.from({ length: AFF_BANDS }, () => ''));
 let textureGrid = Array.from({ length: UNIT_BANDS }, () => Array.from({ length: UNIT_BANDS }, () => ''));
@@ -1149,7 +1152,7 @@ function collectTraitData() {
     fam: { min: 0, max: 100, bands: FAM_BANDS },
     aff: { min: -100, max: 100, bands: AFF_BANDS },
     unit: { min: 0, max: 100, bands: UNIT_BANDS },
-    stat: { min: 0, max: 100, bands: STAT_BANDS },
+    stat: { min: 0, max: 100, bands: STAT_BANDS, edges: STAT_EDGES },
     nicknameGrid, textureGrid, moodBands, statGrid
   };
 }

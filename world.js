@@ -387,8 +387,15 @@ function loadHiddenStats() {
 
 function bandIndex(value, axis) {
   const { min, max, bands } = axis;
-  const edges = [];
-  for (let i = 0; i <= bands; i++) edges.push(min + i * (max - min) / bands);
+  // axis.edges（可選）：自訂分界點，讓中間「正常」區間更寬、兩端極值更窄（山坡曲線）。
+  // 必須是 bands+1 個遞增數值，例如 7 段：[0,8,20,38,62,80,92,100]。沒給就退回等寬切分。
+  let edges;
+  if (Array.isArray(axis.edges) && axis.edges.length === bands + 1) {
+    edges = axis.edges;
+  } else {
+    edges = [];
+    for (let i = 0; i <= bands; i++) edges.push(min + i * (max - min) / bands);
+  }
   for (let i = 0; i < bands; i++) {
     if (value <= edges[i + 1] || i === bands - 1) return i;
   }
