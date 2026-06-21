@@ -5,29 +5,22 @@
   "lowFoodHpDelta": -3,
   "highFoodThreshold": 60,
   "highFoodHpDelta": 1,
-
   "familiarityPresent": 1,
   "familiarityInteract": 2,
   "familiarityAwayDecay": 0,
-
   "affectionInteract": 2,
   "affectionWellCared": 1,
   "affectionAway": -1,
   "affectionNeglect": -3,
-
   "moodDecay": 0.3,
   "moodInteract": 15,
   "moodWellCared": 5,
   "moodCrisis": -20,
   "moodAway": -5,
   "moodVisitor": 8,
-
   "textureEase": 0.05,
-
-  "ownerFeedFoodBoost": 35,
-
-  "tickNightMinMin": 180,
-  "tickNightMaxMin": 360,
   "tickDayMinMin": 15,
-  "tickDayMaxMin": 60
+  "tickDayMaxMin": 60,
+  "tickNightMinMin": 180,
+  "tickNightMaxMin": 360
 }
