@@ -49,7 +49,7 @@ ${section('body')}
 毛況系統：
 ${section('furSystem')}
 
-依當前數值調整行為（讓描述的動作跟健康/飽食一致，別寫出與數值矛盾的狀態）：
+依當前狀態調整行為（這是描述性的語氣參考，不是精確數值規則，順著這條線寫，不要卡在某個門檻上）：
 ${section('statBands')}
 
 小黑影：
@@ -58,8 +58,8 @@ ${section('shadow')}
 訪客留言：
 ${section('visitors')}
 
-食物來源邏輯：
-${section('foodSource')}
+生活習性：
+${section('habits')}
 
 規則：
 ${section('rules')}
@@ -68,8 +68,6 @@ ${section('rules')}
 {
   "scene": "這段時間發生的事，2-4句，漫畫分鏡風格，句與句之間換行",
   "baituantuan": {
-    "hp": 數字,
-    "food": 數字,
     "location": "地點",
     "fur": "正常，或簡短描述（4-8字內，例如：微髒、右耳禿一塊、毛打結）"
   },
@@ -95,12 +93,11 @@ const EVENT_PROMPTS_BUILTIN = {
 白糰糰進入「渡劫」狀態：全身絨毛微顫，靜坐窗邊仰望天空，雷雲湧動。
 隨機二選一決定結局並寫入scene：
 A. 度劫失敗（電糰糰）：遭雷擊，絨毛焦捲變黑，靜電纏身，動作僵硬，沉默放電躲回角落。
-B. 度劫成功（法喜糰糰）：升空發光後「啪」一聲落地，異常開心，於地板施展誇張街舞動作。
-輸出時將baituantuan.food設為50、baituantuan.hp設為120（這是封頂溢出的特殊值，不是錯誤）。`,
+B. 度劫成功（法喜糰糰）：升空發光後「啪」一聲落地，異常開心，於地板施展誇張街舞動作。`,
   shadowRevenge: `特殊事件・冥影與霜解篇（健康與飽食同時歸零，這次更新請完整呈現此事件，不要寫成日常動態）：
 白糰糰無聲崩解，只留下毛毛與冰屑，小黑影自陰影浮現，與殘骸融合成「冰晶暗影」，展開一場正義與荒誕共行的審判：室內異常降溫結霜、巨型Mr.DUST夜行騷擾、如影隨形的精神干擾。
 終局：小黑影在無人處吐出白糰糰遺骸，俠魂等待再生。
-輸出時將baituantuan.food與baituantuan.hp都設為60（重生後的起始值），shadow.active設為true，shadow.dust_count明顯增加。`,
+shadow.active設為true，shadow.dust_count明顯增加。`,
   observation: `特殊事件・觀察篇（玩家輸入觸發旁白模式）：
 本次scene改用DISCOVERY紀錄片風格書寫：科學旁觀的趣味、俏皮詼諧的科普語氣，把白糰糰的行為包裝成「野生觀察紀錄」（例如：「在零下八度的清晨，一隻野生白糰糰⋯⋯」），但內容仍要符合他平時的行為邏輯。`
 };
@@ -513,6 +510,26 @@ function loadBalance() {
   }
 }
 
+// 把健康/飽食數值轉成一句簡短的狀態描述給AI，而不是直接餵數字讓AI卡在門檻上判斷。
+function describeVital(hp, food) {
+  let hpLine;
+  if (hp >= 95) hpLine = '健康飽滿，毛澎潤渾圓，眼神銳利，動作靈活';
+  else if (hp > 75) hpLine = '健康穩定，動作平穩，略顯疲態';
+  else if (hp > 50) hpLine = '毛開始塌軟，動作微歪，偏好躲陰影靜坐、咬竹籤';
+  else if (hp > 25) hpLine = '健康亮紅燈，掉毛變扁，動作遲緩，可能啃家具找東西吃';
+  else if (hp > 5) hpLine = '健康危急，瀕臨崩潰，行為混亂';
+  else hpLine = '健康瀕臨崩潰邊緣，絨毛因重病蒸發，露出粉色身體，無法戰鬥，急需介入';
+
+  let foodLine;
+  if (food >= 95) foodLine = '活力充沛、毛炸成球，會跳舞玩水';
+  else if (food > 75) foodLine = '飽足，主動找小東西啃、舔冰舔竹籤';
+  else if (food > 50) foodLine = '略餓，動作變慢，偷舔牆、舔灰塵、跑廁所吸水';
+  else if (food > 25) foodLine = '飢餓，行為開始混亂';
+  else foodLine = '極度飢餓，可能啃自己、變裸糰糰、排出黑色霜晶，這是需要緊急介入的危險狀態';
+
+  return `${hpLine}；${foodLine}`;
+}
+
 function applyNaturalDecay(world) {
   const bt = world.characters.baituantuan;
   const windowOpen = world.room.window_open;
@@ -883,6 +900,17 @@ async function tick() {
   const eventInput = triggeredEvent ? '\n' + EVENT_PROMPTS[triggeredEvent] : '';
   if (triggeredEvent) console.log(`特殊事件觸發：${triggeredEvent}`);
 
+  // 健康/飽食完全由機制決定（衰減、餵食加成、特殊事件強制值），AI不再直接控制這兩個數字，
+  // 只透過一句簡短狀態描述去理解該怎麼寫，避免被硬數值門檻卡住敘述。
+  if (triggeredEvent === 'ascension') {
+    world.characters.baituantuan = { ...bt, food: 50, hp: 120 };
+    bt = world.characters.baituantuan;
+  } else if (triggeredEvent === 'shadowRevenge') {
+    world.characters.baituantuan = { ...bt, food: 60, hp: 60 };
+    bt = world.characters.baituantuan;
+  }
+  const vitalLine = describeVital(bt.hp, bt.food);
+
   const weather = await fetchWeather() || world.weather || null;
   const weatherInput = weather
     ? `\n戶外天氣（台北實況）：${weather.desc} ${weather.temp}℃ 濕度${weather.humidity}%`
@@ -902,7 +930,7 @@ async function tick() {
     : '關';
 
   const prompt = `當前時間：${display}
-白糰糰：健康${bt.hp} 飽食${bt.food} 毛況:${bt.fur || '正常'} 位置:${bt.location}
+白糰糰目前狀態：${vitalLine} · 毛況:${bt.fur || '正常'} · 位置:${bt.location}
 小黑影：${world.characters.shadow.active ? '活躍' : '潛伏'} 位置:${world.characters.shadow.location} 灰塵:${world.characters.shadow.dust_count}
 房間清潔度：${world.room.cleanliness}
 窗戶：${world.room.window_open ? '開' : '關'} 冷氣：${acLabel} 燈：${world.room.light_on ? '開' : '關'} 廁所門：${world.room.toilet_open ? '開' : '關'}
@@ -942,7 +970,7 @@ async function tick() {
       characters: {
         baituantuan: {
           ...world.characters.baituantuan,
-          ...result.baituantuan,
+          ...(({ hp, food, ...rest }) => rest)(result.baituantuan || {}),
           ...hidden,
           nickname,
           texture,
@@ -998,18 +1026,20 @@ async function tick() {
     const furNote = result.baituantuan.fur && result.baituantuan.fur !== '正常'
       ? ` · ${result.baituantuan.fur}` : '';
 
+    const finalBt = newWorld.characters.baituantuan;
+
     appendToDay(todayKey, 'diary', [{
       time: display,
       scene: result.scene,
-      hp: result.baituantuan.hp,
-      food: result.baituantuan.food,
+      hp: finalBt.hp,
+      food: finalBt.food,
       location: result.baituantuan.location,
       fur: result.baituantuan.fur && result.baituantuan.fur !== '正常' ? result.baituantuan.fur : null,
       shadowActive: !!result.shadow.active,
       tokens: { input: usage.input_tokens || 0, output: usage.output_tokens || 0 }
     }]);
 
-    console.log(`【${display}】\n${result.scene}\n健康 ${result.baituantuan.hp} · 飽食 ${result.baituantuan.food}${furNote} · ${result.baituantuan.location}\n${result.shadow.active ? '⚠️ 小黑影出沒中' : ''}\ntoken：本次input${usage.input_tokens || 0}/output${usage.output_tokens || 0} · 累計input${tokenUsage.inputTokens}/output${tokenUsage.outputTokens}（共${tokenUsage.calls}次）`);
+    console.log(`【${display}】\n${result.scene}\n健康 ${finalBt.hp} · 飽食 ${finalBt.food}${furNote} · ${result.baituantuan.location}\n${result.shadow.active ? '⚠️ 小黑影出沒中' : ''}\ntoken：本次input${usage.input_tokens || 0}/output${usage.output_tokens || 0} · 累計input${tokenUsage.inputTokens}/output${tokenUsage.outputTokens}（共${tokenUsage.calls}次）`);
 
   } catch (e) {
     console.error('錯誤：', e.message);
