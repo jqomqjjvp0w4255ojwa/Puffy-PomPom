@@ -817,12 +817,19 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
   margin-top: 4px;
 }
 .sticky-note-textarea::placeholder { color: rgba(0,0,0,0.3); }
-.note-location-picker { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; }
-.note-loc-chip {
-  font-size: 10.5px; color: rgba(0,0,0,0.55); background: rgba(255,255,255,0.45);
-  border: 1px solid rgba(0,0,0,0.12); border-radius: 10px; padding: 3px 9px; cursor: pointer;
+.note-location-picker { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 6px; }
+.note-loc-label { font-size: 11px; color: rgba(0,0,0,0.5); }
+.note-loc-select {
+  font-family: 'Noto Serif TC', serif; font-size: 11.5px; color: rgba(0,0,0,0.7);
+  background: rgba(255,255,255,0.45); border: 1px solid rgba(0,0,0,0.15);
+  border-radius: 8px; padding: 3px 6px; cursor: pointer; outline: none;
 }
-.note-loc-chip.active { background: rgba(0,0,0,0.18); color: rgba(0,0,0,0.8); }
+.note-loc-custom {
+  font-family: 'Noto Serif TC', serif; font-size: 11.5px; color: rgba(0,0,0,0.7);
+  background: rgba(255,255,255,0.55); border: 1px solid rgba(0,0,0,0.15);
+  border-radius: 8px; padding: 3px 7px; outline: none; width: 90px;
+}
+.note-loc-custom:focus { border-color: rgba(0,0,0,0.35); }
 .note-saved-loc { font-size: 10.5px; color: rgba(0,0,0,0.45); margin-top: 4px; }
 .sticky-note-saved {
   flex: 1;

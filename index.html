@@ -6,7 +6,7 @@
 <title>白糰糰觀察日記</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
-<link rel="stylesheet" href="style.css?v=20260622x">
+<link rel="stylesheet" href="style.css?v=20260622y">
 </head>
 <body>
 
@@ -338,11 +338,16 @@
   </div>
   <textarea class="sticky-note-textarea" id="sticky-note-textarea" maxlength="50" placeholder="想跟他說的話，他聽不懂，但可能會有反應..."></textarea>
   <div class="note-location-picker" id="note-location-picker">
-    <span class="note-loc-chip" data-loc="desk_leg" onclick="setNoteLocation('desk_leg')">桌腳</span>
-    <span class="note-loc-chip" data-loc="fridge_bottom" onclick="setNoteLocation('fridge_bottom')">冰箱下方</span>
-    <span class="note-loc-chip" data-loc="wall" onclick="setNoteLocation('wall')">牆上</span>
-    <span class="note-loc-chip" data-loc="floor" onclick="setNoteLocation('floor')">地板</span>
-    <span class="note-loc-chip" data-loc="computer" onclick="setNoteLocation('computer')">電腦</span>
+    <span class="note-loc-label">貼在</span>
+    <select class="note-loc-select" id="note-loc-select" onchange="onNoteLocSelect(this.value)">
+      <option value="floor">地板</option>
+      <option value="desk_leg">桌腳</option>
+      <option value="fridge_bottom">冰箱下方</option>
+      <option value="wall">牆上</option>
+      <option value="computer">電腦</option>
+      <option value="__custom__">其他…</option>
+    </select>
+    <input type="text" class="note-loc-custom" id="note-loc-custom" maxlength="12" placeholder="貼在哪裡？" style="display:none;" oninput="onNoteLocCustomInput(this.value)">
   </div>
   <div class="sticky-note-saved" id="sticky-note-saved" style="display:none;"></div>
   <div class="note-saved-loc" id="note-saved-loc" style="display:none;"></div>
@@ -381,6 +386,6 @@
   </div>
 </div>
 
-<script src="app.js?v=20260622x"></script>
+<script src="app.js?v=20260622y"></script>
 </body>
 </html>

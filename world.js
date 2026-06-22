@@ -1092,8 +1092,9 @@ const server = http.createServer((req, res) => {
         const name = (data.name || '').trim().slice(0, 20);
         const message = (data.message || '').trim().slice(0, 50);
         const color = (data.color || 'yellow').trim().slice(0, 20);
-        const VALID_NOTE_LOCATIONS = ['desk_leg', 'fridge_bottom', 'wall', 'floor', 'computer'];
+        const VALID_NOTE_LOCATIONS = ['desk_leg', 'fridge_bottom', 'wall', 'floor', 'computer', 'custom'];
         const location = VALID_NOTE_LOCATIONS.includes(data.location) ? data.location : 'floor';
+        const locationLabel = location === 'custom' ? (data.locationLabel || '').trim().slice(0, 12) : '';
         if (!message) {
           res.writeHead(400, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ ok: false, error: 'empty message' }));
@@ -1102,7 +1103,7 @@ const server = http.createServer((req, res) => {
         const world = JSON.parse(fs.readFileSync(WORLD_FILE, 'utf8'));
         const { display } = getRealTime();
         const id = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-        world.visitor_messages = [...(world.visitor_messages || []), { id, name: name || '匿名訪客', message, time: display, color, location }];
+        world.visitor_messages = [...(world.visitor_messages || []), { id, name: name || '匿名訪客', message, time: display, color, location, locationLabel }];
         writeWorldFile(world);
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ ok: true, id }));
@@ -1242,7 +1243,12 @@ async function tick() {
   const visitorMessages = world.visitor_messages || [];
   const visitorInput = visitorMessages.length > 0
     ? '\n訪客留言（白糰糰不懂上面寫什麼，留言對牠僅是一陣動靜或聲響。牠可能因此有反應：轉頭看一下、警戒、好奇湊近、被嚇到躲起來，也可能完全沒反應、自顧自做自己的事。低處的留言牠走動時會經過、踩到，可以自然帶到牠在紙片上留下小腳印（這就是牠看過、經過的記號）；高處的留言牠通常碰不到、不會注意到，除非牠自己爬上去）：\n' +
-      visitorMessages.map(m => `${m.name || '匿名訪客'}：${m.message}（${NOTE_LOCATION_DESC[m.location] || NOTE_LOCATION_DESC.floor}）`).join('\n')
+      visitorMessages.map(m => {
+        const desc = m.location === 'custom' && m.locationLabel
+          ? `貼在${m.locationLabel}（位置不確定，牠碰不碰得到看運氣）`
+          : (NOTE_LOCATION_DESC[m.location] || NOTE_LOCATION_DESC.floor);
+        return `${m.name || '匿名訪客'}：${m.message}（${desc}）`;
+      }).join('\n')
     : '';
 
   const pendingNotes = world.pending_notes || [];
@@ -1411,7 +1417,10 @@ async function tick() {
           mood_color: moodColor ? { name: moodColor.name, color: moodColor.color } : null,
           memory: [...(bt.memory || []).slice(-10), result.scene]
         },
-        shadow: { ...world.characters.shadow, ...result.shadow }
+        // 小黑影是否「出沒中」由機制決定，不交給 AI 自由設定：
+        // 只有死亡復仇期間（world.death.active）才真正活躍，平時一律潛伏，
+        // 避免 active 卡在 true 卻整段敘述都沒看到牠動靜。
+        shadow: { ...world.characters.shadow, ...result.shadow, active: !!world.death.active }
       },
       room: { ...world.room, ...result.room }
     };
