@@ -799,6 +799,33 @@ const server = http.createServer((req, res) => {
       res.end('error');
     }
 
+  } else if (req.url.startsWith('/api/fragments')) {
+    // 筆記（黑影筆記）圖鑑：依「篇章（source）」分組，回傳每張碎片的收集狀態。
+    // 未收集的不回傳 text，避免在圖鑑裡提前劇透；只有收集過才看得到全貌。
+    try {
+      const world = JSON.parse(fs.readFileSync(WORLD_FILE, 'utf8'));
+      ensureFragmentsState(world);
+      const collected = new Set(world.fragments.collected || []);
+      const chapters = [];
+      const bySource = {};
+      for (const f of FRAGMENTS) {
+        const src = f.source || '（未分類）';
+        if (!bySource[src]) { bySource[src] = { source: src, total: 0, got: 0, items: [] }; chapters.push(bySource[src]); }
+        const ch = bySource[src];
+        const isGot = collected.has(f.id);
+        ch.total++;
+        if (isGot) ch.got++;
+        ch.items.push({ id: f.id, label: f.label || '', collected: isGot, text: isGot ? f.text : null });
+      }
+      // 一張都沒收集的篇章，連篇名都不顯示（unlocked=false）。
+      chapters.forEach(c => { c.unlocked = c.got > 0; });
+      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ chapters, totalGot: collected.size, totalAll: FRAGMENTS.length }));
+    } catch (e) {
+      res.writeHead(500);
+      res.end('error');
+    }
+
   } else if (req.url.startsWith('/api/weather')) {
     // 直接抓即時天氣給前端顯示用，不經過 AI、不花 token。
     fetchWeather().then(weather => {
