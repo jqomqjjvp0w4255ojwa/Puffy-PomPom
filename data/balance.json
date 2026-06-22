@@ -22,6 +22,8 @@
   "moodVisitor": 8,
   "textureEase": 0.05,
   "ownerFeedFoodBoost": 35,
+  "feedStreakStep": 12,
+  "feedStreakMax": 75,
   "tickNightMinMin": 180,
   "tickNightMaxMin": 360,
   "tickDayMinMin": 15,
