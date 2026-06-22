@@ -643,6 +643,16 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
 .status-icons i { font-size: 14px; color: #b0a090; cursor: pointer; transition: color 0.15s; }
 .status-icons i:hover { color: #7a6a5a; }
 
+/* 我的狀態下拉選單（取代鉛筆編輯）：前面一顆依狀態變色的小圓點 */
+.status-select-wrap { display: flex; align-items: center; gap: 7px; padding: 4px 0 2px; }
+.status-dot { width: 7px; height: 7px; border-radius: 50%; background: transparent; flex-shrink: 0; }
+.status-select {
+  flex: 1; min-width: 0; font-family: 'Noto Serif TC', serif; font-size: 12px; color: #4a3a2a;
+  background: transparent; border: none; border-bottom: 1px solid #ece1d0;
+  padding: 3px 2px; cursor: pointer; outline: none;
+}
+.status-select:focus { border-bottom-color: #d8b88a; }
+
 .status-tag-picker { display: flex; flex-wrap: wrap; gap: 5px; padding: 4px 0 2px; align-items: center; }
 .status-tag-chip {
   font-size: 10.5px; color: #6a5a4a; background: #f5ede0; border: 1px solid #e8d8c0;
@@ -993,9 +1003,13 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
 .book-shelf { display: flex; flex-direction: column; height: 100%; }
 .book-shelf-head {
   font-size: 14px; color: #8a5a3a; font-weight: 500;
-  padding: 0 4px 12px; margin-bottom: 4px; border-bottom: 1px solid #e6dccb;
-  display: flex; align-items: center; gap: 6px;
+  padding: 8px 10px; margin-bottom: 4px; border-radius: 8px;
+  display: flex; align-items: center; gap: 6px; cursor: pointer;
+  border-bottom: 1px solid #e6dccb; border-radius: 8px 8px 0 0;
+  transition: background 0.15s;
 }
+.book-shelf-head:hover { background: rgba(191,167,143,0.12); }
+.book-shelf-head.active { background: #f3e8d4; color: #7a4a2a; }
 .book-shelf-list { display: flex; flex-direction: column; gap: 12px; padding-top: 14px; overflow-y: auto; }
 .shelf-book {
   padding: 13px; border-radius: 10px; cursor: pointer;
@@ -1194,6 +1208,10 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
 
 /* 筆記書本：仿實體書排版。手機單頁，電腦（≥760px）雙頁對開。 */
 .notes-book { flex: 1; min-height: 400px; position: relative; }
+/* 手機：書頁（目錄頁與內頁）統一高度，翻起來才不會一頁高一頁矮 */
+@media (max-width: 759px) {
+  .notes-book .book-page { min-height: 62vh; }
+}
 .book-spread { display: flex; gap: 0; }
 .book-spread.single { justify-content: center; }
 .book-page {
@@ -1211,13 +1229,14 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
 }
 .book-running-title.left { left: 14px; }
 .book-running-title.right { right: 14px; }
+/* 回到書櫃目錄鈕：手機固定浮在右下、疊在「巨怪面板」鈕上方；桌面放在書本正下方中間 */
 .book-toc-btn {
-  position: absolute; top: -10px; right: -10px; z-index: 2;
-  width: 26px; height: 26px; border-radius: 50%;
+  position: fixed; right: 1.5rem; bottom: 9.5rem; z-index: 110;
+  width: 44px; height: 44px; border-radius: 50%;
   border: 1px solid #ece1d0; background: #fffdf9; color: #b89878;
-  cursor: pointer; font-size: 13px;
+  cursor: pointer; font-size: 18px;
   display: flex; align-items: center; justify-content: center;
-  box-shadow: 0 2px 6px rgba(120,90,60,0.12);
+  box-shadow: 0 2px 10px rgba(120,90,60,0.2);
 }
 .book-toc-btn:hover { color: #c08050; border-color: #e3c89c; }
 .book-page-num {
@@ -1285,14 +1304,18 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
 .book-tap-zone.right { right: 0; }
 
 @media (min-width: 760px) {
-  /* 書冊側欄常駐在左，書本內頁放寬到接近 DEMO 的尺寸，不再被 .notebook 的 480px 卡窄 */
+  /* 側欄導覽常駐在左時，整頁內容（封面標題＋內文）一起往右讓出側欄寬度，
+     這樣封面標題和書本才會對齊、一起置中，不會看起來歪左邊。 */
+  body.docked { padding-left: calc(1rem + 320px); transition: padding-left 0.2s; }
   .side-drawer.with-subnav { width: 320px; }
   .page-pane[data-page="notes"] {
-    max-width: none; margin: 0; padding: 0 24px 0 344px;
+    max-width: none; margin: 0 auto;
     background: transparent; box-shadow: none; border-radius: 0; overflow: visible;
   }
   .notes-book { max-width: 820px; margin: 0 auto; min-height: 520px; }
   .book-page { border-radius: 4px; padding: 32px 40px 40px; min-height: 520px; }
+  /* 桌面：回到書櫃目錄鈕放在書本正下方中間 */
+  .book-toc-btn { position: absolute; top: auto; right: auto; bottom: -22px; left: 50%; transform: translateX(-50%); }
   .book-spread:not(.single) .book-page:first-child { border-radius: 4px 1px 1px 4px; }
   .book-spread:not(.single) .book-page:last-child { border-radius: 1px 4px 4px 1px; }
 }
