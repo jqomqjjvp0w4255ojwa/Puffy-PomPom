@@ -888,26 +888,43 @@ function closeDrawer() {
   document.getElementById('menu-btn').classList.remove('hidden');
 }
 function isDesktopLayout() { return window.matchMedia('(min-width: 760px)').matches; }
-const DRAWER_SUBNAV = {
-  review: [
-    { sub: 'today', icon: 'ti-sun', label: '今日回顧' },
-    { sub: 'stats', icon: 'ti-chart-bar', label: '統計' },
-    { sub: 'timeline', icon: 'ti-timeline', label: '時間軸' }
-  ],
-  notes: [
-    { sub: 'toc', icon: 'ti-list', label: '目錄' }
-  ]
-};
 function renderDrawerSubnav(name) {
   const box = document.getElementById('drawer-subnav');
-  const items = DRAWER_SUBNAV[name] || [];
   if (name === 'review') {
-    box.innerHTML = items.map(it => `<button class="review-nav-item${it.sub === 'today' ? ' active' : ''}" data-sub="${it.sub}" onclick="selectReviewSub('${it.sub}')"><i class="ti ${it.icon}"></i>${it.label}</button>`).join('');
+    box.innerHTML = renderDrawerTimelineTree();
   } else if (name === 'notes') {
-    box.innerHTML = items.map(it => `<button class="review-nav-item" onclick="notesIndex=0;renderNotes()"><i class="ti ${it.icon}"></i>${it.label}</button>`).join('');
+    box.innerHTML = `<button class="review-nav-item" onclick="notesIndex=0;renderNotes()"><i class="ti ti-list"></i>目錄</button>`;
   } else {
     box.innerHTML = '';
   }
+}
+// 側欄時間軸樹：年 → 月 → 日，預設展開最新一年/月。
+function renderDrawerTimelineTree() {
+  if (!availableDates.length) return '<div class="drawer-empty">還沒有任何紀錄。</div>';
+  const years = {};
+  availableDates.slice().reverse().forEach(d => {
+    const [y, m] = d.split('-');
+    years[y] = years[y] || {};
+    years[y][m] = years[y][m] || [];
+    years[y][m].push(d);
+  });
+  const yearKeys = Object.keys(years).sort((a, b) => b.localeCompare(a));
+  const latestYear = yearKeys[0];
+  return yearKeys.map(y => {
+    const monthKeys = Object.keys(years[y]).sort((a, b) => b.localeCompare(a));
+    const latestMonth = monthKeys[0];
+    return `<div class="tree-year${y === latestYear ? ' open' : ''}">
+      <div class="tree-year-head" onclick="this.parentElement.classList.toggle('open')"><i class="ti ti-chevron-right"></i>${y} 年</div>
+      <div class="tree-year-body">
+        ${monthKeys.map(m => `<div class="tree-month${y === latestYear && m === latestMonth ? ' open' : ''}">
+          <div class="tree-month-head" onclick="this.parentElement.classList.toggle('open')"><i class="ti ti-chevron-right"></i>${Number(m)} 月</div>
+          <div class="tree-month-body">
+            ${years[y][m].map(d => `<div class="tree-day-link${d === currentDateKey ? ' current' : ''}" onclick="openMemoryOverlay('${d}')">${d.slice(8)} 日</div>`).join('')}
+          </div>
+        </div>`).join('')}
+      </div>
+    </div>`;
+  }).join('');
 }
 function selectDrawerTab(name) {
   document.querySelectorAll('.rail-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
@@ -928,11 +945,7 @@ window.addEventListener('resize', () => {
   if (!isDesktopLayout() && drawer.classList.contains('with-subnav')) closeDrawer();
 });
 
-// ---- 回顧：今日回顧 / 時間軸 / 統計 ----
-function selectReviewSub(sub) {
-  document.querySelectorAll('.review-nav-item').forEach(b => b.classList.toggle('active', b.dataset.sub === sub));
-  document.querySelectorAll('.review-sub').forEach(p => p.classList.toggle('active', p.dataset.sub === sub));
-}
+// ---- 回顧：陪伴總天數 / 歷史上的今天 / 完整時間軸（合併為單一連續頁面） ----
 let daySummaries = {};
 const WEEKDAY_LABELS = ['日', '一', '二', '三', '四', '五', '六'];
 async function loadReview() {
@@ -944,18 +957,6 @@ async function loadReview() {
   } catch (e) { daySummaries = {}; }
   renderTodayRecall();
   renderDateTimeline();
-  try {
-    const res = await fetch('/api/fragments?t=' + Date.now());
-    const data = await res.json();
-    const days = availableDates.length;
-    const el = document.getElementById('review-stats');
-    el.innerHTML = `
-      <div class="stat-card"><div class="stat-value">${days}</div><div class="stat-label">陪伴關係總天數</div></div>
-      <div class="stat-card"><div class="stat-value">${data.totalGot} / ${data.totalAll}</div><div class="stat-label">黑影筆記收集</div></div>
-      <div class="stat-card"><div class="stat-value">${data.chapters.filter(c => c.unlocked).length} / ${data.chapters.length}</div><div class="stat-label">已揭開的篇章</div></div>`;
-  } catch (e) {
-    document.getElementById('review-stats').innerHTML = '<div class="drawer-empty">統計載入失敗。</div>';
-  }
 }
 
 function dayRowHtml(d) {
@@ -979,19 +980,14 @@ function dayRowHtml(d) {
   </div>`;
 }
 
-// 今日回顧：頂部標題＋「歷史上的今天」（同月日的過去紀錄）＋最近幾天的回顧
+// 頂部標語（陪伴關係總天數）＋「歷史上的今天」（同月日的過去紀錄）
 function renderTodayRecall() {
   const headBox = document.getElementById('review-today-head');
   const annivBox = document.getElementById('anniv-row');
-  const recentBox = document.getElementById('date-tree-recent');
-  if (!headBox || !availableDates.length) {
-    if (recentBox) recentBox.innerHTML = '<div class="drawer-empty">還沒有任何紀錄。</div>';
-    return;
-  }
+  if (!headBox || !availableDates.length) return;
   const latest = availableDates[availableDates.length - 1];
   const [ly, lm, ld] = latest.split('-').map(Number);
-  const weekday = WEEKDAY_LABELS[new Date(ly, lm - 1, ld).getDay()];
-  headBox.innerHTML = `今天是 ${latest}（週${weekday}）`;
+  headBox.innerHTML = `你們已經一起生活了 <b>${availableDates.length}</b> 天`;
 
   const mmdd = latest.slice(5);
   const matches = availableDates
@@ -1013,9 +1009,6 @@ function renderTodayRecall() {
       </div>`;
     }).join('')}</div>`;
   }
-
-  const recentDates = availableDates.slice(-5).reverse();
-  recentBox.innerHTML = recentDates.map(d => dayRowHtml(d)).join('');
 }
 
 // 時間軸：連續滾動列表，依年/月分組、sticky 標頭，由新到舊，不需展開/收合。
@@ -1061,9 +1054,9 @@ async function openMemoryOverlay(d) {
       const ownerNotesHtml = owners.map(o => `<div class="memory-owner-note"><i class="ti ti-user-circle"></i> ${escapeHtml(o.action || '')}</div>`).join('');
       const visitorNotesHtml = visitors.map(v => `<div class="memory-visitor-note"><i class="ti ti-message-circle"></i> <b>${escapeHtml(v.name || '訪客')}</b>：${escapeHtml(v.message || '')}</div>`).join('');
       return `<div class="memory-entry-card">
+        ${(ownerNotesHtml || visitorNotesHtml) ? `<div class="memory-entry-notes">${ownerNotesHtml}${visitorNotesHtml}</div>` : ''}
         <div class="memory-entry-time">${escapeHtml(e.time || '')}</div>
         <div class="memory-entry-text">${escapeHtml(e.scene || '')}</div>
-        ${(ownerNotesHtml || visitorNotesHtml) ? `<div class="memory-entry-notes">${ownerNotesHtml}${visitorNotesHtml}</div>` : ''}
       </div>`;
     }).join('');
     const leftoverOwner = ownerLog.filter(o => !usedOwner.has(o));
@@ -1117,7 +1110,8 @@ async function loadNotebook() {
   try {
     const res = await fetch('/api/fragments?t=' + Date.now());
     const data = await res.json();
-    notesPages = [{ type: 'toc', chapters: data.chapters, totalGot: data.totalGot, totalAll: data.totalAll }];
+    const unlockedChapters = data.chapters.filter(c => c.unlocked).length;
+    notesPages = [{ type: 'toc', chapters: data.chapters, totalGot: data.totalGot, totalAll: data.totalAll, unlockedChapters, totalChapters: data.chapters.length }];
     data.chapters.filter(c => c.unlocked).forEach(c => {
       notesPages.push({ type: 'cover', chapter: c });
       // 用固定位置排版：未收集的碎片保留原本的格位（用污漬呈現），日後收集到才會在「同一個位置」現出內容。
@@ -1153,7 +1147,7 @@ function pageInnerHtml(page) {
       return `<div class="toc-item" onclick="openChapterPage('${c.source.replace(/'/g, "\\'")}')"><span>${escapeHtml(c.source)}</span><span class="toc-count">${c.got}/${c.total}</span></div>`;
     }).join('');
     return { running: '', body: `<div class="book-toc-title">黑影筆記・目錄</div>
-      <div class="book-progress">已收集 ${page.totalGot} / ${page.totalAll} 張碎片</div>
+      <div class="book-progress">已收集 ${page.totalGot} / ${page.totalAll} 張碎片　・　已揭開的篇章 ${page.unlockedChapters} / ${page.totalChapters}</div>
       ${items}` };
   }
   if (page.type === 'cover') {

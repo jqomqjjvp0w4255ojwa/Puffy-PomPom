@@ -6,7 +6,7 @@
 <title>白糰糰觀察日記</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
-<link rel="stylesheet" href="style.css?v=20260622i">
+<link rel="stylesheet" href="style.css?v=20260622j">
 </head>
 <body>
 
@@ -82,31 +82,18 @@
   </div>
 </div>
 
-<!-- 回顧：左側分頁導覽（今日回顧／時間軸／統計）＋上方搜尋列 -->
+<!-- 回顧：合併為單一連續頁面（總天數標語＋歷史上的今天＋完整時間軸）＋上方搜尋列 -->
 <div class="notebook page-pane" data-page="review">
   <div class="review-layout">
-    <div class="review-nav">
-      <button class="review-nav-item active" data-sub="today" onclick="selectReviewSub('today')"><i class="ti ti-sun"></i>今日回顧</button>
-      <button class="review-nav-item" data-sub="timeline" onclick="selectReviewSub('timeline')"><i class="ti ti-timeline"></i>時間軸</button>
-      <button class="review-nav-item" data-sub="stats" onclick="selectReviewSub('stats')"><i class="ti ti-chart-bar"></i>統計</button>
-    </div>
-    <div class="review-main">
+    <div class="review-main review-main-full">
       <div class="review-search-wrap">
         <i class="ti ti-search"></i>
         <input type="text" class="review-search" id="review-search" placeholder="搜尋日期（例如 2026-06 或 06-21）" oninput="renderDateTimeline()">
       </div>
-      <div class="review-sub active" data-sub="today" id="review-today">
-        <div class="review-today-head" id="review-today-head"></div>
-        <div class="anniv-row" id="anniv-row"></div>
-        <div class="review-recent-label">最近的回顧</div>
-        <div class="date-tree" id="date-tree-recent"><div class="drawer-empty">載入中…</div></div>
-      </div>
-      <div class="review-sub" data-sub="timeline" id="review-timeline">
-        <div class="date-tree" id="date-tree"><div class="drawer-empty">載入中…</div></div>
-      </div>
-      <div class="review-sub" data-sub="stats" id="review-stats">
-        <div class="drawer-empty">載入中…</div>
-      </div>
+      <div class="review-today-head" id="review-today-head"></div>
+      <div class="anniv-row" id="anniv-row"></div>
+      <div class="review-recent-label">時間軸</div>
+      <div class="date-tree" id="date-tree"><div class="drawer-empty">載入中…</div></div>
     </div>
   </div>
 </div>
@@ -389,6 +376,6 @@
   </div>
 </div>
 
-<script src="app.js?v=20260622i"></script>
+<script src="app.js?v=20260622j"></script>
 </body>
 </html>
