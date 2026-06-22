@@ -749,6 +749,8 @@ const BALANCE_BUILTIN = {
   moodVisitor: 8,
   textureEase: 0.05,
   ownerFeedFoodBoost: 35,
+  feedStreakStep: 12,
+  feedStreakMax: 75,
   rebirthTicks: 4,
   tickNightMinMin: 180,
   tickNightMaxMin: 360,
@@ -1374,19 +1376,27 @@ async function tick() {
       calls: prevUsage.calls + 1
     };
 
-    // 「有沒有吃」交給AI（result.fed）判斷，「加多少」固定由程式決定，套在自然衰減之後的飽食值上。
-    const feedDelta = result.fed ? balance.ownerFeedFoodBoost : 0;
+    // 「有沒有吃」交給AI（result.fed）判斷，「加多少」由程式決定，套在自然衰減之後的飽食值上。
+    // 連續進食加權：連續好幾個 tick 都在吃，會越吃越快（狼吞虎嚥），玩家不必一直補食。
+    // 一旦某輪沒吃，streak 歸零，下次重新從基礎量算起。
+    const fedNow = !!result.fed;
+    const feedStreak = fedNow ? (world.feed_streak || 0) + 1 : 0;
+    const feedDelta = fedNow
+      ? Math.min(balance.feedStreakMax, balance.ownerFeedFoodBoost + (feedStreak - 1) * balance.feedStreakStep)
+      : 0;
     const finalFood = Math.min(100, bt.food + feedDelta);
-    if (feedDelta > 0) console.log(`AI 判斷本輪有餵食，飽食 +${feedDelta} → ${finalFood}`);
+    if (feedDelta > 0) console.log(`AI 判斷本輪有餵食（連續第 ${feedStreak} 輪），飽食 +${feedDelta} → ${finalFood}`);
 
-    const mechanismLog = `自然衰減 飽食${decayFoodDelta >= 0 ? '+' : ''}${decayFoodDelta}/健康${decayHpDelta >= 0 ? '+' : ''}${decayHpDelta}、餵食 飽食${feedDelta >= 0 ? '+' : ''}${feedDelta}`;
+    const mechanismLog = `自然衰減 飽食${decayFoodDelta >= 0 ? '+' : ''}${decayFoodDelta}/健康${decayHpDelta >= 0 ? '+' : ''}${decayHpDelta}、餵食 飽食${feedDelta >= 0 ? '+' : ''}${feedDelta}${fedNow ? `（連續第${feedStreak}輪）` : ''}`;
 
     const newWorld = {
       ...world,
       nextTickAt: Date.now() + delay,
       weather: weather || world.weather || null,
       // 記下這輪糰糰有沒有吃到，給下一輪客觀疏忽保底判斷用。
-      last_fed: !!result.fed,
+      last_fed: fedNow,
+      // 連續進食輪數，給下一輪算進食加權用（沒吃會在上面歸零）。
+      feed_streak: feedStreak,
       // 記下這輪 AI 對關係好壞的判斷，給下一輪換算好感／心情用。
       last_bond: ['positive', 'neutral', 'negative'].includes(result.bond) ? result.bond : 'neutral',
       tokenUsage,
