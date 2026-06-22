@@ -1349,14 +1349,22 @@ async function tick() {
     ? `${acNow.broken ? '故障' : { cool: '冷氣', heat: '暖氣', fan: '送風', dry: '除濕' }[acNow.mode] || '冷氣'}${acNow.mode === 'fan' ? '' : acNow.temp + '℃'}`
     : '關';
 
+  // 小黑影出沒條件：房間髒（清潔度<40）或環境暗（關燈／深夜 22:00-06:00），或死亡復仇期間。
+  const roomDirty = (world.room.cleanliness ?? 100) < 40;
+  const isDark = world.room.light_on === false || getRealTime().hour >= 22 || getRealTime().hour < 6;
+  const shadowShouldAppear = !!world.death.active || roomDirty || isDark;
+  const shadowInput = shadowShouldAppear && !world.death.active
+    ? `\n小黑影現在從陰影裡出沒了（${roomDirty ? '房間髒亂' : ''}${roomDirty && isDark ? '又' : ''}${isDark ? '光線昏暗' : ''}，正是牠浮現的時機）。牠是躲在影子裡的另一個主角，不是背景。白糰糰一見到牠就會故意去招惹、找碴、跟牠摩擦——撲牠、踩牠、跟牠搶地盤或對峙，鬧出一段有來有往的小衝突。請把這段互動寫進敘述裡。`
+    : '';
+
   const prompt = `當前時間：${display}
 白糰糰目前狀態：${vitalLine} · 毛況:${bt.fur || '正常'} · 位置:${bt.location}
-小黑影：${world.characters.shadow.active ? '活躍' : '潛伏'} 位置:${world.characters.shadow.location} 灰塵:${world.characters.shadow.dust_count}
+小黑影：${shadowShouldAppear ? '活躍' : '潛伏'} 位置:${world.characters.shadow.location} 灰塵:${world.characters.shadow.dust_count}
 房間清潔度：${world.room.cleanliness}
 窗戶：${world.room.window_open ? '開' : '關'} 冷氣：${acLabel} 燈：${world.room.light_on ? '開' : '關'} 廁所門：${world.room.toilet_open ? '開' : '關'}
 巨怪對房間環境的描述：${world.room.env_desc || '無'}
 今天已發生：${world.room.events_today.join('，') || '無'}
-近期記憶：${(bt.memory || []).slice(-5).join(' / ') || '無'}${weatherInput}${climateInput}${ownerInput}${awayInput}${visitorInput}${eventInput}${pendingNotesInput}${hiddenInput}${loreInput}
+近期記憶：${(bt.memory || []).slice(-5).join(' / ') || '無'}${weatherInput}${climateInput}${shadowInput}${ownerInput}${awayInput}${visitorInput}${eventInput}${pendingNotesInput}${hiddenInput}${loreInput}
 
 生成這段時間白糰糰的動態。`;
 
@@ -1417,10 +1425,10 @@ async function tick() {
           mood_color: moodColor ? { name: moodColor.name, color: moodColor.color } : null,
           memory: [...(bt.memory || []).slice(-10), result.scene]
         },
-        // 小黑影是否「出沒中」由機制決定，不交給 AI 自由設定：
-        // 只有死亡復仇期間（world.death.active）才真正活躍，平時一律潛伏，
-        // 避免 active 卡在 true 卻整段敘述都沒看到牠動靜。
-        shadow: { ...world.characters.shadow, ...result.shadow, active: !!world.death.active }
+        // 小黑影是躲在影子裡的另一個主角，出沒與否由環境決定，不交給 AI 自由設定：
+        // 房間髒（清潔度低）或暗（關燈／深夜）牠就會從陰影裡浮現；死亡復仇期間必然活躍。
+        // 這樣 active 才會真的對應敘述裡看得到的動靜，不會卡在 true 卻整段沒提到牠。
+        shadow: { ...world.characters.shadow, ...(result.shadow || {}), active: shadowShouldAppear }
       },
       room: { ...world.room, ...result.room }
     };
