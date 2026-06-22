@@ -215,6 +215,7 @@
     <button class="tab-btn" data-tab="balance" onclick="switchTab('balance')">數值平衡</button>
     <button class="tab-btn" data-tab="frag" onclick="switchTab('frag')">紙片碎片</button>
     <button class="tab-btn" data-tab="lore" onclick="switchTab('lore')">世界書</button>
+    <button class="tab-btn" data-tab="action" onclick="switchTab('action')">行為籤庫</button>
     <button class="tab-btn" data-tab="event" onclick="switchTab('event')">特殊事件</button>
     <button class="tab-btn" data-tab="dev" onclick="switchTab('dev')">開發者專區</button>
   </div>
@@ -410,6 +411,23 @@
     </div>
     <div id="lore-list"></div>
     <div class="status-line off" id="lore-status"></div>
+  </div>
+
+  <!-- ============ 糰糰行為籤庫 ============ -->
+  <div class="tab-panel" id="panel-action">
+    <div class="panel-head">
+      <div class="desc">每張籤＝類型（type，英文短字，用來判斷「最近重複過沒有」）＋動作（只寫「牠做什麼」，不要寫情緒，例如不要寫「寂寞地巡邏」，情緒讓AI從場景自然帶出）。沒有強事件（訪客／特殊事件）的tick，每回合會隨機抽一張當靈感，並避開最近3次用過的類型，類型重複沒關係（同類型可以放多張不同動作，增加同類型內的變化），可以灌大量條目。</div>
+      <div class="actions">
+        <button class="ghost" onclick="loadFromServer('actions', applyActionData)">↻ 拉取最新</button>
+        <button class="primary" onclick="uploadJSON('data/actions.json', collectActionData(), 'action-status')">上傳</button>
+      </div>
+    </div>
+    <div class="frag-search-row">
+      <input type="text" id="action-search" placeholder="搜尋類型／動作內容…" oninput="renderActions()">
+      <button class="ghost" onclick="addActionEntry()">＋ 新增</button>
+    </div>
+    <div id="action-list"></div>
+    <div class="status-line off" id="action-status"></div>
   </div>
 
   <!-- ============ 特殊事件文案 ============ -->
@@ -1386,6 +1404,73 @@ function renderLorebook() {
   status.textContent = `共 ${loreData.length} 條（${loreData.filter(e => e.content && e.content.trim()).length} 條已填內容會送出）`;
 }
 
+// ===================== 糰糰行為籤庫 =====================
+// 條目＝{ id, type, action }。type 是英文短字，用來判斷「最近重複過沒有」；action 只寫動作不寫情緒。
+let actionData = [];
+let actionExpanded = new Set();
+function addActionEntry() {
+  const id = 'action-' + Date.now();
+  actionData.unshift({ id, type: '', action: '' });
+  actionExpanded.add(id);
+  renderActions();
+}
+function applyActionData(data) {
+  actionData = Array.isArray(data) ? data : [];
+  actionExpanded = new Set();
+  renderActions();
+}
+function collectActionData() { return actionData; }
+function renderActions() {
+  const list = document.getElementById('action-list');
+  const q = (document.getElementById('action-search').value || '').trim().toLowerCase();
+  list.innerHTML = '';
+  actionData.forEach((e, idx) => {
+    const hay = `${e.type} ${e.action}`.toLowerCase();
+    if (q && !hay.includes(q)) return;
+    const isOpen = actionExpanded.has(e.id);
+    const card = document.createElement('div');
+    card.className = 'frag-card' + (isOpen ? ' expanded' : '');
+    card.innerHTML = `
+      <div class="frag-summary">
+        <span class="idx">#${idx + 1}</span>
+        <span class="preview">${e.action ? '' : '（草稿，未送出）｜'}<span class="src">${esc(e.type || '未分類')}</span> ｜ ${esc(e.action || '（動作空白）')}</span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="frag-body">
+        <div class="row">
+          <div><label>類型（英文短字，如 patrol／nest，用於避免最近重複）</label><input data-k="type" value="${esc(e.type)}"></div>
+        </div>
+        <div class="row"><div style="flex-basis:100%"><label>動作（只寫「牠做什麼」，不要寫情緒詞）</label><textarea data-k="action" rows="2">${esc(e.action)}</textarea></div></div>
+        <div class="row"><div style="flex:0 0 auto"><button class="del">刪除這條</button></div></div>
+      </div>`;
+    card.querySelector('.frag-summary').onclick = () => {
+      if (isOpen) actionExpanded.delete(e.id); else actionExpanded.add(e.id);
+      renderActions();
+    };
+    card.querySelectorAll('[data-k]').forEach(el => {
+      el.onclick = ev => ev.stopPropagation();
+      el.oninput = () => {
+        const k = el.dataset.k;
+        actionData[idx][k] = el.value;
+        if (k === 'type' || k === 'action') {
+          const preview = card.querySelector('.preview');
+          preview.innerHTML = `${actionData[idx].action ? '' : '（草稿，未送出）｜'}<span class="src">${esc(actionData[idx].type || '未分類')}</span> ｜ ${esc(actionData[idx].action || '（動作空白）')}`;
+        }
+        saveLocal();
+      };
+    });
+    card.querySelector('.del').onclick = ev => {
+      ev.stopPropagation();
+      if (!confirm('確定刪除這支行為籤？')) return;
+      actionExpanded.delete(e.id);
+      actionData.splice(idx, 1); renderActions(); saveLocal();
+    };
+    list.appendChild(card);
+  });
+  const status = document.getElementById('action-status');
+  status.textContent = `共 ${actionData.length} 支籤（${actionData.filter(e => e.action && e.action.trim()).length} 支已填動作會送出）`;
+}
+
 // ===================== 特殊事件文案 =====================
 // 每個特殊事件＝腳本卡（card，主頁原文顯示、保證演出）＋ AI 續寫指示（prompt，AI 接著寫餘波）。
 const EVENT_GROUPS = [
@@ -1464,7 +1549,7 @@ function saveLocal() {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({
       promptData: collectPromptData(), balanceData: collectBalanceData(),
-      fragData, eventData: collectEventData(), traitData: collectTraitData(), loreData
+      fragData, eventData: collectEventData(), traitData: collectTraitData(), loreData, actionData
     }));
   } catch (e) {}
 }
@@ -1478,6 +1563,7 @@ function loadLocal() {
     if (d.fragData) fragData = d.fragData;
     if (d.eventData) eventData = d.eventData;
     if (d.loreData) loreData = d.loreData;
+    if (d.actionData) actionData = d.actionData;
     if (d.traitData) {
       if (d.traitData.nicknameGrid) nicknameGrid = d.traitData.nicknameGrid;
       if (d.traitData.textureGrid) textureGrid = d.traitData.textureGrid;
@@ -1596,6 +1682,7 @@ async function uploadAll() {
     ['data/fragments.json', collectFragData, 'frag-status'],
     ['data/events.json', collectEventData, 'event-status'],
     ['data/lorebook.json', collectLoreData, 'lore-status'],
+    ['data/actions.json', collectActionData, 'action-status'],
   ];
   let done = 0, failed = 0;
   setStatus('upload-all-status', 'busy', `全部上傳中… 0/${jobs.length}`);
@@ -1630,6 +1717,7 @@ statBuildTable(); statUpdatePreview();
 document.getElementById('stat-preview-name').onblur = () => { statUpdatePreview(); saveLocal(); };
 renderFragments();
 renderLorebook();
+renderActions();
 buildEventFields();
 
 if (!restored) {
@@ -1639,6 +1727,7 @@ if (!restored) {
   loadFromServer('events', applyEventData);
   loadFromServer('hidden-stats', applyTraitData);
   loadFromServer('lorebook', applyLoreData);
+  loadFromServer('actions', applyActionData);
 }
 </script>
 
