@@ -363,46 +363,59 @@ function createEditableField({ display, icons, input, editActions, emptyText, on
   return { edit, cancel, submit, submitValue, setFromServer };
 }
 
-const statusField = createEditableField({
-  display: document.getElementById('status-display'),
-  icons: document.getElementById('status-icons'),
-  input: document.getElementById('owner-input'),
-  editActions: document.getElementById('owner-edit-actions'),
-  emptyText: '尚無狀態',
-  onSave: (v) => fetch('/api/owner', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'status', input: v }) }),
-});
-// 狀態小圓點顏色：有空＝綠、忙碌＝黃、休息＝藍、不在／其他＝灰褐，一眼看出狀態。
+// 我的狀態：直接用下拉選單，不再有鉛筆。選［有空/忙碌/休息/不在］直接送出；
+// 選「其他…」才展開文字輸入。每個狀態前面的小圓點會依狀態變色。
+const STATUS_PRESETS = ['有空', '忙碌', '休息', '不在'];
 const STATUS_DOT_COLOR = { '有空': '#7ab87a', '忙碌': '#e8c84a', '休息': '#7aa8d8', '不在': '#b0a090' };
+let lastOwnerStatus = '';
+function saveOwnerStatus(v) {
+  return fetch('/api/owner', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'status', input: v }) });
+}
 function updateStatusDot() {
-  const el = document.getElementById('status-display');
-  el.style.setProperty('--status-dot-color', STATUS_DOT_COLOR[el.textContent] || '#c0a878');
+  const sel = document.getElementById('status-select');
+  const v = sel.value === '__custom__' ? '' : sel.value;
+  document.getElementById('status-dot').style.background = STATUS_DOT_COLOR[v] || (v ? '#c0a878' : 'transparent');
 }
-// 狀態用固定標籤［有空/忙碌/休息/不在］，選了直接送出；「其他」才退回文字輸入。
-function editStatus() {
-  document.getElementById('status-display').style.display = 'none';
-  document.getElementById('status-icons').style.display = 'none';
-  document.getElementById('status-tag-picker').style.display = 'flex';
+function hideStatusInput() {
+  document.getElementById('owner-input').style.display = 'none';
+  document.getElementById('owner-edit-actions').style.display = 'none';
 }
-function cancelStatus() {
-  document.getElementById('status-tag-picker').style.display = 'none';
-  statusField.cancel();
+// 把目前狀態套回下拉選單；自訂文字會動態插入成一個選項並選中。
+function setStatusFromServer(status) {
+  if (document.getElementById('owner-input').style.display !== 'none') return; // 正在輸入自訂就不要蓋掉
+  lastOwnerStatus = status || '';
+  const sel = document.getElementById('status-select');
+  const dyn = sel.querySelector('option[data-dynamic]');
+  if (dyn) dyn.remove();
+  if (status && !STATUS_PRESETS.includes(status)) {
+    const o = document.createElement('option');
+    o.value = status; o.textContent = status; o.dataset.dynamic = '1';
+    sel.insertBefore(o, sel.querySelector('option[value="__custom__"]'));
+  }
+  sel.value = status || '';
+  updateStatusDot();
+  document.getElementById('panel-btn').classList.toggle('has-input', !!status);
 }
-async function pickStatusTag(tag) {
-  if (tag === '__custom__') {
-    document.getElementById('status-tag-picker').style.display = 'none';
-    statusField.edit();
+async function onStatusSelect(v) {
+  if (v === '__custom__') {
+    document.getElementById('owner-input').style.display = 'block';
+    document.getElementById('owner-edit-actions').style.display = 'flex';
+    const input = document.getElementById('owner-input');
+    input.value = ''; input.focus();
     return;
   }
-  document.getElementById('status-tag-picker').style.display = 'none';
-  await statusField.submitValue(tag);
-  document.getElementById('panel-btn').classList.toggle('has-input', tag !== '');
-  updateStatusDot();
+  await saveOwnerStatus(v);
+  setStatusFromServer(v);
 }
-function submitStatus() {
+function cancelStatus() {
+  hideStatusInput();
+  setStatusFromServer(lastOwnerStatus);
+}
+async function submitStatus() {
   const v = document.getElementById('owner-input').value.trim();
-  statusField.submit();
-  document.getElementById('panel-btn').classList.toggle('has-input', v !== '');
-  updateStatusDot();
+  await saveOwnerStatus(v);
+  hideStatusInput();
+  setStatusFromServer(v);
 }
 
 const envField = createEditableField({
@@ -858,8 +871,7 @@ async function load() {
     updateCleanUI();
 
     const ownerStatus = world.owner_status || '';
-    statusField.setFromServer(ownerStatus);
-    updateStatusDot();
+    setStatusFromServer(ownerStatus);
     document.getElementById('status-time').textContent = world.owner_status_time ? '最後更新 ' + world.owner_status_time : '';
 
     envField.setFromServer(world.room.env_desc || '');
@@ -950,6 +962,7 @@ function closeDrawer() {
   document.getElementById('side-drawer').classList.remove('open', 'with-subnav');
   document.getElementById('drawer-backdrop').classList.remove('open');
   document.getElementById('menu-btn').classList.remove('hidden');
+  document.body.classList.remove('docked');
 }
 function isDesktopLayout() { return window.matchMedia('(min-width: 760px)').matches; }
 function renderDrawerSubnav(name) {
@@ -969,7 +982,7 @@ function renderDrawerSubnav(name) {
     `;
   } else if (name === 'notes') {
     box.innerHTML = `<div class="book-shelf">
-      <div class="book-shelf-head"><i class="ti ti-books"></i> 我的書冊</div>
+      <div class="book-shelf-head" id="book-shelf-head" onclick="notesIndex=0;renderNotes()" title="回到書櫃目錄"><i class="ti ti-books"></i> 我的書冊</div>
       <div class="notes-progress" id="notes-progress"></div>
       <div class="notes-filter">
         <span class="notes-filter-tab" data-f="all" onclick="setNotesFilter('all')">全部</span>
@@ -988,12 +1001,12 @@ function selectDrawerTab(name) {
   document.querySelectorAll('.page-pane').forEach(p => p.classList.toggle('active', p.dataset.page === name));
   const drawer = document.getElementById('side-drawer');
   const backdrop = document.getElementById('drawer-backdrop');
-  if (name === 'review' || (isDesktopLayout() && name === 'notes')) {
+  if (name === 'review' || name === 'notes') {
     renderDrawerSubnav(name);
     drawer.classList.add('open', 'with-subnav');
-    // 桌面：左側導覽常駐、背景不壓黑；手機：暫時疊在內文之上，可點外面收起
-    if (isDesktopLayout()) backdrop.classList.remove('open');
-    else backdrop.classList.add('open');
+    // 桌面：左側導覽常駐、背景不壓黑、整頁內容讓出側欄寬度一起置中；手機：暫時疊在內文之上，可點外面收起
+    if (isDesktopLayout()) { backdrop.classList.remove('open'); document.body.classList.add('docked'); }
+    else { backdrop.classList.add('open'); document.body.classList.remove('docked'); }
     document.getElementById('menu-btn').classList.add('hidden');
   } else {
     closeDrawer();
@@ -1325,6 +1338,9 @@ function renderNotesShelf() {
       <div class="notes-progress-bar"><div class="notes-progress-fill" style="width:${pct}%"></div></div>`;
   }
   document.querySelectorAll('.notes-filter-tab').forEach(t => t.classList.toggle('active', t.dataset.f === notesFilter));
+  // 「我的書冊」標題本身就是回到書櫃目錄的連結，目錄頁時讓它呈現選中態（不再另外放一張同層的書櫃卡片）。
+  const head = document.getElementById('book-shelf-head');
+  if (head) head.classList.toggle('active', notesIndex === 0);
 
   const list = document.getElementById('book-shelf-list');
   if (!list) return;
@@ -1335,10 +1351,7 @@ function renderNotesShelf() {
   const active = currentNotesSource();
   // 篩選模式下，只列出目前書本裡真的有頁面的書冊。
   const available = new Set(notesPages.filter(p => p.type === 'cover').map(p => p.chapter.source));
-  let html = `<div class="shelf-book shelf-toc${notesIndex === 0 ? ' active' : ''}" onclick="notesIndex=0;renderNotes()">
-    <div class="shelf-book-title"><i class="ti ti-list"></i>書櫃</div>
-    <div class="shelf-book-meta"><span>全部書冊</span><span>${notesMeta.totalGot}/${notesMeta.totalAll} 句</span></div>
-  </div>`;
+  let html = '';
   let shown = 0;
   notesChapters.forEach(c => {
     if (!c.unlocked) {

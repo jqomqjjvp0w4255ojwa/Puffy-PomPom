@@ -6,7 +6,7 @@
 <title>白糰糰觀察日記</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
-<link rel="stylesheet" href="style.css?v=20260622u">
+<link rel="stylesheet" href="style.css?v=20260622v">
 </head>
 <body>
 
@@ -128,18 +128,17 @@
         <div class="card-main">
           <div class="profile-name-row">
             <span class="profile-name" id="profile-name">巨怪</span>
-            <span class="status-icons" id="status-icons">
-              <i class="ti ti-pencil" onclick="editStatus()" title="編輯"></i>
-            </span>
           </div>
-          <div class="status-display has-dot" id="status-display"></div>
-          <div class="status-tag-picker" id="status-tag-picker" style="display:none;">
-            <span class="status-tag-chip" data-tag="有空" onclick="pickStatusTag('有空')">有空</span>
-            <span class="status-tag-chip" data-tag="忙碌" onclick="pickStatusTag('忙碌')">忙碌</span>
-            <span class="status-tag-chip" data-tag="休息" onclick="pickStatusTag('休息')">休息</span>
-            <span class="status-tag-chip" data-tag="不在" onclick="pickStatusTag('不在')">不在</span>
-            <span class="status-tag-chip status-tag-custom" data-tag="" onclick="pickStatusTag('__custom__')">其他</span>
-            <span class="status-tag-cancel" onclick="cancelStatus()">取消</span>
+          <div class="status-select-wrap" id="status-select-wrap">
+            <span class="status-dot" id="status-dot"></span>
+            <select class="status-select" id="status-select" onchange="onStatusSelect(this.value)">
+              <option value="">尚無狀態</option>
+              <option value="有空">有空</option>
+              <option value="忙碌">忙碌</option>
+              <option value="休息">休息</option>
+              <option value="不在">不在</option>
+              <option value="__custom__">其他…</option>
+            </select>
           </div>
           <textarea class="owner-textarea" id="owner-input" maxlength="30" placeholder="說說是什麼狀況..." style="display:none;"></textarea>
           <div class="edit-actions" id="owner-edit-actions" style="display:none;">
@@ -193,7 +192,6 @@
               </span>
             </div>
             <textarea class="owner-textarea" id="env-input" maxlength="60" placeholder="房間現在的樣子..." style="display:none;"></textarea>
-            <div class="profile-meta" id="env-time"></div>
             <div class="edit-actions" id="env-edit-actions" style="display:none;">
               <span class="edit-cancel" onclick="cancelEnv()">取消</span>
               <button class="owner-submit" id="env-submit-btn" onclick="submitEnv()">記錄</button>
@@ -208,6 +206,7 @@
           <div class="clean-desc" id="clean-desc">—</div>
         </div>
       </div>
+      <div class="card-time-tag" id="env-time"></div>
     </div>
 
     <div>
@@ -374,6 +373,6 @@
   </div>
 </div>
 
-<script src="app.js?v=20260622u"></script>
+<script src="app.js?v=20260622v"></script>
 </body>
 </html>
