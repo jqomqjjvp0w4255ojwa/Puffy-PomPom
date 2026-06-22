@@ -1087,9 +1087,9 @@ const server = http.createServer((req, res) => {
       res.writeHead(404);
       res.end('{}');
     }
-  } else if (req.url === '/style.css' || req.url === '/app.js') {
+  } else if (req.url.split('?')[0] === '/style.css' || req.url.split('?')[0] === '/app.js') {
     try {
-      const file = req.url.slice(1);
+      const file = req.url.split('?')[0].slice(1);
       const type = file.endsWith('.css') ? 'text/css' : 'application/javascript';
       const content = fs.readFileSync(file, 'utf8');
       res.writeHead(200, { 'Content-Type': `${type}; charset=utf-8` });
