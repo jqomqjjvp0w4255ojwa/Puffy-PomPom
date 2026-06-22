@@ -959,7 +959,11 @@ function renderDrawerSubnav(name) {
       <div class="anniv-row" id="anniv-row"></div>
     `;
   } else if (name === 'notes') {
-    box.innerHTML = `<button class="review-nav-item" onclick="notesIndex=0;renderNotes()"><i class="ti ti-list"></i>目錄</button>`;
+    box.innerHTML = `<div class="book-shelf">
+      <div class="book-shelf-head"><i class="ti ti-books"></i> 我的書冊</div>
+      <div class="book-shelf-list" id="book-shelf-list"><div class="drawer-empty">載入中…</div></div>
+    </div>`;
+    renderNotesShelf();
   } else {
     box.innerHTML = '';
   }
@@ -1211,6 +1215,8 @@ function jumpToDay(d) {
 // 頁面模型：[{type:'toc'}, {type:'cover', chapter}, {type:'content', chapter, items:[...]}, ...]
 let notesPages = [];
 let notesIndex = 0;
+let notesChapters = [];
+let notesMeta = { totalGot: 0, totalAll: 0 };
 const NOTES_ITEMS_PER_PAGE = 3;
 function isDesktopBook() { return window.matchMedia('(min-width: 760px)').matches; }
 
@@ -1230,6 +1236,8 @@ async function loadNotebook() {
     const res = await fetch('/api/fragments?t=' + Date.now());
     const data = await res.json();
     const unlockedChapters = data.chapters.filter(c => c.unlocked).length;
+    notesChapters = data.chapters;
+    notesMeta = { totalGot: data.totalGot, totalAll: data.totalAll };
     notesPages = [{ type: 'toc', chapters: data.chapters, totalGot: data.totalGot, totalAll: data.totalAll, unlockedChapters, totalChapters: data.chapters.length }];
     data.chapters.filter(c => c.unlocked).forEach(c => {
       notesPages.push({ type: 'cover', chapter: c });
@@ -1257,7 +1265,39 @@ function flipNotes(dir) {
 }
 function openChapterPage(source) {
   const i = notesPages.findIndex(p => p.type === 'cover' && p.chapter.source === source);
-  if (i !== -1) { notesIndex = i; renderNotes(); }
+  if (i !== -1) { notesIndex = i; renderNotes(); if (!isDesktopLayout()) closeDrawer(); }
+}
+function currentNotesSource() {
+  const p = notesPages[notesIndex];
+  return p && p.chapter ? p.chapter.source : null;
+}
+function renderNotesShelf() {
+  const list = document.getElementById('book-shelf-list');
+  if (!list) return;
+  if (!notesChapters.length) {
+    list.innerHTML = '<div class="drawer-empty">還沒有任何書冊。<br>多陪陪白糰糰，黑影會留下些什麼。</div>';
+    return;
+  }
+  const active = currentNotesSource();
+  let html = `<div class="shelf-book shelf-toc${notesIndex === 0 ? ' active' : ''}" onclick="notesIndex=0;renderNotes()">
+    <div class="shelf-book-title"><i class="ti ti-list"></i>書櫃目錄</div>
+    <div class="shelf-book-meta"><span>全部書冊</span><span>${notesMeta.totalGot}/${notesMeta.totalAll} 張</span></div>
+  </div>`;
+  notesChapters.forEach(c => {
+    if (!c.unlocked) {
+      html += `<div class="shelf-book locked">
+        <div class="shelf-book-title">？？？　未發現的書冊</div>
+        <div class="shelf-book-meta"><span>未解鎖</span><span>0/${c.total}</span></div>
+      </div>`;
+      return;
+    }
+    const isActive = notesIndex !== 0 && c.source === active ? ' active' : '';
+    html += `<div class="shelf-book${isActive}" onclick="openChapterPage('${c.source.replace(/'/g, "\\'")}')">
+      <div class="shelf-book-title">${escapeHtml(c.source)}</div>
+      <div class="shelf-book-meta"><span>${c.got === c.total ? '已蒐集完整' : '蒐集中'}</span><span>${c.got}/${c.total}</span></div>
+    </div>`;
+  });
+  list.innerHTML = html;
 }
 function pageInnerHtml(page) {
   if (page.type === 'toc') {
@@ -1324,6 +1364,7 @@ function renderNotes() {
   }
   box.innerHTML = html;
   attachSwipe(box);
+  renderNotesShelf();
   // 「新發現」的光暈先讓玩家看一眼，過一會兒才標記成已看過，下次再開就不會再亮了。
   const newIds = [...box.querySelectorAll('.frag-slot-new')].map(el => el.dataset.fragId);
   if (newIds.length) setTimeout(() => markFragmentsSeen(newIds), 1800);
