@@ -977,56 +977,68 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
 }
 .drawer-empty { font-size: 12px; color: #c0b0a0; text-align: center; padding: 24px 0; line-height: 1.6; }
 
-/* 回顧：底線式分頁標籤，不另外做白色卡片底 */
-.folder-tabs { display: flex; gap: 22px; border-bottom: 1px solid #ece4d6; padding: 0 2px; }
+/* 回顧：仿真實資料夾的耳朵分頁標籤，掀開的那一片貼著卡片本體 */
+.folder-tabs { display: flex; gap: 4px; padding: 0 2px; position: relative; z-index: 1; }
 .folder-tab {
-  border: none; background: none; color: #b0a08c;
-  padding: 8px 0; font-family: inherit; font-size: 12.5px; cursor: pointer;
-  position: relative;
+  border: 1px solid transparent; background: none; color: #b0a08c;
+  padding: 8px 16px; font-family: inherit; font-size: 12.5px; cursor: pointer;
+  position: relative; border-radius: 8px 8px 0 0;
 }
-.folder-tab.active { color: #8a5a3a; font-weight: 500; }
-.folder-tab.active::after {
-  content: ''; position: absolute; left: 0; right: 0; bottom: -1px; height: 2px;
-  background: #c08050; border-radius: 1px;
+.folder-tab.active {
+  color: #8a5a3a; font-weight: 500;
+  background: #fffdf9; border-color: #ece1d0;
+  border-bottom-color: #fffdf9;
+  margin-bottom: -1px;
 }
-.folder-body { padding: 16px 2px 4px; }
+.folder-body {
+  padding: 18px 16px 16px;
+  background: #fffdf9; border: 1px solid #ece1d0; border-radius: 0 10px 10px 10px;
+  box-shadow: 0 2px 10px rgba(120,90,60,0.05);
+}
 .review-sub { display: none; }
 .review-sub.active { display: block; }
 
-.stat-card { display: flex; align-items: baseline; justify-content: space-between; padding: 12px 4px; border-bottom: 1px solid #f0ebe2; }
+.stat-card {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 13px 4px; border-bottom: 1px solid #f3eee4;
+}
 .stat-card:last-child { border-bottom: none; }
-.stat-label { font-size: 12.5px; color: #8a7a68; }
-.stat-value { font-size: 16px; color: #8a5a3a; font-weight: 500; }
+.stat-label { font-size: 12px; color: #9a8a76; }
+.stat-value { font-size: 18px; color: #8a5a3a; font-weight: 600; font-family: Georgia, 'Times New Roman', serif; }
 
 /* 記錄檔案：搜尋＋年月日樹 */
 .review-search-wrap {
-  display: flex; align-items: center; gap: 6px;
-  padding: 7px 10px; margin-bottom: 12px;
-  border-bottom: 1px solid #e3d8c5; color: #b0a08c; font-size: 13px;
+  display: flex; align-items: center; gap: 7px;
+  padding: 9px 12px; margin-bottom: 14px;
+  background: #f9f5ee; border-radius: 9px; color: #b0a08c; font-size: 13px;
 }
 .review-search-wrap i { font-size: 14px; flex-shrink: 0; }
 .review-search {
   flex: 1; border: none; background: none; font-family: inherit; font-size: 12.5px;
   color: #5a4a3a; outline: none;
 }
-/* 時間軸（參考 iOS 相簿）：連續滾動，月份標頭 sticky 釘在上方 */
+/* 時間軸：連續滾動，月份標頭 sticky 釘在上方，每天用卡片區隔 */
 .date-tree { font-size: 13px; max-height: 360px; overflow-y: auto; }
 .timeline-month-header {
   position: sticky; top: 0; z-index: 1;
-  background: #fff; color: #8a5a3a; font-weight: 500;
-  padding: 6px 4px; font-size: 12px;
-  border-bottom: 1px solid #f0ebe2;
+  background: #fffdf9; color: #8a5a3a; font-weight: 500;
+  padding: 8px 4px 6px; font-size: 12px;
 }
 .tree-day {
-  cursor: pointer; padding: 7px 8px; border-radius: 6px; color: #6a5a4a;
+  cursor: pointer; padding: 11px 12px; border-radius: 10px; color: #6a5a4a;
+  margin-bottom: 8px; background: #f9f5ee; border: 1px solid #f0ebe2;
+  transition: background 0.15s, border-color 0.15s;
 }
 .tree-day-row { display: flex; justify-content: space-between; align-items: center; }
-.tree-day:hover { background: #f5f0e8; }
-.tree-day.current { background: #f0e6d6; color: #8a5a3a; font-weight: 500; }
-.tree-day-count { font-size: 11px; color: #c0b0a0; }
+.tree-day:hover { background: #f5efe2; border-color: #e8dcc4; }
+.tree-day.current { background: #f5e9d4; border-color: #e3c89c; color: #8a5a3a; font-weight: 500; }
+.tree-day-count {
+  font-size: 10.5px; color: #b8895a; background: #f0e0c4; border-radius: 999px;
+  padding: 2px 8px; flex-shrink: 0;
+}
 .tree-day-preview {
-  font-size: 11.5px; color: #a08f7c; margin-top: 2px;
-  line-height: 1.4; overflow: hidden; text-overflow: ellipsis;
+  font-size: 11.5px; color: #a08f7c; margin-top: 4px;
+  line-height: 1.5; overflow: hidden; text-overflow: ellipsis;
   white-space: nowrap;
 }
 
@@ -1075,7 +1087,7 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
 .memory-goto-btn:hover { background: #f0e6d6; }
 
 /* 筆記書本：仿實體書排版。手機單頁，電腦（≥760px）雙頁對開。 */
-.notes-book { flex: 1; min-height: 400px; }
+.notes-book { flex: 1; min-height: 400px; position: relative; }
 .book-spread { display: flex; gap: 0; }
 .book-spread.single { justify-content: center; }
 .book-page {
@@ -1094,13 +1106,14 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
 .book-running-title.left { left: 14px; }
 .book-running-title.right { right: 14px; }
 .book-toc-btn {
-  position: absolute; top: 8px;
-  border: none; background: none; color: #c0a888; cursor: pointer;
-  font-size: 14px; padding: 4px; line-height: 1;
+  position: absolute; top: -10px; right: -10px; z-index: 2;
+  width: 26px; height: 26px; border-radius: 50%;
+  border: 1px solid #ece1d0; background: #fffdf9; color: #b89878;
+  cursor: pointer; font-size: 13px;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 2px 6px rgba(120,90,60,0.12);
 }
-.book-toc-btn.left { left: 14px; }
-.book-toc-btn.right { right: 14px; }
-.book-toc-btn:hover { color: #c08050; }
+.book-toc-btn:hover { color: #c08050; border-color: #e3c89c; }
 .book-page-num {
   position: absolute; bottom: 10px; font-size: 11px; color: #c0b0a0;
 }
@@ -1123,13 +1136,13 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
 .frag-slot {
   font-size: 13px; line-height: 1.7; color: #5a4a3a;
 }
-.frag-slot + .frag-slot { margin-top: 10px; padding-top: 10px; border-top: 1px dashed #f0ebe2; }
+.frag-slot + .frag-slot { margin-top: 10px; }
 .frag-slot-label { font-size: 11.5px; color: #c08050; margin-bottom: 4px; font-weight: 500; }
 
 /* 未收集的碎片：保留固定格位，用污漬糊掉內容，收集到才會在同一個位置現出真正的文字。 */
 .frag-slot.locked { min-height: 38px; }
 .frag-smudge {
-  height: 30px; border-radius: 5px; opacity: 0.8;
+  height: 30px; border-radius: 5px; opacity: 0.4;
   background:
     radial-gradient(ellipse 60% 80% at 15% 40%, rgba(120,84,48,0.5), transparent 70%),
     radial-gradient(ellipse 50% 70% at 55% 60%, rgba(102,72,42,0.42), transparent 70%),
@@ -1155,7 +1168,7 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
 .book-tap-zone.right { right: 0; }
 
 @media (min-width: 760px) {
-  .notes-book { max-width: 880px; margin: 0 auto; min-height: 480px; }
+  .notes-book { max-width: 1040px; margin: 0 auto; min-height: 480px; }
   .book-page { border-radius: 4px; padding: 26px 32px 36px; min-height: 480px; }
   .book-spread:not(.single) .book-page:first-child { border-radius: 4px 1px 1px 4px; }
   .book-spread:not(.single) .book-page:last-child { border-radius: 1px 4px 4px 1px; }
