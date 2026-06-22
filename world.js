@@ -194,6 +194,30 @@ function buildLoreInput(text) {
   return '\n世界書補充設定（符合目前情境，自然融入敘述，不要逐字唸出標題）：\n' + hits.map(e => `- ${e.content}`).join('\n');
 }
 
+// 糰糰行為籤庫：只給「牠做什麼」的動作參考，不寫情緒（情緒由 AI 依當下脈絡自然流出）。
+// 用來在沒有強事件（訪客／特殊事件）時，給 AI 一點具體靈感，避免每回合都安靜發呆。
+const BAITUANTUAN_ACTION_POOL = [
+  { type: 'patrol', action: '繞著房間邊界巡一圈，確認沒有東西被動過' },
+  { type: 'nest', action: '在某個角落重新理一次窩，把棉布或碎屑挪位' },
+  { type: 'forage', action: '翻找地上或縫隙裡有沒有露水、冰塊、碎屑可吃' },
+  { type: 'weapon', action: '檢查竹籤或細針還夠不夠尖，試著刺一下紙張或軟物' },
+  { type: 'grind', action: '找東西磨牙，啃一下竹籤、家具邊角' },
+  { type: 'climb', action: '貼著牆面或家具邊緣，無聲攀爬一段' },
+  { type: 'squeeze', action: '鑽進一個狹窄縫隙，試試看能不能擠過去' },
+  { type: 'scratch', action: '在粗糙表面磨蹭身體，理一理毛' },
+  { type: 'invent', action: '把垃圾或雜物堆疊排列，自認在發明糰式文明' },
+  { type: 'water', action: '跑去廁所或水邊碰一下水，小心別被沖走' },
+  { type: 'sun', action: '找一塊有光的地方靠著，留意溫度別太高' },
+  { type: 'stare', action: '盯著一個固定的小東西不動，像在判斷它算不算數' },
+];
+// 選一支籤：避開最近 3 次已經用過的類型，降低重複感；全部都用過就退回完整籤庫。
+function pickActionTag(recentTypes) {
+  const recent = recentTypes || [];
+  const pool = BAITUANTUAN_ACTION_POOL.filter(a => !recent.includes(a.type));
+  const usePool = pool.length > 0 ? pool : BAITUANTUAN_ACTION_POOL;
+  return usePool[Math.floor(Math.random() * usePool.length)];
+}
+
 // 死亡（健康＋飽食歸零）改由 tick 內的死亡狀態機處理（要管重生倒數與小黑影好感），
 // 這裡只負責偵測飛升與觀察兩種即時事件。
 function detectTriggeredEvent(world, bt, combinedPlayerText) {
@@ -1345,6 +1369,11 @@ async function tick() {
   }
   const climateInput = '\n' + distillClimate(world.room, weather);
   const loreInput = buildLoreInput([combinedPlayerText, ...(bt.memory || []).slice(-3)].join(' '));
+
+  // 行為籤：給一點具體靈感，避開最近用過的類型，不寫情緒，情緒交給 AI 自己從脈絡長出來。
+  const recentActionTypes = (bt.actionLog || []).slice(-3);
+  const actionTag = pickActionTag(recentActionTypes);
+  const actionInput = `\n行為參考籤（僅供靈感、不是必須照寫，只是「牠做什麼」，不要直接套用情緒詞如「寂寞地」「開心地」，情緒讓場景自然帶出）：${actionTag.action}`;
   const acLabel = acNow.on
     ? `${acNow.broken ? '故障' : { cool: '冷氣', heat: '暖氣', fan: '送風', dry: '除濕' }[acNow.mode] || '冷氣'}${acNow.mode === 'fan' ? '' : acNow.temp + '℃'}`
     : '關';
@@ -1364,7 +1393,7 @@ async function tick() {
 窗戶：${world.room.window_open ? '開' : '關'} 冷氣：${acLabel} 燈：${world.room.light_on ? '開' : '關'} 廁所門：${world.room.toilet_open ? '開' : '關'}
 巨怪對房間環境的描述：${world.room.env_desc || '無'}
 今天已發生：${world.room.events_today.join('，') || '無'}
-近期記憶：${(bt.memory || []).slice(-5).join(' / ') || '無'}${weatherInput}${climateInput}${shadowInput}${ownerInput}${awayInput}${visitorInput}${eventInput}${pendingNotesInput}${hiddenInput}${loreInput}
+近期記憶：${(bt.memory || []).slice(-5).join(' / ') || '無'}（這只是延續性參考，不要被它的安靜基調綁住——白糰糰本來就靈動古怪、有自己的事要做，沒人理牠時也會主動找事做，不是發呆等待）${weatherInput}${climateInput}${shadowInput}${actionInput}${ownerInput}${awayInput}${visitorInput}${eventInput}${pendingNotesInput}${hiddenInput}${loreInput}
 
 生成這段時間白糰糰的動態。`;
 
@@ -1374,6 +1403,7 @@ async function tick() {
     const response = await client.messages.create({
       model: 'claude-sonnet-4-6',
       max_tokens: 1400,
+      temperature: 0.95,
       messages: [{ role: 'user', content: prompt }],
       system: SYSTEM_PROMPT
     });
@@ -1423,7 +1453,9 @@ async function tick() {
           nickname,
           texture,
           mood_color: moodColor ? { name: moodColor.name, color: moodColor.color } : null,
-          memory: [...(bt.memory || []).slice(-10), result.scene]
+          memory: [...(bt.memory || []).slice(-10), result.scene],
+          // 記下這輪用過的行為籤類型，下一輪挑籤時避開最近重複的類型。
+          actionLog: [...(bt.actionLog || []).slice(-4), actionTag.type]
         },
         // 小黑影是躲在影子裡的另一個主角，出沒與否由環境決定，不交給 AI 自由設定：
         // 房間髒（清潔度低）或暗（關燈／深夜）牠就會從陰影裡浮現；死亡復仇期間必然活躍。
