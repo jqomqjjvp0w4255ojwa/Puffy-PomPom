@@ -16,7 +16,7 @@
   "moodInteract": 15,
   "moodWellCared": 5,
   "moodCrisis": -20,
-  "moodAway": -5,
+  "moodAway": 1,
   "moodVisitor": 8,
   "textureEase": 0.05,
   "ownerFeedFoodBoost": 0,
