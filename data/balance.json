@@ -1,8 +1,8 @@
 {
-  "foodDeltaWindowOpen": -1,
-  "foodDeltaWindowClosed": -2,
-  "lowFoodThreshold": 25,
-  "lowFoodHpDelta": -2,
+  "foodDeltaWindowOpen": -0.2,
+  "foodDeltaWindowClosed": -0.5,
+  "lowFoodThreshold": 15,
+  "lowFoodHpDelta": -1,
   "highFoodThreshold": 60,
   "highFoodHpDelta": 2,
   "familiarityPresent": 0.01,
