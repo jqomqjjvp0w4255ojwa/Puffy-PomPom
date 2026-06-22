@@ -6,7 +6,7 @@
 <title>白糰糰觀察日記</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
-<link rel="stylesheet" href="style.css?v=20260622b">
+<link rel="stylesheet" href="style.css?v=20260622c">
 </head>
 <body>
 
@@ -74,6 +74,14 @@
   </div>
 </div>
 
+<!-- 回顧的「回憶卡」：點日期不跳走，直接在回顧頁上方蓋一張模糊黑底的回憶卡，仿 GalGame 回顧介面 -->
+<div class="memory-overlay" id="memory-overlay" onclick="closeMemoryOverlay(event)">
+  <div class="memory-card" id="memory-card" onclick="event.stopPropagation()">
+    <button class="memory-close" onclick="closeMemoryOverlay()"><i class="ti ti-x"></i></button>
+    <div class="memory-card-body" id="memory-card-body"></div>
+  </div>
+</div>
+
 <!-- 回顧：資料夾標籤耳朵（統計總覽 / 記錄檔案） -->
 <div class="notebook page-pane" data-page="review">
   <div class="folder-tabs">
@@ -91,14 +99,9 @@
   </div>
 </div>
 
-<!-- 筆記：黑影筆記翻頁書 -->
+<!-- 筆記：黑影筆記圖鑑本。點頁面左／右半邊翻頁（手機可滑），不另外做翻頁按鈕。 -->
 <div class="notebook page-pane" data-page="notes">
   <div class="notes-book" id="notes-book"><div class="drawer-empty">載入中…</div></div>
-  <div class="notes-flip">
-    <button class="flip-btn" id="notes-prev" onclick="flipNotes(-1)">‹</button>
-    <span class="notes-page-label" id="notes-page-label">—</span>
-    <button class="flip-btn" id="notes-next" onclick="flipNotes(1)">›</button>
-  </div>
 </div>
 
 <!-- 側欄抽屜：三條線開啟，只有左側直立圖示分頁（觀察／回顧／筆記），點擊後主頁面內容融景轉換 -->
@@ -373,6 +376,6 @@
   </div>
 </div>
 
-<script src="app.js?v=20260622b"></script>
+<script src="app.js?v=20260622c"></script>
 </body>
 </html>
