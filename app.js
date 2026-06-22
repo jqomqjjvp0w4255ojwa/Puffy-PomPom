@@ -877,8 +877,6 @@ async function resetWorld() {
 }
 
 // ===================== 側欄抽屜（觀察／回顧／筆記） =====================
-const DRAWER_TITLES = { observe: '觀察', review: '回顧', notes: '筆記' };
-
 function openDrawer() {
   document.getElementById('side-drawer').classList.add('open');
   document.getElementById('drawer-backdrop').classList.add('open');
@@ -890,10 +888,9 @@ function closeDrawer() {
   document.getElementById('menu-btn').classList.remove('hidden');
 }
 function selectDrawerTab(name) {
-  if (name === 'observe') { closeDrawer(); return; }
   document.querySelectorAll('.rail-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
-  document.querySelectorAll('.drawer-pane').forEach(p => p.classList.toggle('active', p.dataset.pane === name));
-  document.getElementById('drawer-title').textContent = DRAWER_TITLES[name];
+  document.querySelectorAll('.page-pane').forEach(p => p.classList.toggle('active', p.dataset.page === name));
+  closeDrawer();
   if (name === 'review') loadReview();
   if (name === 'notes') loadNotebook();
 }
@@ -950,7 +947,7 @@ function jumpToDay(d) {
   currentDateKey = d;
   followLatest = (idx === availableDates.length - 1);
   loadDay(d);
-  closeDrawer();
+  selectDrawerTab('observe');
 }
 
 // ---- 筆記：黑影筆記翻頁書（圖鑑） ----
