@@ -977,32 +977,37 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
 }
 .drawer-empty { font-size: 12px; color: #c0b0a0; text-align: center; padding: 24px 0; line-height: 1.6; }
 
-/* 回顧：資料夾標籤耳朵 */
-.folder-tabs { display: flex; gap: 4px; }
+/* 回顧：底線式分頁標籤，不另外做白色卡片底 */
+.folder-tabs { display: flex; gap: 22px; border-bottom: 1px solid #ece4d6; padding: 0 2px; }
 .folder-tab {
-  border: 1px solid #e3d8c5; border-bottom: none;
-  background: #efe6d8; color: #9a8a78;
-  border-radius: 10px 10px 0 0; padding: 7px 14px;
-  font-family: inherit; font-size: 12px; cursor: pointer;
+  border: none; background: none; color: #b0a08c;
+  padding: 8px 0; font-family: inherit; font-size: 12.5px; cursor: pointer;
+  position: relative;
 }
-.folder-tab.active { background: #fff; color: #8a5a3a; font-weight: 500; }
-.folder-body {
-  border: 1px solid #e3d8c5; border-radius: 0 10px 10px 10px;
-  background: #fff; padding: 12px; margin-top: -1px;
+.folder-tab.active { color: #8a5a3a; font-weight: 500; }
+.folder-tab.active::after {
+  content: ''; position: absolute; left: 0; right: 0; bottom: -1px; height: 2px;
+  background: #c08050; border-radius: 1px;
 }
+.folder-body { padding: 16px 2px 4px; }
 .review-sub { display: none; }
 .review-sub.active { display: block; }
 
-.stat-card { text-align: center; padding: 18px 14px; border-bottom: 1px solid #f0ebe2; }
+.stat-card { display: flex; align-items: baseline; justify-content: space-between; padding: 12px 4px; border-bottom: 1px solid #f0ebe2; }
 .stat-card:last-child { border-bottom: none; }
-.stat-value { font-size: 28px; color: #8a5a3a; font-weight: 500; }
-.stat-label { font-size: 12px; color: #b0a090; margin-top: 4px; }
+.stat-label { font-size: 12.5px; color: #8a7a68; }
+.stat-value { font-size: 16px; color: #8a5a3a; font-weight: 500; }
 
 /* 記錄檔案：搜尋＋年月日樹 */
+.review-search-wrap {
+  display: flex; align-items: center; gap: 6px;
+  padding: 7px 10px; margin-bottom: 12px;
+  border-bottom: 1px solid #e3d8c5; color: #b0a08c; font-size: 13px;
+}
+.review-search-wrap i { font-size: 14px; flex-shrink: 0; }
 .review-search {
-  width: 100%; box-sizing: border-box; padding: 8px 10px; margin-bottom: 10px;
-  border: 1px solid #e3d8c5; border-radius: 8px; font-family: inherit; font-size: 12px;
-  color: #5a4a3a; background: #faf8f4;
+  flex: 1; border: none; background: none; font-family: inherit; font-size: 12.5px;
+  color: #5a4a3a; outline: none;
 }
 /* 時間軸（參考 iOS 相簿）：連續滾動，月份標頭 sticky 釘在上方 */
 .date-tree { font-size: 13px; max-height: 360px; overflow-y: auto; }
@@ -1048,16 +1053,20 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
 }
 .memory-card-body { padding: 22px 20px 24px; overflow-y: auto; }
 .memory-date { font-size: 15px; color: #8a5a3a; font-weight: 500; text-align: center; margin-bottom: 14px; }
-.memory-entry { margin-bottom: 14px; }
+.memory-entry-card {
+  background: #f9f5ee; border: 1px solid #f0ebe2; border-radius: 10px;
+  padding: 14px 14px 12px; margin-bottom: 12px;
+}
+.memory-entry-card-loose { background: #f7f2ea; }
 .memory-entry-time { font-size: 11px; color: #c0a888; margin-bottom: 3px; }
 .memory-entry-text { font-size: 13.5px; line-height: 1.8; color: #4a3a2a; white-space: pre-wrap; }
-.memory-section-label {
-  font-size: 11.5px; color: #b0a090; margin: 16px 0 8px;
-  border-top: 1px dashed #f0ebe2; padding-top: 12px;
+.memory-entry-notes {
+  margin-top: 10px; padding-top: 10px; border-top: 1px dashed #e3d8c5;
 }
 .memory-owner-note, .memory-visitor-note {
   font-size: 12.5px; color: #6a5a4a; margin-bottom: 6px; line-height: 1.6;
 }
+.memory-owner-note:last-child, .memory-visitor-note:last-child { margin-bottom: 0; }
 .memory-goto-btn {
   display: block; width: 100%; margin-top: 18px; padding: 10px;
   border: 1px solid #e3d8c5; border-radius: 8px; background: #f7f2ea;
@@ -1066,22 +1075,32 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
 .memory-goto-btn:hover { background: #f0e6d6; }
 
 /* 筆記書本：仿實體書排版。手機單頁，電腦（≥760px）雙頁對開。 */
-.notes-book { flex: 1; min-height: 320px; }
+.notes-book { flex: 1; min-height: 400px; }
 .book-spread { display: flex; gap: 0; }
 .book-spread.single { justify-content: center; }
 .book-page {
   position: relative; flex: 1; min-width: 0;
   background: #fffdf9; border: 1px solid #f0ebe2; border-radius: 8px;
-  padding: 16px 16px 30px; min-height: 320px;
+  padding: 16px 16px 30px; min-height: 400px;
   display: flex; flex-direction: column;
 }
 .book-spread:not(.single) .book-page:first-child { border-radius: 8px 2px 2px 8px; border-right: none; }
 .book-spread:not(.single) .book-page:last-child { border-radius: 2px 8px 8px 2px; }
 .book-page.blank { background: #f7f4ee; }
 .book-running-title {
-  position: absolute; top: 10px; right: 14px;
+  position: absolute; top: 10px;
   font-size: 10.5px; color: #c0a888; letter-spacing: 0.05em;
 }
+.book-running-title.left { left: 14px; }
+.book-running-title.right { right: 14px; }
+.book-toc-btn {
+  position: absolute; top: 8px;
+  border: none; background: none; color: #c0a888; cursor: pointer;
+  font-size: 14px; padding: 4px; line-height: 1;
+}
+.book-toc-btn.left { left: 14px; }
+.book-toc-btn.right { right: 14px; }
+.book-toc-btn:hover { color: #c08050; }
 .book-page-num {
   position: absolute; bottom: 10px; font-size: 11px; color: #c0b0a0;
 }
@@ -1110,12 +1129,12 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
 /* 未收集的碎片：保留固定格位，用污漬糊掉內容，收集到才會在同一個位置現出真正的文字。 */
 .frag-slot.locked { min-height: 38px; }
 .frag-smudge {
-  height: 30px; border-radius: 5px; opacity: 0.7;
+  height: 30px; border-radius: 5px; opacity: 0.8;
   background:
-    radial-gradient(ellipse 60% 80% at 15% 40%, rgba(50,42,34,0.55), transparent 70%),
-    radial-gradient(ellipse 50% 70% at 55% 60%, rgba(50,42,34,0.45), transparent 70%),
-    radial-gradient(ellipse 40% 60% at 85% 35%, rgba(50,42,34,0.4), transparent 70%);
-  filter: blur(1px);
+    radial-gradient(ellipse 60% 80% at 15% 40%, rgba(120,84,48,0.5), transparent 70%),
+    radial-gradient(ellipse 50% 70% at 55% 60%, rgba(102,72,42,0.42), transparent 70%),
+    radial-gradient(ellipse 40% 60% at 85% 35%, rgba(140,100,60,0.38), transparent 70%);
+  filter: blur(1px) sepia(0.3);
 }
 
 /* 新收集到的碎片第一次出現時的光暈，提醒玩家「這是剛發現的」 */
@@ -1136,8 +1155,8 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
 .book-tap-zone.right { right: 0; }
 
 @media (min-width: 760px) {
-  .notes-book { max-width: 720px; margin: 0 auto; }
-  .book-page { border-radius: 4px; padding: 22px 26px 32px; min-height: 380px; }
+  .notes-book { max-width: 880px; margin: 0 auto; min-height: 480px; }
+  .book-page { border-radius: 4px; padding: 26px 32px 36px; min-height: 480px; }
   .book-spread:not(.single) .book-page:first-child { border-radius: 4px 1px 1px 4px; }
   .book-spread:not(.single) .book-page:last-child { border-radius: 1px 4px 4px 1px; }
 }
