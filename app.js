@@ -1073,6 +1073,17 @@ async function selectReviewDay(d, opts) {
 }
 // 一段觀察：時間是紀錄的一部分（不框）；時間後的 +／- 展開狀態卡。
 // 展開後：時間那行接客觀環境（天氣・氣溫・濕度），下面兩個淡框＝房間／我，再一框＝糰糰。
+// 糰糰狀態用的小圖示：毛球本體＋一圈絨毛點點，不畫眼睛（這裡只是狀態列的小標，不是角色本體）。
+const FUZZBALL_ICON = `<svg class="fuzzball-icon" viewBox="0 0 24 24" width="13" height="13" aria-hidden="true">
+  <circle cx="12" cy="12" r="6.4" fill="currentColor"/>
+  <circle cx="12" cy="3.4" r="1.5" fill="currentColor"/>
+  <circle cx="19.2" cy="7.2" r="1.5" fill="currentColor"/>
+  <circle cx="19.2" cy="16.8" r="1.5" fill="currentColor"/>
+  <circle cx="12" cy="20.6" r="1.5" fill="currentColor"/>
+  <circle cx="4.8" cy="16.8" r="1.5" fill="currentColor"/>
+  <circle cx="4.8" cy="7.2" r="1.5" fill="currentColor"/>
+</svg>`;
+
 function reviewEntryHtml(e, ownerLog, visitorLog) {
   const time = e.time || '';
   const hm = time.includes(' ') ? time.split(' ').pop() : time; // 取 24h HH:MM
@@ -1111,7 +1122,7 @@ function reviewEntryHtml(e, ownerLog, visitorLog) {
   if (e.location) tStatBits.push(escapeHtml(e.location));
   const tuanBox = (tStatBits.length || e.fur)
     ? `<div class="detail-box">
-      ${tStatBits.length ? `<div class="detail-line"><i class="ti ti-paw"></i><span>${tStatBits.join(' · ')}</span></div>` : ''}
+      ${tStatBits.length ? `<div class="detail-line">${FUZZBALL_ICON}<span>${tStatBits.join(' · ')}</span></div>` : ''}
       ${e.fur ? `<div class="detail-line"><i class="ti ti-sparkles"></i><span>${escapeHtml(e.fur)}</span></div>` : ''}
     </div>`
     : '';

@@ -1086,6 +1086,7 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
 .detail-line + .detail-line { margin-top: 2px; }
 .detail-line i { font-size: 12.5px; color: #c0a878; width: 14px; text-align: center; flex-shrink: 0; }
 .detail-line b { font-weight: 500; color: #8a5a3a; }
+.fuzzball-icon { color: #c0a878; width: 14px; height: 13px; flex-shrink: 0; position: relative; top: 1px; }
 
 .entry-scene { font-size: 14.5px; line-height: 2; color: #4a3a2a; margin-top: 6px; white-space: pre-wrap; }
 
