@@ -833,13 +833,10 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
   overflow-y: auto;
   margin-top: 4px;
 }
-.note-read-mark {
-  position: relative;
-  width: 130px;
-  height: 82px;
-  margin-top: 6px;
-}
-/* 糰糰蜿蜒漫步的米粒步伐（依附件版本縮放） */
+.note-mark { position: relative; margin-top: 6px; }
+
+/* 地上＝腳印：糰糰走過會踩到、蜿蜒漫步的米粒步伐 */
+.note-mark-footprint { width: 130px; height: 82px; }
 .rice-step {
   position: absolute;
   width: 4px;
@@ -847,17 +844,51 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
   background: #8c826e;
   border-radius: 50% 50% 50% 50% / 35% 35% 65% 65%;
 }
-.note-read-mark .step-1 { left: 25px;  bottom: 24px; transform: rotate(55deg) scale(1);          opacity: 0.85; }
-.note-read-mark .step-2 { left: 48px;  bottom: 27px; transform: rotate(65deg) scale(0.9, 1.1);   opacity: 0.6; }
-.note-read-mark .step-3 { left: 55px;  bottom: 42px; transform: rotate(60deg) scale(1.1, 0.9);   opacity: 0.8; }
-.note-read-mark .step-4 { left: 80px;  bottom: 47px; transform: rotate(45deg) scale(0.95);        opacity: 0.45; }
-.note-read-mark .step-5 { left: 88px;  bottom: 64px; transform: rotate(35deg) scale(1.15, 1.05); opacity: 0.9; }
-.note-read-mark .step-6 { left: 110px; bottom: 69px; transform: rotate(40deg) scale(0.85);        opacity: 0.55; }
+.note-mark-footprint .step-1 { left: 25px;  bottom: 24px; transform: rotate(55deg) scale(1);          opacity: 0.85; }
+.note-mark-footprint .step-2 { left: 48px;  bottom: 27px; transform: rotate(65deg) scale(0.9, 1.1);   opacity: 0.6; }
+.note-mark-footprint .step-3 { left: 55px;  bottom: 42px; transform: rotate(60deg) scale(1.1, 0.9);   opacity: 0.8; }
+.note-mark-footprint .step-4 { left: 80px;  bottom: 47px; transform: rotate(45deg) scale(0.95);        opacity: 0.45; }
+.note-mark-footprint .step-5 { left: 88px;  bottom: 64px; transform: rotate(35deg) scale(1.15, 1.05); opacity: 0.9; }
+.note-mark-footprint .step-6 { left: 110px; bottom: 69px; transform: rotate(40deg) scale(0.85);        opacity: 0.55; }
 
-.note-read-hint { font-size: 11px; color: rgba(0,0,0,0.4); margin-top: 8px; font-style: italic; }
-.note-seen { color: #b08050; }
-.note-seen i { font-size: 11px; margin-right: 2px; position: relative; top: 1px; }
-.note-unseen { color: #c0b4a4; }
+/* 低處（桌腳／冰箱下方）＝手印：4 根手指像芝麻指針一樣從掌心向外散開 */
+.note-mark-hand { width: 70px; height: 60px; }
+.hand-palm {
+  position: absolute;
+  left: 27px; bottom: 4px;
+  width: 16px; height: 14px;
+  background: #8c826e;
+  border-radius: 50%;
+  opacity: 0.55;
+}
+.hand-finger {
+  position: absolute;
+  left: 33px; bottom: 10px;
+  width: 5px; height: 15px;
+  background: #8c826e;
+  border-radius: 50% 50% 50% 50% / 35% 35% 65% 65%;
+  transform-origin: bottom center;
+  opacity: 0.6;
+}
+.hand-finger.f1 { transform: rotate(-32deg) translateY(-2px); opacity: 0.55; }
+.hand-finger.f2 { transform: rotate(-11deg) translateY(-3px); opacity: 0.65; }
+.hand-finger.f3 { transform: rotate(11deg)  translateY(-3px); opacity: 0.6; }
+.hand-finger.f4 { transform: rotate(32deg)  translateY(-2px); opacity: 0.5; }
+
+/* 隨機（牆上／電腦）＝毛印：一塊淺淺模糊的橢圓污漬，代表不確定有沒有經過 */
+.note-mark-fur {
+  width: 78px; height: 38px;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at center, rgba(140,100,60,0.4), rgba(140,100,60,0.12) 60%, transparent 80%);
+  filter: blur(2px) sepia(0.3);
+  opacity: 0.6;
+}
+
+/* 留言列表中的小印子圖示，取代文字標籤 */
+.note-stamp-icon { font-size: 12px; margin-left: 3px; position: relative; top: 1px; }
+.note-stamp-footprint { color: #8c826e; }
+.note-stamp-hand { color: #a88a5e; }
+.note-stamp-fur { color: #c2a98a; }
 
 .sticky-note-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 6px; }
 .sticky-note-actions i { font-size: 20px; color: rgba(0,0,0,0.5); cursor: pointer; }
