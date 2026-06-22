@@ -480,6 +480,9 @@ function nestQuote(str) {
 
 let noteState = { mode: 'draft', color: 'yellow', savedId: null, location: 'floor' };
 const NOTE_LOCATION_LABELS = { desk_leg: '桌腳', fridge_bottom: '冰箱下方', wall: '牆上', floor: '地板', computer: '電腦' };
+// 低處（桌腳／冰箱下方／地板）糰糰走動會經過，看過就會留下腳印；高處（牆上／電腦）牠通常碰不到、不會注意。
+const LOW_NOTE_LOCATIONS = ['desk_leg', 'fridge_bottom', 'floor'];
+function isLowNote(loc) { return LOW_NOTE_LOCATIONS.includes(loc || 'floor'); }
 
 function setNoteLocation(loc) {
   noteState.location = loc;
@@ -531,6 +534,7 @@ function renderNoteSaved(note) {
   document.getElementById('note-confirm-btn').style.display = 'none';
   document.getElementById('note-delete-btn').style.display = 'inline';
   document.getElementById('note-read-mark').style.display = 'none';
+  document.getElementById('note-read-hint').style.display = 'none';
   document.getElementById('note-new-btn').style.display = 'none';
 }
 
@@ -546,7 +550,10 @@ function renderNoteRead(note) {
   renderNoteLocTag(note.location);
   document.getElementById('note-confirm-btn').style.display = 'none';
   document.getElementById('note-delete-btn').style.display = 'none';
-  document.getElementById('note-read-mark').style.display = 'flex';
+  // 低處：糰糰走過會踩到、留下腳印＝牠看過的記號；高處：牠碰不到，沒注意到，不留腳印。
+  const low = isLowNote(note.location);
+  document.getElementById('note-read-mark').style.display = low ? 'flex' : 'none';
+  document.getElementById('note-read-hint').style.display = low ? 'none' : 'block';
   document.getElementById('note-new-btn').style.display = 'inline';
 }
 
@@ -562,6 +569,7 @@ function renderNoteDraft() {
   document.getElementById('note-confirm-btn').style.display = 'inline';
   document.getElementById('note-delete-btn').style.display = 'none';
   document.getElementById('note-read-mark').style.display = 'none';
+  document.getElementById('note-read-hint').style.display = 'none';
   document.getElementById('note-new-btn').style.display = 'none';
 }
 
@@ -1217,7 +1225,13 @@ function reviewEntryHtml(e, ownerLog, visitorLog) {
   const visitorHtml = visitors.length
     ? `<div class="detail-box">${visitors.map(v => {
         const locTag = v.location && NOTE_LOCATION_LABELS[v.location] ? ` <span class="sub">· 貼在${NOTE_LOCATION_LABELS[v.location]}</span>` : '';
-        return `<div class="detail-line"><i class="ti ti-message-circle"></i><span><b>${escapeHtml(v.name || '訪客')}</b>：${escapeHtml(v.message || '')}${locTag}</span></div>`;
+        // 低處＝糰糰走過踩到、看過的記號（留下腳印）；高處＝牠沒注意到。
+        const seenTag = v.location
+          ? (isLowNote(v.location)
+              ? ` <span class="sub note-seen"><i class="ti ti-paw"></i>糰糰踩過</span>`
+              : ` <span class="sub note-unseen">糰糰沒注意到</span>`)
+          : '';
+        return `<div class="detail-line"><i class="ti ti-message-circle"></i><span><b>${escapeHtml(v.name || '訪客')}</b>：${escapeHtml(v.message || '')}${locTag}${seenTag}</span></div>`;
       }).join('')}</div>`
     : '';
 
