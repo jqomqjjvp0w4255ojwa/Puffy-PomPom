@@ -93,6 +93,7 @@ ${bodyBlock}
 {
   "scene": "這段時間發生的事，2-4句，漫畫分鏡風格，句與句之間換行",
   "fed": true或false（判斷「這段敘述裡，白糰糰有沒有吃進任何食物」。只要牠正在吃、舔、啃、吞任何可食用的東西（巨怪剛放的、之前留在房間還沒吃完的、自己找到的都算）就回 true，跟巨怪這個 tick 有沒有動作無關——房間裡還有食物、牠還在吃，就要一直回 true，不是只有巨怪剛餵的那一次才算。只有牠完全沒吃、或只是舔牆/舔灰塵/吸馬桶水這種沒有營養的飢餓行為，才回 false。不要管數值，飽食度增減完全由程式處理）,
+  "bond": "positive"、"neutral" 或 "negative"（判斷「這段時間裡，巨怪與白糰糰之間的關係是變親近、沒變化、還是受損」。巨怪做了讓牠舒服／安心／被理解的事而牠正面回應（餓時被餵、被溫柔對待、想要的被滿足、一起待著很自在）＝positive；巨怪讓牠不舒服／被忽視該被照顧時沒被照顧／被嚇到／需求被無視＝negative；這段只是自顧自過、沒有實質互動或無明顯好壞＝neutral。請從白糰糰的角度、依常理判斷，這是關係好壞的唯一依據，數值幅度由程式處理）,
   "baituantuan": {
     "location": "地點",
     "fur": "正常，或簡短描述（4-8字內，例如：微髒、右耳禿一塊、毛打結）"
@@ -562,34 +563,36 @@ function computeHiddenStats(bt, signals, bal) {
     hardness: typeof bt.hardness === 'number' ? bt.hardness : 50,
     mood: typeof bt.mood === 'number' ? bt.mood : 0
   };
-  // 「有沒有被照顧」從糰糰的實際情況判斷，不只看巨怪有沒有按按鈕：
-  // 互動（送了動態）或糰糰這段時間真的有吃到東西（上一輪 fed）都算被照顧。
-  const cared = signals.interacted || signals.fed;
+  // 關係好壞由 AI 判斷的 bond 決定（來自上一輪場景的常理判斷），程式只負責換成可控數值。
+  const bondPos = signals.bond === 'positive';
+  const bondNeg = signals.bond === 'negative';
+  // 有沒有實際接觸（巨怪送動態，或這段發生了會影響關係的事）→ 熟悉度成長用，跟好壞無關。
+  const interacted = signals.interacted || bondPos || bondNeg;
   const wellCared = signals.food > bal.highFoodThreshold && signals.hp > 60;
-  // 真正的疏於照顧＝糰糰在挨餓(食物過低)且沒在吃東西。健康低不單獨算疏忽（可能正在恢復），
-  // 只要還有食物、還在吃，就不該因此扣好感。
+  // 客觀疏忽保底：長期挨餓又沒在吃，即使 AI 沒判 negative 也輕扣一點。
   const neglected = signals.food < bal.lowFoodThreshold && !signals.fed;
   // 心情用的危機（短期情緒會難過）：挨餓沒吃、或健康亮紅燈。
   const crisis = neglected || signals.hp < 25;
 
-  // 熟悉度：在場累積、互動加成，預設外出不倒退（單調成長）
+  // 熟悉度：在場累積、有接觸就加成，預設外出不倒退（單調成長）
   let familiarity = cur.familiarity;
   if (!signals.away) familiarity += bal.familiarityPresent;
-  if (cared) familiarity += bal.familiarityInteract;
+  if (interacted) familiarity += bal.familiarityInteract;
   if (signals.away) familiarity += bal.familiarityAwayDecay;
   familiarity = clampStat(familiarity, 0, 100);
 
-  // 好感度：互動／被餵／被好好照顧會升，外出冷落／挨餓受苦才降
+  // 好感度：主要看 AI 判斷的關係好壞（bond），外出冷落／客觀疏忽再各扣一點保底
   let affection = cur.affection;
-  if (cared) affection += bal.affectionInteract;
-  if (wellCared) affection += bal.affectionWellCared;
+  if (bondPos) affection += bal.affectionBondPositive;
+  else if (bondNeg) affection += bal.affectionBondNegative;
   if (signals.away) affection += bal.affectionAway;
   if (neglected) affection += bal.affectionNeglect;
   affection = clampStat(affection, -100, 100);
 
   // 心情：短期情緒，每回合先朝中性回歸，再疊加本回合事件
   let mood = cur.mood * (1 - bal.moodDecay);
-  if (cared) mood += bal.moodInteract;
+  if (bondPos) mood += bal.moodInteract;
+  else if (bondNeg) mood += bal.moodBondNegative;
   if (wellCared) mood += bal.moodWellCared;
   if (crisis) mood += bal.moodCrisis;
   if (signals.away) mood += bal.moodAway;
@@ -732,12 +735,14 @@ const BALANCE_BUILTIN = {
   familiarityPresent: 1,
   familiarityInteract: 2,
   familiarityAwayDecay: 0,
-  affectionInteract: 2,
+  affectionBondPositive: 4,
+  affectionBondNegative: -4,
   affectionWellCared: 1,
   affectionAway: -1,
-  affectionNeglect: -3,
+  affectionNeglect: -2,
   moodDecay: 0.3,
   moodInteract: 15,
+  moodBondNegative: -15,
   moodWellCared: 5,
   moodCrisis: -20,
   moodAway: -5,
@@ -1248,7 +1253,9 @@ async function tick() {
   const balance = loadBalance();
   const hidden = computeHiddenStats(bt, {
     interacted: ownerActionUnread,
-    // 上一輪糰糰實際有沒有吃到東西（從牠的紀錄判斷有沒有被照顧，而非看巨怪當下動作）
+    // 上一輪 AI 對「關係好壞」的判斷，這一輪才換算成好感（隱藏數值算在 AI 回應之前，故用上一輪結果）
+    bond: world.last_bond || 'neutral',
+    // 上一輪糰糰實際有沒有吃到東西（客觀疏忽保底用）
     fed: !!world.last_fed,
     away: !!world.owner_away,
     hasVisitor: visitorMessages.length > 0,
@@ -1378,8 +1385,10 @@ async function tick() {
       ...world,
       nextTickAt: Date.now() + delay,
       weather: weather || world.weather || null,
-      // 記下這輪糰糰有沒有吃到，給下一輪判斷「有沒有被照顧」用。
+      // 記下這輪糰糰有沒有吃到，給下一輪客觀疏忽保底判斷用。
       last_fed: !!result.fed,
+      // 記下這輪 AI 對關係好壞的判斷，給下一輪換算好感／心情用。
+      last_bond: ['positive', 'neutral', 'negative'].includes(result.bond) ? result.bond : 'neutral',
       tokenUsage,
       characters: {
         baituantuan: {
