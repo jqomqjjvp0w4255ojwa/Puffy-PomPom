@@ -966,14 +966,33 @@ async function openMemoryOverlay(d) {
   try {
     const res = await fetch('/api/day?date=' + d + '&t=' + Date.now());
     const day = await res.json();
-    const diaryHtml = (day.diary || []).map(e => `<div class="memory-entry"><div class="memory-entry-time">${escapeHtml(e.time || '')}</div><div class="memory-entry-text">${escapeHtml(e.scene || '')}</div></div>`).join('');
-    const ownerHtml = (day.ownerLog || []).map(e => `<div class="memory-owner-note"><i class="ti ti-user-circle"></i> ${escapeHtml(e.action || '')}</div>`).join('');
-    const visitorHtml = (day.visitorLog || []).map(e => `<div class="memory-visitor-note"><i class="ti ti-message-circle"></i> <b>${escapeHtml(e.name || '訪客')}</b>：${escapeHtml(e.message || '')}</div>`).join('');
+    const ownerLog = day.ownerLog || [];
+    const visitorLog = day.visitorLog || [];
+    const usedOwner = new Set();
+    const usedVisitor = new Set();
+    const cardsHtml = (day.diary || []).map(e => {
+      const owners = ownerLog.filter(o => o.time === e.time);
+      const visitors = visitorLog.filter(v => v.time === e.time);
+      owners.forEach(o => usedOwner.add(o));
+      visitors.forEach(v => usedVisitor.add(v));
+      const ownerNotesHtml = owners.map(o => `<div class="memory-owner-note"><i class="ti ti-user-circle"></i> ${escapeHtml(o.action || '')}</div>`).join('');
+      const visitorNotesHtml = visitors.map(v => `<div class="memory-visitor-note"><i class="ti ti-message-circle"></i> <b>${escapeHtml(v.name || '訪客')}</b>：${escapeHtml(v.message || '')}</div>`).join('');
+      return `<div class="memory-entry-card">
+        <div class="memory-entry-time">${escapeHtml(e.time || '')}</div>
+        <div class="memory-entry-text">${escapeHtml(e.scene || '')}</div>
+        ${(ownerNotesHtml || visitorNotesHtml) ? `<div class="memory-entry-notes">${ownerNotesHtml}${visitorNotesHtml}</div>` : ''}
+      </div>`;
+    }).join('');
+    const leftoverOwner = ownerLog.filter(o => !usedOwner.has(o));
+    const leftoverVisitor = visitorLog.filter(v => !usedVisitor.has(v));
+    const leftoverHtml = (leftoverOwner.length || leftoverVisitor.length) ? `<div class="memory-entry-card memory-entry-card-loose">
+      ${leftoverOwner.map(o => `<div class="memory-owner-note"><i class="ti ti-user-circle"></i> ${escapeHtml(o.action || '')}</div>`).join('')}
+      ${leftoverVisitor.map(v => `<div class="memory-visitor-note"><i class="ti ti-message-circle"></i> <b>${escapeHtml(v.name || '訪客')}</b>：${escapeHtml(v.message || '')}</div>`).join('')}
+    </div>` : '';
     body.innerHTML = `
       <div class="memory-date">${d}</div>
-      ${diaryHtml || '<div class="drawer-empty">這天沒有留下紀錄。</div>'}
-      ${ownerHtml ? `<div class="memory-section-label">你的動態</div>${ownerHtml}` : ''}
-      ${visitorHtml ? `<div class="memory-section-label">訪客留言</div>${visitorHtml}` : ''}
+      ${cardsHtml || '<div class="drawer-empty">這天沒有留下紀錄。</div>'}
+      ${leftoverHtml}
       <button class="memory-goto-btn" onclick="jumpToDay('${d}')">前往這天的完整日記 ›</button>
     `;
   } catch (e) {
@@ -1079,8 +1098,10 @@ function pageInnerHtml(page) {
 function renderSinglePage(page, pageNum) {
   const { running, body } = pageInnerHtml(page);
   const numSide = pageNum != null ? (pageNum % 2 === 1 ? 'left' : 'right') : '';
+  const tocSide = numSide === 'left' ? 'right' : 'left';
   return `<div class="book-page">
-    ${running ? `<div class="book-running-title">${escapeHtml(running)}</div>` : ''}
+    ${running ? `<div class="book-running-title ${numSide}">${escapeHtml(running)}</div>` : ''}
+    ${page.type !== 'toc' ? `<button class="book-toc-btn ${tocSide}" onclick="notesIndex=0;renderNotes()" title="回到目錄"><i class="ti ti-list"></i></button>` : ''}
     <div class="book-page-body">${body}</div>
     ${pageNum != null ? `<div class="book-page-num ${numSide}">${pageNum}</div>` : ''}
     <div class="book-tap-zone left" onclick="flipNotes(-1)"></div>

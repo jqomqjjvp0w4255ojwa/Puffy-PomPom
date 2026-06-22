@@ -6,7 +6,7 @@
 <title>白糰糰觀察日記</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
-<link rel="stylesheet" href="style.css?v=20260622e">
+<link rel="stylesheet" href="style.css?v=20260622f">
 </head>
 <body>
 
@@ -93,7 +93,10 @@
       <div class="drawer-empty">載入中…</div>
     </div>
     <div class="review-sub" data-sub="files" id="review-files">
-      <input type="text" class="review-search" id="review-search" placeholder="搜尋日期（例如 2026-06 或 06-21）" oninput="renderDateTimeline()">
+      <div class="review-search-wrap">
+        <i class="ti ti-search"></i>
+        <input type="text" class="review-search" id="review-search" placeholder="搜尋日期（例如 2026-06 或 06-21）" oninput="renderDateTimeline()">
+      </div>
       <div class="date-tree" id="date-tree"><div class="drawer-empty">載入中…</div></div>
     </div>
   </div>
@@ -376,6 +379,6 @@
   </div>
 </div>
 
-<script src="app.js?v=20260622e"></script>
+<script src="app.js?v=20260622f"></script>
 </body>
 </html>
