@@ -309,14 +309,13 @@ function weatherDesc(code) {
   return '—';
 }
 
-// 抓台北即時天氣（Open-Meteo，免金鑰）。失敗回 null，不影響 tick。
-async function fetchWeather() {
+// 抓台北即時天氣（Open-Meteo，免金鑰）。失敗回 null，不影響 tick；失敗時重試一次，避免單次網路抖動就整段漏記天氣。
+async function fetchWeatherOnce() {
+  const url = 'https://api.open-meteo.com/v1/forecast?latitude=25.033&longitude=121.565&current=temperature_2m,relative_humidity_2m,weather_code&timezone=Asia%2FTaipei';
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 8000);
   try {
-    const url = 'https://api.open-meteo.com/v1/forecast?latitude=25.033&longitude=121.565&current=temperature_2m,relative_humidity_2m,weather_code&timezone=Asia%2FTaipei';
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 8000);
     const res = await fetch(url, { signal: controller.signal });
-    clearTimeout(timer);
     if (!res.ok) return null;
     const data = await res.json();
     const c = data.current;
@@ -328,7 +327,13 @@ async function fetchWeather() {
     };
   } catch (e) {
     return null;
+  } finally {
+    clearTimeout(timer);
   }
+}
+
+async function fetchWeather() {
+  return (await fetchWeatherOnce()) || (await fetchWeatherOnce());
 }
 
 // ===== Gemini（電視頻道專用，獨立於主世界的 Claude 呼叫）=====
