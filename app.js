@@ -895,12 +895,13 @@ function selectDrawerTab(name) {
   if (name === 'notes') loadNotebook();
 }
 
-// ---- 回顧：統計總覽 / 記錄檔案 ----
+// ---- 回顧：今日回顧 / 時間軸 / 統計 ----
 function selectReviewSub(sub) {
-  document.querySelectorAll('.folder-tab').forEach(b => b.classList.toggle('active', b.dataset.sub === sub));
+  document.querySelectorAll('.review-nav-item').forEach(b => b.classList.toggle('active', b.dataset.sub === sub));
   document.querySelectorAll('.review-sub').forEach(p => p.classList.toggle('active', p.dataset.sub === sub));
 }
 let daySummaries = {};
+const WEEKDAY_LABELS = ['日', '一', '二', '三', '四', '五', '六'];
 async function loadReview() {
   try {
     const sres = await fetch('/api/day-summaries?t=' + Date.now());
@@ -908,6 +909,7 @@ async function loadReview() {
     daySummaries = {};
     (sdata.summaries || []).forEach(s => { daySummaries[s.date] = s; });
   } catch (e) { daySummaries = {}; }
+  renderTodayRecall();
   renderDateTimeline();
   try {
     const res = await fetch('/api/fragments?t=' + Date.now());
@@ -923,8 +925,68 @@ async function loadReview() {
   }
 }
 
-// 時間軸（參考 iOS 相簿）：連續滾動列表，依年/月分組、sticky 標頭，由新到舊，不需展開/收合。
-// 支援搜尋過濾，最近 7 天標記「近期」。
+function dayRowHtml(d) {
+  const [y, m, day] = d.split('-').map(Number);
+  const weekday = WEEKDAY_LABELS[new Date(y, m - 1, day).getDay()];
+  const cur = d === currentDateKey ? ' current' : '';
+  const recent7 = new Set(availableDates.slice(-7));
+  const recent = recent7.has(d) ? '<span class="tree-day-count">近期</span>' : '';
+  const s = daySummaries[d];
+  let extra = '';
+  if (s) {
+    const bits = [];
+    if (s.preview) bits.push(escapeHtml(s.preview));
+    if (s.visitorCount) bits.push(`💬 ${s.visitorCount} 則留言${s.visitorPreview ? '：' + escapeHtml(s.visitorPreview) : ''}`);
+    if (s.ownerCount) bits.push(`📌 你留下了動態${s.ownerPreview ? '：' + escapeHtml(s.ownerPreview) : ''}`);
+    if (bits.length) extra = `<div class="tree-day-preview">${bits.join('　')}</div>`;
+  }
+  return `<div class="tree-day${cur}" onclick="openMemoryOverlay('${d}')">
+    <div class="tree-day-row"><span><span class="tree-day-date">${d}</span><span class="tree-day-weekday">（週${weekday}）</span></span>${recent}</div>
+    ${extra}
+  </div>`;
+}
+
+// 今日回顧：頂部標題＋「歷史上的今天」（同月日的過去紀錄）＋最近幾天的回顧
+function renderTodayRecall() {
+  const headBox = document.getElementById('review-today-head');
+  const annivBox = document.getElementById('anniv-row');
+  const recentBox = document.getElementById('date-tree-recent');
+  if (!headBox || !availableDates.length) {
+    if (recentBox) recentBox.innerHTML = '<div class="drawer-empty">還沒有任何紀錄。</div>';
+    return;
+  }
+  const latest = availableDates[availableDates.length - 1];
+  const [ly, lm, ld] = latest.split('-').map(Number);
+  const weekday = WEEKDAY_LABELS[new Date(ly, lm - 1, ld).getDay()];
+  headBox.innerHTML = `今天是 ${latest}（週${weekday}）`;
+
+  const mmdd = latest.slice(5);
+  const matches = availableDates
+    .filter(d => d !== latest && d.slice(5) === mmdd)
+    .sort((a, b) => b.localeCompare(a))
+    .slice(0, 3);
+  if (matches.length === 0) {
+    annivBox.innerHTML = '';
+  } else {
+    annivBox.innerHTML = `<div class="review-recent-label">歷史上的今天</div><div class="anniv-cards">${matches.map(d => {
+      const yearsAgo = ly - Number(d.slice(0, 4));
+      const s = daySummaries[d];
+      const preview = s && s.preview ? escapeHtml(s.preview) : '這天沒有留下太多紀錄。';
+      return `<div class="anniv-card" onclick="openMemoryOverlay('${d}')">
+        <div class="anniv-card-label">${yearsAgo} 年前的今天</div>
+        <div class="anniv-card-date">${d}</div>
+        <div class="anniv-card-preview">${preview}</div>
+        <div class="anniv-card-link">閱讀 →</div>
+      </div>`;
+    }).join('')}</div>`;
+  }
+
+  const recentDates = availableDates.slice(-5).reverse();
+  recentBox.innerHTML = recentDates.map(d => dayRowHtml(d)).join('');
+}
+
+// 時間軸：連續滾動列表，依年/月分組、sticky 標頭，由新到舊，不需展開/收合。
+// 支援搜尋過濾。
 function renderDateTimeline() {
   const box = document.getElementById('date-tree');
   if (!box) return;
@@ -932,7 +994,6 @@ function renderDateTimeline() {
   const q = (document.getElementById('review-search').value || '').trim();
   const dates = availableDates.filter(d => !q || d.includes(q)).slice().reverse();
   if (dates.length === 0) { box.innerHTML = '<div class="drawer-empty">找不到符合的日期。</div>'; return; }
-  const recent7 = new Set(availableDates.slice(-7));
   let lastGroup = null;
   const rows = dates.map(d => {
     const [y, m] = d.split('-');
@@ -942,18 +1003,7 @@ function renderDateTimeline() {
       lastGroup = groupKey;
       header = `<div class="timeline-month-header">${y} 年 ${Number(m)} 月</div>`;
     }
-    const cur = d === currentDateKey ? ' current' : '';
-    const recent = recent7.has(d) ? '<span class="tree-day-count">近期</span>' : '';
-    const s = daySummaries[d];
-    let extra = '';
-    if (s) {
-      const bits = [];
-      if (s.preview) bits.push(escapeHtml(s.preview));
-      if (s.visitorCount) bits.push(`💬 ${s.visitorCount} 則留言${s.visitorPreview ? '：' + escapeHtml(s.visitorPreview) : ''}`);
-      if (s.ownerCount) bits.push(`📌 你留下了動態${s.ownerPreview ? '：' + escapeHtml(s.ownerPreview) : ''}`);
-      if (bits.length) extra = `<div class="tree-day-preview">${bits.join('　')}</div>`;
-    }
-    return `${header}<div class="tree-day${cur}" onclick="openMemoryOverlay('${d}')"><div class="tree-day-row"><span>${d}</span>${recent}</div>${extra}</div>`;
+    return header + dayRowHtml(d);
   }).join('');
   box.innerHTML = rows;
 }
