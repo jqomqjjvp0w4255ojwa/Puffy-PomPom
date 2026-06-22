@@ -964,22 +964,20 @@ function dayRowHtml(d) {
   const weekday = WEEKDAY_LABELS[new Date(y, m - 1, day).getDay()];
   const latest = availableDates[availableDates.length - 1];
   const cur = d === latest ? ' current' : '';
-  const recent = d === latest ? '<span class="tree-day-count">近期</span>' : '';
   const s = daySummaries[d];
   let extra = '';
   if (s) {
     const bits = [];
     if (s.preview) bits.push(escapeHtml(s.preview));
-    if (s.visitorCount) bits.push(`💬 ${s.visitorCount} 則留言${s.visitorPreview ? '：' + escapeHtml(s.visitorPreview) : ''}`);
-    if (s.ownerCount) bits.push(`📌 你留下了動態${s.ownerPreview ? '：' + escapeHtml(s.ownerPreview) : ''}`);
-    if (bits.length) extra = `<div class="tree-day-preview">${bits.join('　')}</div>`;
+    if (s.visitorCount) bits.push(`留言 ${s.visitorCount} 則${s.visitorPreview ? '：' + escapeHtml(s.visitorPreview) : ''}`);
+    if (s.ownerCount) bits.push(`你留下了動態${s.ownerPreview ? '：' + escapeHtml(s.ownerPreview) : ''}`);
+    if (bits.length) extra = `<div class="tree-day-preview">${bits.join('　·　')}</div>`;
   }
   return `<div class="tree-day${cur}" onclick="openMemoryOverlay('${d}')">
     <div class="tree-day-dot"></div>
-    <div class="tree-day-card">
-      <div class="tree-day-row"><span><span class="tree-day-date">${d}</span><span class="tree-day-weekday">（週${weekday}）</span></span>${recent}</div>
+    <div class="tree-day-body">
+      <div class="tree-day-row"><span class="tree-day-date">${d}</span><span class="tree-day-weekday">週${weekday}</span></div>
       ${extra}
-      <i class="ti ti-chevron-right tree-day-arrow"></i>
     </div>
   </div>`;
 }
@@ -991,7 +989,7 @@ function renderTodayRecall() {
   if (!headBox || !availableDates.length) return;
   const latest = availableDates[availableDates.length - 1];
   const [ly, lm, ld] = latest.split('-').map(Number);
-  headBox.innerHTML = `你們已經一起生活了 <b>${availableDates.length}</b> 天`;
+  headBox.innerHTML = `一起生活第 <b>${availableDates.length}</b> 天`;
 
   const mmdd = latest.slice(5);
   const matches = availableDates
@@ -1006,10 +1004,8 @@ function renderTodayRecall() {
       const s = daySummaries[d];
       const preview = s && s.preview ? escapeHtml(s.preview) : '這天沒有留下太多紀錄。';
       return `<div class="anniv-card" onclick="openMemoryOverlay('${d}')">
-        <div class="anniv-card-label">${yearsAgo} 年前的今天</div>
-        <div class="anniv-card-date">${d}</div>
+        <span class="anniv-card-label">${yearsAgo} 年前的今天</span><span class="anniv-card-date">${d}</span>
         <div class="anniv-card-preview">${preview}</div>
-        <div class="anniv-card-link">閱讀 →</div>
       </div>`;
     }).join('')}</div>`;
   }
