@@ -1028,8 +1028,9 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
   box-shadow: 0 2px 10px rgba(120,90,60,0.05);
 }
 
-.review-today-head { font-size: 16px; color: #8a5a3a; font-weight: 500; margin-bottom: 10px; }
-.review-recent-label { font-size: 11.5px; color: #ada497; margin: 14px 0 8px; }
+.review-today-head { font-size: 40px; font-weight: 300; color: #5a4a3a; letter-spacing: 0.5px; margin-bottom: 6px; font-family: Georgia, 'Times New Roman', serif; }
+.review-today-head b { font-weight: 500; color: #b8895a; }
+.review-recent-label { font-size: 11.5px; color: #ada497; margin: 18px 0 10px; text-transform: uppercase; letter-spacing: 1px; }
 .anniv-cards { display: flex; gap: 10px; flex-wrap: wrap; }
 .anniv-card {
   flex: 1 1 150px; min-width: 130px; cursor: pointer;
@@ -1045,48 +1046,60 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
 }
 .anniv-card-link { font-size: 11px; color: #c08050; }
 
-/* 搜尋列 */
+/* 搜尋列：浮在內容上方的圓角搜尋框 */
 .review-search-wrap {
-  display: flex; align-items: center; gap: 7px;
-  padding: 9px 12px; margin-bottom: 14px;
-  background: #f9f5ee; border-radius: 9px; color: #b0a08c; font-size: 13px;
+  display: flex; align-items: center; gap: 8px;
+  padding: 11px 16px; margin-bottom: 18px;
+  background: #fff; border: 1px solid #efe8dc; border-radius: 999px; color: #b0a08c; font-size: 13px;
+  box-shadow: 0 2px 8px rgba(120,90,60,0.04);
 }
 .review-search-wrap i { font-size: 14px; flex-shrink: 0; }
 .review-search {
   flex: 1; border: none; background: none; font-family: inherit; font-size: 12.5px;
   color: #5a4a3a; outline: none;
 }
-/* 時間軸：連續滾動，月份標頭 sticky 釘在上方，每天一行，左側用小圓點標記 */
+/* 時間軸：連續滾動，左側用一條直線串起每一天，卡片風格走「閱讀」而非「管理」 */
 .date-tree { font-size: 13px; max-height: 360px; overflow-y: auto; }
 .timeline-month-header {
   position: sticky; top: 0; z-index: 1;
   background: #fffdf9; color: #8a5a3a; font-weight: 500;
-  padding: 8px 4px 6px; font-size: 12px;
+  padding: 8px 4px 6px 22px; font-size: 12px;
 }
 .tree-day {
-  cursor: pointer; padding: 10px 12px 10px 22px; border-radius: 10px; color: #6a5a4a;
-  margin-bottom: 4px; position: relative;
-  transition: background 0.15s;
+  cursor: pointer; padding: 0 0 16px 22px; color: #6a5a4a;
+  position: relative;
 }
 .tree-day::before {
-  content: ''; position: absolute; left: 8px; top: 16px;
-  width: 6px; height: 6px; border-radius: 50%; background: #d9c4a0;
+  content: ''; position: absolute; left: 1px; top: 18px; bottom: -2px;
+  width: 1px; background: #e6dfd5;
 }
+.tree-day:last-child::before { display: none; }
+.tree-day-dot {
+  position: absolute; left: -2px; top: 14px;
+  width: 7px; height: 7px; border-radius: 50%; background: #d9c4a0;
+}
+.tree-day.current .tree-day-dot { background: #c08050; }
+.tree-day-card {
+  background: #fff; border: 1px solid #efe8dc; border-radius: 10px;
+  padding: 12px 36px 12px 14px; position: relative;
+  transition: transform 0.15s, border-color 0.15s;
+}
+.tree-day-card:hover { transform: translateY(-1px); border-color: #e0d4bc; }
+.tree-day.current .tree-day-card { background: #fdf8ee; border-color: #e7d8bc; }
 .tree-day-row { display: flex; justify-content: space-between; align-items: center; }
 .tree-day-date { font-weight: 500; color: #5a4a3a; }
 .tree-day-weekday { font-size: 11.5px; color: #b0a090; margin-left: 2px; }
-.tree-day:hover { background: #f9f5ee; }
-.tree-day.current { background: #f5e9d4; }
-.tree-day.current::before { background: #c08050; }
-.tree-day.current .tree-day-date { color: #8a5a3a; }
 .tree-day-count {
   font-size: 10.5px; color: #b8895a; background: #f0e0c4; border-radius: 999px;
   padding: 2px 8px; flex-shrink: 0;
 }
 .tree-day-preview {
-  font-size: 11.5px; color: #a08f7c; margin-top: 4px;
-  line-height: 1.5; overflow: hidden; text-overflow: ellipsis;
-  white-space: nowrap;
+  font-size: 12px; color: #a08f7c; margin-top: 5px;
+  line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.tree-day-arrow {
+  position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+  font-size: 14px; color: #c8b89c;
 }
 
 /* 回憶卡：仿 GalGame 回顧介面，背景壓黑模糊，內容浮在上層，不離開回顧頁 */

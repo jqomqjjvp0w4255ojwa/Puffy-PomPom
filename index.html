@@ -6,7 +6,7 @@
 <title>白糰糰觀察日記</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
-<link rel="stylesheet" href="style.css?v=20260622j">
+<link rel="stylesheet" href="style.css?v=20260622k">
 </head>
 <body>
 
@@ -86,13 +86,13 @@
 <div class="notebook page-pane" data-page="review">
   <div class="review-layout">
     <div class="review-main review-main-full">
-      <div class="review-search-wrap">
-        <i class="ti ti-search"></i>
-        <input type="text" class="review-search" id="review-search" placeholder="搜尋日期（例如 2026-06 或 06-21）" oninput="renderDateTimeline()">
-      </div>
       <div class="review-today-head" id="review-today-head"></div>
       <div class="anniv-row" id="anniv-row"></div>
       <div class="review-recent-label">時間軸</div>
+      <div class="review-search-wrap">
+        <i class="ti ti-search"></i>
+        <input type="text" class="review-search" id="review-search" placeholder="搜尋日期、關鍵字或情緒..." oninput="renderDateTimeline()">
+      </div>
       <div class="date-tree" id="date-tree"><div class="drawer-empty">載入中…</div></div>
     </div>
   </div>
@@ -376,6 +376,6 @@
   </div>
 </div>
 
-<script src="app.js?v=20260622j"></script>
+<script src="app.js?v=20260622k"></script>
 </body>
 </html>
