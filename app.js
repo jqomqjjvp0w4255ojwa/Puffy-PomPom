@@ -478,13 +478,13 @@ function nestQuote(str) {
   return String(str || '').replace(/「/g, '『').replace(/」/g, '』');
 }
 
-let noteState = { mode: 'draft', color: 'yellow', savedId: null, location: 'floor' };
+let noteState = { mode: 'draft', color: 'yellow', savedId: null, location: 'floor', locationLabel: '' };
 const NOTE_LOCATION_LABELS = { desk_leg: '桌腳', fridge_bottom: '冰箱下方', wall: '牆上', floor: '地板', computer: '電腦' };
-// 高度決定留下什麼印子：地上＝腳印，低處（桌腳／冰箱下方）＝手印，隨機（牆上／電腦，碰不碰得到不確定）＝毛印。
+// 高度決定留下什麼印子：地上＝腳印，低處（桌腳／冰箱下方）＝手印，隨機（牆上／電腦／自填，碰不碰得到不確定）＝毛印。
 function noteMarkType(loc) {
+  if (loc === 'floor') return 'footprint';
   if (loc === 'desk_leg' || loc === 'fridge_bottom') return 'hand';
-  if (loc === 'wall' || loc === 'computer') return 'fur';
-  return 'footprint';
+  return 'fur';
 }
 const NOTE_MARK_IDS = { footprint: 'note-mark-footprint', hand: 'note-mark-hand', fur: 'note-mark-fur' };
 function showNoteMark(loc) {
@@ -497,19 +497,49 @@ function hideNoteMarks() {
   Object.values(NOTE_MARK_IDS).forEach(id => { document.getElementById(id).style.display = 'none'; });
 }
 
-function setNoteLocation(loc) {
+// 把地點 key 轉成顯示文字：自訂地點（custom）用 locationLabel。
+function noteLocText(loc, label) {
+  if (loc === 'custom') return (label || '').trim();
+  return NOTE_LOCATION_LABELS[loc] || '';
+}
+
+function setNoteLocation(loc, label) {
   noteState.location = loc;
-  document.querySelectorAll('#note-location-picker .note-loc-chip').forEach(el => {
-    el.classList.toggle('active', el.dataset.loc === loc);
-  });
+  noteState.locationLabel = label || '';
+  const sel = document.getElementById('note-loc-select');
+  const custom = document.getElementById('note-loc-custom');
+  if (sel) sel.value = loc === 'custom' ? '__custom__' : loc;
+  if (custom) {
+    custom.style.display = loc === 'custom' ? 'block' : 'none';
+    if (loc === 'custom') custom.value = label || '';
+  }
+}
+
+function onNoteLocSelect(v) {
+  if (v === '__custom__') {
+    noteState.location = 'custom';
+    const custom = document.getElementById('note-loc-custom');
+    custom.style.display = 'block';
+    custom.value = '';
+    noteState.locationLabel = '';
+    custom.focus();
+  } else {
+    setNoteLocation(v);
+  }
+}
+
+function onNoteLocCustomInput(v) {
+  noteState.location = 'custom';
+  noteState.locationLabel = v;
 }
 
 setNoteLocation('floor');
 
-function renderNoteLocTag(loc) {
+function renderNoteLocTag(loc, label) {
   const el = document.getElementById('note-saved-loc');
-  if (loc && NOTE_LOCATION_LABELS[loc]) {
-    el.textContent = `貼在${NOTE_LOCATION_LABELS[loc]}`;
+  const text = noteLocText(loc, label);
+  if (text) {
+    el.textContent = `貼在${text}`;
     el.style.display = 'block';
   } else {
     el.style.display = 'none';
@@ -543,7 +573,7 @@ function renderNoteSaved(note) {
   const saved = document.getElementById('sticky-note-saved');
   saved.style.display = 'block';
   saved.textContent = note.message;
-  renderNoteLocTag(note.location);
+  renderNoteLocTag(note.location, note.locationLabel);
   document.getElementById('note-confirm-btn').style.display = 'none';
   document.getElementById('note-delete-btn').style.display = 'inline';
   hideNoteMarks();
@@ -559,10 +589,19 @@ function renderNoteRead(note) {
   const saved = document.getElementById('sticky-note-saved');
   saved.style.display = 'block';
   saved.textContent = note.message;
-  renderNoteLocTag(note.location);
+  renderNoteLocTag(note.location, note.locationLabel);
   document.getElementById('note-confirm-btn').style.display = 'none';
   document.getElementById('note-delete-btn').style.display = 'none';
   showNoteMark(note.location);
+  // 毛印是隨機蹭過的痕跡：每次擺位、角度、深淺都略有不同。
+  if (noteMarkType(note.location) === 'fur') {
+    const fur = document.getElementById('note-mark-fur');
+    const rot = (Math.random() * 30 - 15).toFixed(1);
+    const dx = (Math.random() * 24 - 4).toFixed(0);
+    fur.style.transform = `rotate(${rot}deg)`;
+    fur.style.marginLeft = `${dx}px`;
+    fur.style.opacity = (0.45 + Math.random() * 0.3).toFixed(2);
+  }
   document.getElementById('note-new-btn').style.display = 'inline';
 }
 
@@ -570,6 +609,7 @@ function renderNoteDraft() {
   noteState.mode = 'draft';
   noteState.savedId = null;
   noteState.location = 'floor';
+  noteState.locationLabel = '';
   document.getElementById('sticky-note-textarea').style.display = 'block';
   document.getElementById('note-location-picker').style.display = 'flex';
   setNoteLocation('floor');
@@ -602,6 +642,7 @@ function refreshNoteWidget(pending) {
       message: document.getElementById('sticky-note-saved').textContent,
       color: document.getElementById('sticky-note').dataset.color,
       location: noteState.location,
+      locationLabel: noteState.locationLabel,
     };
     localStorage.setItem('lastReadNote', JSON.stringify(readNote));
     renderNoteRead(readNote);
@@ -618,14 +659,15 @@ async function confirmNote() {
   const message = document.getElementById('sticky-note-textarea').value.trim();
   if (!message) return;
   const location = noteState.location || 'floor';
+  const locationLabel = location === 'custom' ? (noteState.locationLabel || '').trim() : '';
   const res = await fetch('/api/visitor', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ message, color: noteState.color, location })
+    body: JSON.stringify({ message, color: noteState.color, location, locationLabel })
   });
   const data = await res.json();
   document.getElementById('sticky-note-textarea').value = '';
-  renderNoteSaved({ id: data.id, message, color: noteState.color, location });
+  renderNoteSaved({ id: data.id, message, color: noteState.color, location, locationLabel });
 }
 
 async function deleteNote() {
@@ -1232,7 +1274,8 @@ function reviewEntryHtml(e, ownerLog, visitorLog) {
 
   const visitorHtml = visitors.length
     ? `<div class="detail-box">${visitors.map(v => {
-        const locTag = v.location && NOTE_LOCATION_LABELS[v.location] ? ` <span class="sub">· 貼在${NOTE_LOCATION_LABELS[v.location]}</span>` : '';
+        const locText = v.location ? noteLocText(v.location, v.locationLabel) : '';
+        const locTag = locText ? ` <span class="sub">· 貼在${escapeHtml(locText)}</span>` : '';
         // 印子就是提示：用對應的小印子圖示，不用文字標籤。
         const stampIcon = { footprint: 'ti-paw', hand: 'ti-hand-stop', fur: 'ti-fingerprint' }[v.location ? noteMarkType(v.location) : 'footprint'];
         const stampTag = v.location ? ` <i class="ti ${stampIcon} note-stamp-icon note-stamp-${noteMarkType(v.location)}"></i>` : '';
