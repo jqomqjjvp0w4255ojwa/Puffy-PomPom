@@ -371,6 +371,12 @@ const statusField = createEditableField({
   emptyText: '尚無狀態',
   onSave: (v) => fetch('/api/owner', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'status', input: v }) }),
 });
+// 狀態小圓點顏色：有空＝綠、忙碌＝黃、休息＝藍、不在／其他＝灰褐，一眼看出狀態。
+const STATUS_DOT_COLOR = { '有空': '#7ab87a', '忙碌': '#e8c84a', '休息': '#7aa8d8', '不在': '#b0a090' };
+function updateStatusDot() {
+  const el = document.getElementById('status-display');
+  el.style.setProperty('--status-dot-color', STATUS_DOT_COLOR[el.textContent] || '#c0a878');
+}
 // 狀態用固定標籤［有空/忙碌/休息/不在］，選了直接送出；「其他」才退回文字輸入。
 function editStatus() {
   document.getElementById('status-display').style.display = 'none';
@@ -390,11 +396,13 @@ async function pickStatusTag(tag) {
   document.getElementById('status-tag-picker').style.display = 'none';
   await statusField.submitValue(tag);
   document.getElementById('panel-btn').classList.toggle('has-input', tag !== '');
+  updateStatusDot();
 }
 function submitStatus() {
   const v = document.getElementById('owner-input').value.trim();
   statusField.submit();
   document.getElementById('panel-btn').classList.toggle('has-input', v !== '');
+  updateStatusDot();
 }
 
 const envField = createEditableField({
@@ -851,6 +859,7 @@ async function load() {
 
     const ownerStatus = world.owner_status || '';
     statusField.setFromServer(ownerStatus);
+    updateStatusDot();
     document.getElementById('status-time').textContent = world.owner_status_time ? '最後更新 ' + world.owner_status_time : '';
 
     envField.setFromServer(world.room.env_desc || '');
@@ -1327,7 +1336,7 @@ function renderNotesShelf() {
   // 篩選模式下，只列出目前書本裡真的有頁面的書冊。
   const available = new Set(notesPages.filter(p => p.type === 'cover').map(p => p.chapter.source));
   let html = `<div class="shelf-book shelf-toc${notesIndex === 0 ? ' active' : ''}" onclick="notesIndex=0;renderNotes()">
-    <div class="shelf-book-title"><i class="ti ti-list"></i>書櫃目錄</div>
+    <div class="shelf-book-title"><i class="ti ti-list"></i>書櫃</div>
     <div class="shelf-book-meta"><span>全部書冊</span><span>${notesMeta.totalGot}/${notesMeta.totalAll} 句</span></div>
   </div>`;
   let shown = 0;
@@ -1335,7 +1344,7 @@ function renderNotesShelf() {
     if (!c.unlocked) {
       if (notesFilter !== 'all') return; // 篩選時不顯示未解鎖佔位
       html += `<div class="shelf-book locked">
-        <div class="shelf-book-title">？？？　未發現的書冊</div>
+        <div class="shelf-book-title"><i class="ti ti-lock"></i>？？？　未發現的書冊</div>
         <div class="shelf-book-meta"><span>未解鎖</span><span>0/${c.total}</span></div>
       </div>`;
       return;
@@ -1343,9 +1352,11 @@ function renderNotesShelf() {
     if (notesFilter !== 'all' && !available.has(c.source)) return;
     shown++;
     const isActive = notesIndex !== 0 && c.source === active ? ' active' : '';
+    const pct = c.total > 0 ? Math.round(c.got / c.total * 100) : 0;
     html += `<div class="shelf-book${isActive}" onclick="openChapterPage('${c.source.replace(/'/g, "\\'")}')">
       <div class="shelf-book-title">${escapeHtml(c.source)}</div>
-      <div class="shelf-book-meta"><span>${c.got === c.total ? '已蒐集完整' : '蒐集中'}</span><span>${c.got}/${c.total}</span></div>
+      <div class="shelf-book-meta"><span>${c.got === c.total ? '已完成' : '蒐集中'}</span><span>${c.got}/${c.total}</span></div>
+      <div class="shelf-book-bar"><div class="shelf-book-fill" style="width:${pct}%"></div></div>
     </div>`;
   });
   if (notesFilter === 'fav' && shown === 0) {
@@ -1355,13 +1366,23 @@ function renderNotesShelf() {
 }
 function pageInnerHtml(page) {
   if (page.type === 'toc') {
-    const items = page.chapters.map(c => {
-      if (!c.unlocked) return `<div class="toc-item locked"><span>？？？　未發現的篇章</span><span class="toc-count">0/${c.total}</span></div>`;
-      return `<div class="toc-item" onclick="openChapterPage('${c.source.replace(/'/g, "\\'")}')"><span>${escapeHtml(c.source)}</span><span class="toc-count">${c.got}/${c.total}</span></div>`;
+    const items = page.chapters.map((c, i) => {
+      const num = String(i + 1).padStart(2, '0');
+      if (!c.unlocked) {
+        return `<div class="toc-item locked">
+          <span class="toc-num">${num}</span><i class="ti ti-lock toc-state"></i>
+          <span class="toc-name">？？？　未發現的篇章</span><span class="toc-count">0/${c.total}</span><i class="ti ti-chevron-right toc-chevron"></i>
+        </div>`;
+      }
+      return `<div class="toc-item" onclick="openChapterPage('${c.source.replace(/'/g, "\\'")}')">
+        <span class="toc-num">${num}</span><i class="ti ti-circle-check toc-state done"></i>
+        <span class="toc-name">${escapeHtml(c.source)}</span><span class="toc-count">${c.got}/${c.total}</span><i class="ti ti-chevron-right toc-chevron"></i>
+      </div>`;
     }).join('');
-    return { running: '', body: `<div class="book-toc-title">黑影筆記・目錄</div>
+    return { running: '', body: `<div class="book-toc-title">黑影筆記・書櫃目錄</div>
       <div class="book-progress">已收集 ${page.totalGot} / ${page.totalAll} 張碎片　・　已揭開的篇章 ${page.unlockedChapters} / ${page.totalChapters}</div>
-      ${items}` };
+      <div class="toc-list">${items}</div>
+      <div class="book-toc-quote">有些篇章還沒被發現，不代表它不存在。<br>它只是還在世界的某個角落等我們。</div>` };
   }
   if (page.type === 'cover') {
     const c = page.chapter;

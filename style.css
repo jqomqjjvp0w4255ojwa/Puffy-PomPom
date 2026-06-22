@@ -643,13 +643,20 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
 .status-icons i { font-size: 14px; color: #b0a090; cursor: pointer; transition: color 0.15s; }
 .status-icons i:hover { color: #7a6a5a; }
 
-.status-tag-picker { display: flex; flex-wrap: wrap; gap: 6px; padding: 4px 0 2px; align-items: center; }
+.status-tag-picker { display: flex; flex-wrap: wrap; gap: 5px; padding: 4px 0 2px; align-items: center; }
 .status-tag-chip {
-  font-size: 11.5px; color: #6a5a4a; background: #f5ede0; border: 1px solid #e8d8c0;
-  border-radius: 12px; padding: 4px 11px; cursor: pointer; transition: background 0.15s;
+  font-size: 10.5px; color: #6a5a4a; background: #f5ede0; border: 1px solid #e8d8c0;
+  border-radius: 10px; padding: 3px 9px; cursor: pointer; transition: background 0.15s;
+  display: inline-flex; align-items: center; gap: 5px;
 }
 .status-tag-chip:hover { background: #efe3cc; }
-.status-tag-cancel { font-size: 11px; color: #9a8a7a; cursor: pointer; padding: 4px 6px; }
+.status-tag-chip::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: #c0a878; flex-shrink: 0; }
+.status-tag-chip[data-tag="有空"]::before { background: #7ab87a; }
+.status-tag-chip[data-tag="忙碌"]::before { background: #e8c84a; }
+.status-tag-chip[data-tag="休息"]::before { background: #7aa8d8; }
+.status-tag-chip[data-tag="不在"]::before { background: #b0a090; }
+.status-tag-custom::before { display: none; }
+.status-tag-cancel { font-size: 10.5px; color: #9a8a7a; cursor: pointer; padding: 3px 5px; }
 .status-tag-cancel:hover { color: #6a5a4a; }
 
 .room-action-textarea {
@@ -712,7 +719,7 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: #7ab87a;
+  background: var(--status-dot-color, #c0a878);
   margin-right: 7px;
   vertical-align: middle;
 }
@@ -989,21 +996,30 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
   padding: 0 4px 12px; margin-bottom: 4px; border-bottom: 1px solid #e6dccb;
   display: flex; align-items: center; gap: 6px;
 }
-.book-shelf-list { display: flex; flex-direction: column; gap: 10px; padding-top: 12px; overflow-y: auto; }
+.book-shelf-list { display: flex; flex-direction: column; gap: 12px; padding-top: 14px; overflow-y: auto; }
 .shelf-book {
-  padding: 12px; border-radius: 10px; cursor: pointer;
-  background: transparent; border: 1px solid transparent; transition: background 0.15s, border-color 0.15s;
+  padding: 13px; border-radius: 10px; cursor: pointer;
+  background: transparent; border: 1px solid transparent;
+  transition: background 0.15s, border-color 0.15s, box-shadow 0.15s, transform 0.15s;
 }
 .shelf-book:hover { background: rgba(191,167,143,0.12); }
-.shelf-book.active { background: #fffdf9; border-color: #e3d8c5; box-shadow: 0 3px 10px rgba(120,90,60,0.06); }
+.shelf-book.active {
+  background: #fffdf9; border-color: #e3d8c5;
+  box-shadow: 0 4px 14px rgba(120,90,60,0.1); transform: translateY(-1px);
+}
 .shelf-book-title {
-  font-size: 13.5px; color: #6a5644; font-weight: 500; margin-bottom: 6px;
+  font-size: 13.5px; color: #6a5644; font-weight: 500; margin-bottom: 7px;
   display: flex; align-items: center; gap: 6px; line-height: 1.4;
 }
+.shelf-book-title i { font-size: 13px; flex-shrink: 0; }
 .shelf-book.active .shelf-book-title { color: #8a5a3a; }
-.shelf-book-meta { font-size: 11px; color: #b0a090; display: flex; justify-content: space-between; }
+.shelf-book-meta { font-size: 11px; color: #b0a090; display: flex; justify-content: space-between; margin-bottom: 7px; }
+.shelf-book-bar { height: 4px; background: #e8ddca; border-radius: 999px; overflow: hidden; }
+.shelf-book-fill { height: 100%; background: linear-gradient(90deg, #d9b075, #c08050); border-radius: 999px; transition: width 0.4s; }
+.shelf-book.active .shelf-book-fill { background: linear-gradient(90deg, #c89055, #a8703a); }
 .shelf-book.locked { cursor: default; }
 .shelf-book.locked:hover { background: transparent; }
+.shelf-book.locked .shelf-book-meta { margin-bottom: 0; }
 .shelf-book.locked .shelf-book-title { color: #c0b0a0; font-weight: 400; }
 .shelf-toc .shelf-book-title { color: #9a8a78; }
 
@@ -1213,16 +1229,27 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
 .book-toc-title { font-size: 15px; color: #8a5a3a; font-weight: 500; text-align: center; margin-bottom: 4px; }
 .book-cover-page { display: flex; flex-direction: column; align-items: center; justify-content: center; flex: 1; gap: 8px; }
 .book-cover-title { font-size: 19px; color: #8a5a3a; font-weight: 500; text-align: center; }
-.book-progress { font-size: 11px; color: #b0a090; text-align: center; }
+.book-progress { font-size: 11px; color: #b0a090; text-align: center; margin-bottom: 8px; }
+.toc-list { display: flex; flex-direction: column; gap: 8px; }
 .toc-item {
-  padding: 9px 12px; border-radius: 10px; background: #f7f2ea;
+  padding: 12px 14px; border-radius: 10px; background: #f7f2ea;
   font-size: 13px; color: #8a5a3a; cursor: pointer;
-  display: flex; justify-content: space-between; align-items: center;
+  display: flex; align-items: center; gap: 10px; min-height: 22px;
+  transition: background 0.15s;
 }
 .toc-item:hover { background: #f0e6d6; }
 .toc-item.locked { color: #c0b0a0; cursor: default; background: #f7f4ee; }
 .toc-item.locked:hover { background: #f7f4ee; }
-.toc-count { font-size: 11px; color: #b0a090; }
+.toc-num { font-size: 11px; color: #c0a888; font-family: Georgia, serif; flex-shrink: 0; width: 18px; }
+.toc-state { font-size: 14px; color: #c0b0a0; flex-shrink: 0; }
+.toc-state.done { color: #c08050; }
+.toc-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.toc-count { font-size: 10.5px; color: #b0a090; flex-shrink: 0; }
+.toc-chevron { font-size: 13px; color: #d0c0ac; flex-shrink: 0; }
+.book-toc-quote {
+  margin-top: 18px; padding-top: 14px; border-top: 1px dashed #e6dccb;
+  font-size: 11.5px; color: #b0a090; text-align: center; line-height: 1.8; font-style: italic;
+}
 .frag-slot {
   font-size: 13px; line-height: 1.7; color: #5a4a3a;
 }
