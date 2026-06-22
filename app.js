@@ -961,6 +961,12 @@ function renderDrawerSubnav(name) {
   } else if (name === 'notes') {
     box.innerHTML = `<div class="book-shelf">
       <div class="book-shelf-head"><i class="ti ti-books"></i> 我的書冊</div>
+      <div class="notes-progress" id="notes-progress"></div>
+      <div class="notes-filter">
+        <span class="notes-filter-tab" data-f="all" onclick="setNotesFilter('all')">全部</span>
+        <span class="notes-filter-tab" data-f="collected" onclick="setNotesFilter('collected')">已蒐集</span>
+        <span class="notes-filter-tab" data-f="fav" onclick="setNotesFilter('fav')">收藏</span>
+      </div>
       <div class="book-shelf-list" id="book-shelf-list"><div class="drawer-empty">載入中…</div></div>
     </div>`;
     renderNotesShelf();
@@ -1217,6 +1223,7 @@ let notesPages = [];
 let notesIndex = 0;
 let notesChapters = [];
 let notesMeta = { totalGot: 0, totalAll: 0 };
+let notesFilter = 'all'; // all | collected | fav
 const NOTES_ITEMS_PER_PAGE = 3;
 function isDesktopBook() { return window.matchMedia('(min-width: 760px)').matches; }
 
@@ -1231,22 +1238,50 @@ function markFragmentsSeen(ids) {
   ids.forEach(id => seen.add(id));
   localStorage.setItem('pp_seen_fragments', JSON.stringify([...seen]));
 }
+// 收藏：玩家自己標記的碎片，存在 localStorage（純前端，每個瀏覽器各自記）。
+function getFavFragments() {
+  try { return new Set(JSON.parse(localStorage.getItem('pp_fav_fragments') || '[]')); }
+  catch (e) { return new Set(); }
+}
+function toggleFav(id) {
+  const fav = getFavFragments();
+  if (fav.has(id)) fav.delete(id); else fav.add(id);
+  localStorage.setItem('pp_fav_fragments', JSON.stringify([...fav]));
+  if (notesFilter === 'fav') buildNotesPages(); // 在收藏分類下，取消收藏要即時從頁面移除
+  renderNotes();
+}
+function setNotesFilter(f) {
+  notesFilter = f;
+  notesIndex = 0;
+  buildNotesPages();
+  renderNotes();
+}
+// 依目前的篩選（全部／已蒐集／收藏）重建書本頁面。
+function buildNotesPages() {
+  const fav = getFavFragments();
+  const unlockedChapters = notesChapters.filter(c => c.unlocked).length;
+  notesPages = [{ type: 'toc', chapters: notesChapters, totalGot: notesMeta.totalGot, totalAll: notesMeta.totalAll, unlockedChapters, totalChapters: notesChapters.length }];
+  notesChapters.filter(c => c.unlocked).forEach(c => {
+    let items = c.items;
+    if (notesFilter === 'collected') items = items.filter(it => it.collected);
+    else if (notesFilter === 'fav') items = items.filter(it => it.collected && fav.has(it.id));
+    // 篩選模式下，沒有任何符合的碎片的書冊就不放進來，免得翻到空白頁。
+    if (notesFilter !== 'all' && items.length === 0) return;
+    notesPages.push({ type: 'cover', chapter: c });
+    // 全部模式：未收集的碎片保留原本的格位（用污漬呈現），日後收集到才會在「同一個位置」現出內容。
+    for (let i = 0; i < items.length; i += NOTES_ITEMS_PER_PAGE) {
+      notesPages.push({ type: 'content', chapter: c, items: items.slice(i, i + NOTES_ITEMS_PER_PAGE) });
+    }
+  });
+  if (notesIndex >= notesPages.length) notesIndex = 0;
+}
 async function loadNotebook() {
   try {
     const res = await fetch('/api/fragments?t=' + Date.now());
     const data = await res.json();
-    const unlockedChapters = data.chapters.filter(c => c.unlocked).length;
     notesChapters = data.chapters;
     notesMeta = { totalGot: data.totalGot, totalAll: data.totalAll };
-    notesPages = [{ type: 'toc', chapters: data.chapters, totalGot: data.totalGot, totalAll: data.totalAll, unlockedChapters, totalChapters: data.chapters.length }];
-    data.chapters.filter(c => c.unlocked).forEach(c => {
-      notesPages.push({ type: 'cover', chapter: c });
-      // 用固定位置排版：未收集的碎片保留原本的格位（用污漬呈現），日後收集到才會在「同一個位置」現出內容。
-      for (let i = 0; i < c.items.length; i += NOTES_ITEMS_PER_PAGE) {
-        notesPages.push({ type: 'content', chapter: c, items: c.items.slice(i, i + NOTES_ITEMS_PER_PAGE) });
-      }
-    });
-    if (notesIndex >= notesPages.length) notesIndex = 0;
+    buildNotesPages();
     renderNotes();
   } catch (e) {
     document.getElementById('notes-book').innerHTML = '<div class="drawer-empty">筆記載入失敗。</div>';
@@ -1272,6 +1307,16 @@ function currentNotesSource() {
   return p && p.chapter ? p.chapter.source : null;
 }
 function renderNotesShelf() {
+  // 進度條：已蒐集 X / Y · Z%
+  const prog = document.getElementById('notes-progress');
+  if (prog) {
+    const got = notesMeta.totalGot, all = notesMeta.totalAll || 0;
+    const pct = all > 0 ? Math.round(got / all * 100) : 0;
+    prog.innerHTML = `<div class="notes-progress-text">已蒐集 <b>${got}</b> / ${all} 句　·　${pct}%</div>
+      <div class="notes-progress-bar"><div class="notes-progress-fill" style="width:${pct}%"></div></div>`;
+  }
+  document.querySelectorAll('.notes-filter-tab').forEach(t => t.classList.toggle('active', t.dataset.f === notesFilter));
+
   const list = document.getElementById('book-shelf-list');
   if (!list) return;
   if (!notesChapters.length) {
@@ -1279,24 +1324,33 @@ function renderNotesShelf() {
     return;
   }
   const active = currentNotesSource();
+  // 篩選模式下，只列出目前書本裡真的有頁面的書冊。
+  const available = new Set(notesPages.filter(p => p.type === 'cover').map(p => p.chapter.source));
   let html = `<div class="shelf-book shelf-toc${notesIndex === 0 ? ' active' : ''}" onclick="notesIndex=0;renderNotes()">
     <div class="shelf-book-title"><i class="ti ti-list"></i>書櫃目錄</div>
-    <div class="shelf-book-meta"><span>全部書冊</span><span>${notesMeta.totalGot}/${notesMeta.totalAll} 張</span></div>
+    <div class="shelf-book-meta"><span>全部書冊</span><span>${notesMeta.totalGot}/${notesMeta.totalAll} 句</span></div>
   </div>`;
+  let shown = 0;
   notesChapters.forEach(c => {
     if (!c.unlocked) {
+      if (notesFilter !== 'all') return; // 篩選時不顯示未解鎖佔位
       html += `<div class="shelf-book locked">
         <div class="shelf-book-title">？？？　未發現的書冊</div>
         <div class="shelf-book-meta"><span>未解鎖</span><span>0/${c.total}</span></div>
       </div>`;
       return;
     }
+    if (notesFilter !== 'all' && !available.has(c.source)) return;
+    shown++;
     const isActive = notesIndex !== 0 && c.source === active ? ' active' : '';
     html += `<div class="shelf-book${isActive}" onclick="openChapterPage('${c.source.replace(/'/g, "\\'")}')">
       <div class="shelf-book-title">${escapeHtml(c.source)}</div>
       <div class="shelf-book-meta"><span>${c.got === c.total ? '已蒐集完整' : '蒐集中'}</span><span>${c.got}/${c.total}</span></div>
     </div>`;
   });
+  if (notesFilter === 'fav' && shown === 0) {
+    html += '<div class="drawer-empty">還沒有收藏任何句子。<br>翻書時點句尾的星星就能收藏。</div>';
+  }
   list.innerHTML = html;
 }
 function pageInnerHtml(page) {
@@ -1318,6 +1372,7 @@ function pageInnerHtml(page) {
   }
   const c = page.chapter;
   const seen = getSeenFragments();
+  const fav = getFavFragments();
   let lastLabel = null;
   const slots = page.items.map(it => {
     const showLabel = it.label && it.label !== lastLabel;
@@ -1327,7 +1382,10 @@ function pageInnerHtml(page) {
       return `<div class="frag-slot locked">${labelHtml}<div class="frag-smudge"></div></div>`;
     }
     const isNew = !seen.has(it.id);
-    return `<div class="frag-slot${isNew ? ' frag-slot-new' : ''}" data-frag-id="${it.id}">${labelHtml}${escapeHtml(it.text)}</div>`;
+    const isFav = fav.has(it.id);
+    // 收藏：一顆很淡的小星星跟在句尾，點了才亮成金色；平常幾乎不打擾閱讀。
+    const star = `<i class="ti ti-star${isFav ? '-filled' : ''} frag-fav${isFav ? ' on' : ''}" onclick="event.stopPropagation();toggleFav('${it.id}')" title="收藏"></i>`;
+    return `<div class="frag-slot${isNew ? ' frag-slot-new' : ''}" data-frag-id="${it.id}">${labelHtml}<span class="frag-text">${escapeHtml(it.text)}</span>${star}</div>`;
   }).join('');
   return { running: c.source, body: slots };
 }
