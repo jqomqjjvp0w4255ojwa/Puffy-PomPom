@@ -562,27 +562,34 @@ function computeHiddenStats(bt, signals, bal) {
     hardness: typeof bt.hardness === 'number' ? bt.hardness : 50,
     mood: typeof bt.mood === 'number' ? bt.mood : 0
   };
+  // 「有沒有被照顧」從糰糰的實際情況判斷，不只看巨怪有沒有按按鈕：
+  // 互動（送了動態）或糰糰這段時間真的有吃到東西（上一輪 fed）都算被照顧。
+  const cared = signals.interacted || signals.fed;
   const wellCared = signals.food > bal.highFoodThreshold && signals.hp > 60;
-  const crisis = signals.food < bal.lowFoodThreshold || signals.hp < 25;
+  // 真正的疏於照顧＝糰糰在挨餓(食物過低)且沒在吃東西。健康低不單獨算疏忽（可能正在恢復），
+  // 只要還有食物、還在吃，就不該因此扣好感。
+  const neglected = signals.food < bal.lowFoodThreshold && !signals.fed;
+  // 心情用的危機（短期情緒會難過）：挨餓沒吃、或健康亮紅燈。
+  const crisis = neglected || signals.hp < 25;
 
   // 熟悉度：在場累積、互動加成，預設外出不倒退（單調成長）
   let familiarity = cur.familiarity;
   if (!signals.away) familiarity += bal.familiarityPresent;
-  if (signals.interacted) familiarity += bal.familiarityInteract;
+  if (cared) familiarity += bal.familiarityInteract;
   if (signals.away) familiarity += bal.familiarityAwayDecay;
   familiarity = clampStat(familiarity, 0, 100);
 
-  // 好感度：互動／被好好照顧會升，外出冷落／受苦會降
+  // 好感度：互動／被餵／被好好照顧會升，外出冷落／挨餓受苦才降
   let affection = cur.affection;
-  if (signals.interacted) affection += bal.affectionInteract;
+  if (cared) affection += bal.affectionInteract;
   if (wellCared) affection += bal.affectionWellCared;
   if (signals.away) affection += bal.affectionAway;
-  if (crisis) affection += bal.affectionNeglect;
+  if (neglected) affection += bal.affectionNeglect;
   affection = clampStat(affection, -100, 100);
 
   // 心情：短期情緒，每回合先朝中性回歸，再疊加本回合事件
   let mood = cur.mood * (1 - bal.moodDecay);
-  if (signals.interacted) mood += bal.moodInteract;
+  if (cared) mood += bal.moodInteract;
   if (wellCared) mood += bal.moodWellCared;
   if (crisis) mood += bal.moodCrisis;
   if (signals.away) mood += bal.moodAway;
@@ -1241,6 +1248,8 @@ async function tick() {
   const balance = loadBalance();
   const hidden = computeHiddenStats(bt, {
     interacted: ownerActionUnread,
+    // 上一輪糰糰實際有沒有吃到東西（從牠的紀錄判斷有沒有被照顧，而非看巨怪當下動作）
+    fed: !!world.last_fed,
     away: !!world.owner_away,
     hasVisitor: visitorMessages.length > 0,
     food: bt.food,
@@ -1369,6 +1378,8 @@ async function tick() {
       ...world,
       nextTickAt: Date.now() + delay,
       weather: weather || world.weather || null,
+      // 記下這輪糰糰有沒有吃到，給下一輪判斷「有沒有被照顧」用。
+      last_fed: !!result.fed,
       tokenUsage,
       characters: {
         baituantuan: {
