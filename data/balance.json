@@ -19,7 +19,7 @@
   "moodAway": 0.05,
   "moodVisitor": 0.5,
   "textureEase": 0.05,
-  "ownerFeedFoodBoost": 0.1,
+  "ownerFeedFoodBoost": 5,
   "rebirthTicks": 0.01,
   "tickDayMinMin": 30,
   "tickDayMaxMin": 120,
