@@ -953,11 +953,38 @@ function renderDateTimeline() {
       if (s.ownerCount) bits.push(`📌 你留下了動態${s.ownerPreview ? '：' + escapeHtml(s.ownerPreview) : ''}`);
       if (bits.length) extra = `<div class="tree-day-preview">${bits.join('　')}</div>`;
     }
-    return `${header}<div class="tree-day${cur}" onclick="jumpToDay('${d}')"><div class="tree-day-row"><span>${d}</span>${recent}</div>${extra}</div>`;
+    return `${header}<div class="tree-day${cur}" onclick="openMemoryOverlay('${d}')"><div class="tree-day-row"><span>${d}</span>${recent}</div>${extra}</div>`;
   }).join('');
   box.innerHTML = rows;
 }
+
+// 回憶卡：仿 GalGame 回顧介面。點日期不離開回顧頁，直接蓋一張模糊黑底的卡顯示內容。
+async function openMemoryOverlay(d) {
+  const body = document.getElementById('memory-card-body');
+  body.innerHTML = '<div class="drawer-empty">載入中…</div>';
+  document.getElementById('memory-overlay').classList.add('open');
+  try {
+    const res = await fetch('/api/day?date=' + d + '&t=' + Date.now());
+    const day = await res.json();
+    const diaryHtml = (day.diary || []).map(e => `<div class="memory-entry"><div class="memory-entry-time">${escapeHtml(e.time || '')}</div><div class="memory-entry-text">${escapeHtml(e.scene || '')}</div></div>`).join('');
+    const ownerHtml = (day.ownerLog || []).map(e => `<div class="memory-owner-note"><i class="ti ti-user-circle"></i> ${escapeHtml(e.action || '')}</div>`).join('');
+    const visitorHtml = (day.visitorLog || []).map(e => `<div class="memory-visitor-note"><i class="ti ti-message-circle"></i> <b>${escapeHtml(e.name || '訪客')}</b>：${escapeHtml(e.message || '')}</div>`).join('');
+    body.innerHTML = `
+      <div class="memory-date">${d}</div>
+      ${diaryHtml || '<div class="drawer-empty">這天沒有留下紀錄。</div>'}
+      ${ownerHtml ? `<div class="memory-section-label">你的動態</div>${ownerHtml}` : ''}
+      ${visitorHtml ? `<div class="memory-section-label">訪客留言</div>${visitorHtml}` : ''}
+      <button class="memory-goto-btn" onclick="jumpToDay('${d}')">前往這天的完整日記 ›</button>
+    `;
+  } catch (e) {
+    body.innerHTML = '<div class="drawer-empty">載入失敗。</div>';
+  }
+}
+function closeMemoryOverlay(ev) {
+  document.getElementById('memory-overlay').classList.remove('open');
+}
 function jumpToDay(d) {
+  closeMemoryOverlay();
   const idx = availableDates.indexOf(d);
   if (idx === -1) return;
   currentDateKey = d;
@@ -966,10 +993,11 @@ function jumpToDay(d) {
   selectDrawerTab('observe');
 }
 
-// ---- 筆記：黑影筆記書本（仿實體書：目錄頁→篇名頁→內文頁，手機單頁／電腦雙頁） ----
-// 頁面模型：[{type:'toc'}, {type:'cover', chapter}, {type:'content', chapter, item}, ...]
+// ---- 筆記：黑影筆記圖鑑本（仿實體書：目錄頁→篇名頁→內文頁，每頁固定 1~3 段內容） ----
+// 頁面模型：[{type:'toc'}, {type:'cover', chapter}, {type:'content', chapter, items:[...]}, ...]
 let notesPages = [];
 let notesIndex = 0;
+const NOTES_ITEMS_PER_PAGE = 3;
 function isDesktopBook() { return window.matchMedia('(min-width: 760px)').matches; }
 async function loadNotebook() {
   try {
@@ -978,7 +1006,10 @@ async function loadNotebook() {
     notesPages = [{ type: 'toc', chapters: data.chapters, totalGot: data.totalGot, totalAll: data.totalAll }];
     data.chapters.filter(c => c.unlocked).forEach(c => {
       notesPages.push({ type: 'cover', chapter: c });
-      c.items.filter(it => it.collected).forEach(it => notesPages.push({ type: 'content', chapter: c, item: it }));
+      const got = c.items.filter(it => it.collected);
+      for (let i = 0; i < got.length; i += NOTES_ITEMS_PER_PAGE) {
+        notesPages.push({ type: 'content', chapter: c, items: got.slice(i, i + NOTES_ITEMS_PER_PAGE) });
+      }
     });
     if (notesIndex >= notesPages.length) notesIndex = 0;
     renderNotes();
@@ -988,13 +1019,13 @@ async function loadNotebook() {
 }
 function flipNotes(dir) {
   if (notesIndex === 0) {
-    notesIndex = dir > 0 ? 1 : 0;
+    if (dir > 0) notesIndex = 1;
   } else if (isDesktopBook()) {
-    notesIndex = Math.max(1, notesIndex + dir * 2);
+    notesIndex = notesIndex + dir * 2;
   } else {
-    notesIndex = Math.max(0, notesIndex + dir);
+    notesIndex = notesIndex + dir;
   }
-  notesIndex = Math.min(notesIndex, notesPages.length - 1);
+  notesIndex = Math.max(0, Math.min(notesIndex, notesPages.length - 1));
   renderNotes();
 }
 function openChapterPage(source) {
@@ -1018,25 +1049,28 @@ function pageInnerHtml(page) {
       <div class="book-progress">${c.got} / ${c.total}</div>
     </div>` };
   }
-  const c = page.chapter, it = page.item;
-  return { running: c.source, body: `<div class="frag-slot">${it.label ? `<div class="frag-slot-label">${escapeHtml(it.label)}</div>` : ''}${escapeHtml(it.text)}</div>` };
+  const c = page.chapter;
+  const slots = page.items.map(it => `<div class="frag-slot">${it.label ? `<div class="frag-slot-label">${escapeHtml(it.label)}</div>` : ''}${escapeHtml(it.text)}</div>`).join('');
+  return { running: c.source, body: slots };
 }
 function renderSinglePage(page, pageNum) {
   const { running, body } = pageInnerHtml(page);
+  const numSide = pageNum != null ? (pageNum % 2 === 1 ? 'left' : 'right') : '';
   return `<div class="book-page">
     ${running ? `<div class="book-running-title">${escapeHtml(running)}</div>` : ''}
     <div class="book-page-body">${body}</div>
-    ${pageNum != null ? `<div class="book-page-num">${pageNum}</div>` : ''}
+    ${pageNum != null ? `<div class="book-page-num ${numSide}">${pageNum}</div>` : ''}
+    <div class="book-tap-zone left" onclick="flipNotes(-1)"></div>
+    <div class="book-tap-zone right" onclick="flipNotes(1)"></div>
   </div>`;
 }
 function renderNotes() {
   const box = document.getElementById('notes-book');
   if (notesPages.length === 0) { box.innerHTML = '<div class="drawer-empty">還沒有任何碎片。<br>多陪陪白糰糰，黑影會留下些什麼。</div>'; return; }
   const desktop = isDesktopBook();
-  let html, label;
+  let html;
   if (notesIndex === 0 || !desktop) {
     html = `<div class="book-spread single">${renderSinglePage(notesPages[notesIndex], notesIndex === 0 ? null : notesIndex)}</div>`;
-    label = notesIndex === 0 ? '目錄' : `第 ${notesIndex} 頁`;
   } else {
     const left = notesIndex % 2 === 1 ? notesIndex : notesIndex - 1;
     const right = left + 1;
@@ -1046,12 +1080,19 @@ function renderNotes() {
       ${rightPage ? renderSinglePage(rightPage, right) : '<div class="book-page blank"></div>'}
     </div>`;
     notesIndex = left;
-    label = rightPage ? `第 ${left}–${right} 頁` : `第 ${left} 頁`;
   }
   box.innerHTML = html;
-  document.getElementById('notes-page-label').textContent = label;
-  document.getElementById('notes-prev').disabled = notesIndex <= 0;
-  document.getElementById('notes-next').disabled = notesIndex >= notesPages.length - 1;
+  attachSwipe(box);
+}
+function attachSwipe(box) {
+  let startX = null;
+  box.ontouchstart = e => { startX = e.touches[0].clientX; };
+  box.ontouchend = e => {
+    if (startX == null) return;
+    const dx = e.changedTouches[0].clientX - startX;
+    if (Math.abs(dx) > 40) flipNotes(dx < 0 ? 1 : -1);
+    startX = null;
+  };
 }
 window.addEventListener('resize', () => { if (notesPages.length) renderNotes(); });
 
