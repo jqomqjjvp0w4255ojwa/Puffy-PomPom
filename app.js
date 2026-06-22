@@ -999,6 +999,18 @@ let notesPages = [];
 let notesIndex = 0;
 const NOTES_ITEMS_PER_PAGE = 3;
 function isDesktopBook() { return window.matchMedia('(min-width: 760px)').matches; }
+
+// 新收集到的碎片第一次被看到時要顯眼一點：用 localStorage 記住「看過」的碎片 id。
+function getSeenFragments() {
+  try { return new Set(JSON.parse(localStorage.getItem('pp_seen_fragments') || '[]')); }
+  catch (e) { return new Set(); }
+}
+function markFragmentsSeen(ids) {
+  if (!ids.length) return;
+  const seen = getSeenFragments();
+  ids.forEach(id => seen.add(id));
+  localStorage.setItem('pp_seen_fragments', JSON.stringify([...seen]));
+}
 async function loadNotebook() {
   try {
     const res = await fetch('/api/fragments?t=' + Date.now());
@@ -1006,9 +1018,9 @@ async function loadNotebook() {
     notesPages = [{ type: 'toc', chapters: data.chapters, totalGot: data.totalGot, totalAll: data.totalAll }];
     data.chapters.filter(c => c.unlocked).forEach(c => {
       notesPages.push({ type: 'cover', chapter: c });
-      const got = c.items.filter(it => it.collected);
-      for (let i = 0; i < got.length; i += NOTES_ITEMS_PER_PAGE) {
-        notesPages.push({ type: 'content', chapter: c, items: got.slice(i, i + NOTES_ITEMS_PER_PAGE) });
+      // 用固定位置排版：未收集的碎片保留原本的格位（用污漬呈現），日後收集到才會在「同一個位置」現出內容。
+      for (let i = 0; i < c.items.length; i += NOTES_ITEMS_PER_PAGE) {
+        notesPages.push({ type: 'content', chapter: c, items: c.items.slice(i, i + NOTES_ITEMS_PER_PAGE) });
       }
     });
     if (notesIndex >= notesPages.length) notesIndex = 0;
@@ -1050,11 +1062,17 @@ function pageInnerHtml(page) {
     </div>` };
   }
   const c = page.chapter;
+  const seen = getSeenFragments();
   let lastLabel = null;
   const slots = page.items.map(it => {
     const showLabel = it.label && it.label !== lastLabel;
     lastLabel = it.label || lastLabel;
-    return `<div class="frag-slot">${showLabel ? `<div class="frag-slot-label">${escapeHtml(it.label)}</div>` : ''}${escapeHtml(it.text)}</div>`;
+    const labelHtml = showLabel ? `<div class="frag-slot-label">${escapeHtml(it.label)}</div>` : '';
+    if (!it.collected) {
+      return `<div class="frag-slot locked">${labelHtml}<div class="frag-smudge"></div></div>`;
+    }
+    const isNew = !seen.has(it.id);
+    return `<div class="frag-slot${isNew ? ' frag-slot-new' : ''}" data-frag-id="${it.id}">${labelHtml}${escapeHtml(it.text)}</div>`;
   }).join('');
   return { running: c.source, body: slots };
 }
@@ -1088,6 +1106,9 @@ function renderNotes() {
   }
   box.innerHTML = html;
   attachSwipe(box);
+  // 「新發現」的光暈先讓玩家看一眼，過一會兒才標記成已看過，下次再開就不會再亮了。
+  const newIds = [...box.querySelectorAll('.frag-slot-new')].map(el => el.dataset.fragId);
+  if (newIds.length) setTimeout(() => markFragmentsSeen(newIds), 1800);
 }
 function attachSwipe(box) {
   let startX = null;
