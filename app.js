@@ -19,7 +19,26 @@ function randomPlaceholder() {
   return ROOM_PLACEHOLDERS[Math.floor(Math.random() * ROOM_PLACEHOLDERS.length)];
 }
 
-function openPanel() {
+// 同居人面板密碼保護：密碼存在 Railway 環境變數 OWNER_PANEL_PASSWORD（沒設就不擋）。
+// 驗證過一次後存在 sessionStorage，同一個瀏覽器分頁不用每次都輸入。
+async function openPanel() {
+  if (sessionStorage.getItem('ownerPanelAuthed') !== '1') {
+    const password = prompt('請輸入同居人面板密碼：');
+    if (password === null) return;
+    try {
+      const res = await fetch('/api/owner-auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password })
+      });
+      const data = await res.json();
+      if (!data.ok) { alert('密碼錯誤'); return; }
+      sessionStorage.setItem('ownerPanelAuthed', '1');
+    } catch (e) {
+      alert('驗證失敗，請再試一次。');
+      return;
+    }
+  }
   document.getElementById('side-panel').classList.add('open');
   document.getElementById('overlay').classList.add('open');
   document.getElementById('room-action-input').placeholder = randomPlaceholder();
@@ -855,6 +874,138 @@ async function resetWorld() {
   } catch (e) {
     alert('重啟失敗：' + e.message);
   }
+}
+
+// ===================== 側欄抽屜（觀察／回顧／筆記） =====================
+const DRAWER_TITLES = { observe: '觀察', review: '回顧', notes: '筆記' };
+
+function openDrawer() {
+  document.getElementById('side-drawer').classList.add('open');
+  document.getElementById('drawer-backdrop').classList.add('open');
+  document.getElementById('menu-btn').classList.add('hidden');
+}
+function closeDrawer() {
+  document.getElementById('side-drawer').classList.remove('open');
+  document.getElementById('drawer-backdrop').classList.remove('open');
+  document.getElementById('menu-btn').classList.remove('hidden');
+}
+function selectDrawerTab(name) {
+  if (name === 'observe') { closeDrawer(); return; }
+  document.querySelectorAll('.rail-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
+  document.querySelectorAll('.drawer-pane').forEach(p => p.classList.toggle('active', p.dataset.pane === name));
+  document.getElementById('drawer-title').textContent = DRAWER_TITLES[name];
+  if (name === 'review') loadReview();
+  if (name === 'notes') loadNotebook();
+}
+
+// ---- 回顧：統計總覽 / 記錄檔案 ----
+function selectReviewSub(sub) {
+  document.querySelectorAll('.folder-tab').forEach(b => b.classList.toggle('active', b.dataset.sub === sub));
+  document.querySelectorAll('.review-sub').forEach(p => p.classList.toggle('active', p.dataset.sub === sub));
+}
+async function loadReview() {
+  renderDateTimeline();
+  try {
+    const res = await fetch('/api/fragments?t=' + Date.now());
+    const data = await res.json();
+    const days = availableDates.length;
+    const el = document.getElementById('review-stats');
+    el.innerHTML = `
+      <div class="stat-card"><div class="stat-value">${days}</div><div class="stat-label">陪伴關係總天數</div></div>
+      <div class="stat-card"><div class="stat-value">${data.totalGot} / ${data.totalAll}</div><div class="stat-label">黑影筆記收集</div></div>
+      <div class="stat-card"><div class="stat-value">${data.chapters.filter(c => c.unlocked).length} / ${data.chapters.length}</div><div class="stat-label">已揭開的篇章</div></div>`;
+  } catch (e) {
+    document.getElementById('review-stats').innerHTML = '<div class="drawer-empty">統計載入失敗。</div>';
+  }
+}
+
+// 時間軸（參考 iOS 相簿）：連續滾動列表，依年/月分組、sticky 標頭，由新到舊，不需展開/收合。
+// 支援搜尋過濾，最近 7 天標記「近期」。
+function renderDateTimeline() {
+  const box = document.getElementById('date-tree');
+  if (!box) return;
+  if (availableDates.length === 0) { box.innerHTML = '<div class="drawer-empty">還沒有任何紀錄。</div>'; return; }
+  const q = (document.getElementById('review-search').value || '').trim();
+  const dates = availableDates.filter(d => !q || d.includes(q)).slice().reverse();
+  if (dates.length === 0) { box.innerHTML = '<div class="drawer-empty">找不到符合的日期。</div>'; return; }
+  const recent7 = new Set(availableDates.slice(-7));
+  let lastGroup = null;
+  const rows = dates.map(d => {
+    const [y, m] = d.split('-');
+    const groupKey = `${y}-${m}`;
+    let header = '';
+    if (groupKey !== lastGroup) {
+      lastGroup = groupKey;
+      header = `<div class="timeline-month-header">${y} 年 ${Number(m)} 月</div>`;
+    }
+    const cur = d === currentDateKey ? ' current' : '';
+    const recent = recent7.has(d) ? '<span class="tree-day-count">近期</span>' : '';
+    return `${header}<div class="tree-day${cur}" onclick="jumpToDay('${d}')"><span>${d}</span>${recent}</div>`;
+  }).join('');
+  box.innerHTML = rows;
+}
+function jumpToDay(d) {
+  const idx = availableDates.indexOf(d);
+  if (idx === -1) return;
+  currentDateKey = d;
+  followLatest = (idx === availableDates.length - 1);
+  loadDay(d);
+  closeDrawer();
+}
+
+// ---- 筆記：黑影筆記翻頁書（圖鑑） ----
+let notesPages = [];   // [{type:'toc'} | {type:'chapter', chapter}]
+let notesIndex = 0;
+async function loadNotebook() {
+  try {
+    const res = await fetch('/api/fragments?t=' + Date.now());
+    const data = await res.json();
+    notesPages = [{ type: 'toc', chapters: data.chapters, totalGot: data.totalGot, totalAll: data.totalAll }];
+    data.chapters.filter(c => c.unlocked).forEach(c => notesPages.push({ type: 'chapter', chapter: c }));
+    if (notesIndex >= notesPages.length) notesIndex = 0;
+    renderNotes();
+  } catch (e) {
+    document.getElementById('notes-book').innerHTML = '<div class="drawer-empty">筆記載入失敗。</div>';
+  }
+}
+function flipNotes(dir) {
+  notesIndex = Math.max(0, Math.min(notesPages.length - 1, notesIndex + dir));
+  renderNotes();
+}
+function openChapterPage(source) {
+  const i = notesPages.findIndex(p => p.type === 'chapter' && p.chapter.source === source);
+  if (i !== -1) { notesIndex = i; renderNotes(); }
+}
+function renderNotes() {
+  const box = document.getElementById('notes-book');
+  if (notesPages.length === 0) { box.innerHTML = '<div class="drawer-empty">還沒有任何碎片。<br>多陪陪白糰糰，黑影會留下些什麼。</div>'; return; }
+  const page = notesPages[notesIndex];
+  if (page.type === 'toc') {
+    const items = page.chapters.map(c => {
+      if (!c.unlocked) return `<div class="toc-item locked"><span>？？？　未發現的篇章</span><span class="toc-count">0/${c.total}</span></div>`;
+      return `<div class="toc-item" onclick="openChapterPage('${c.source.replace(/'/g, "\\'")}')"><span>${escapeHtml(c.source)}</span><span class="toc-count">${c.got}/${c.total}</span></div>`;
+    }).join('');
+    box.innerHTML = `<div class="book-page">
+      <div class="book-chapter-title">黑影筆記・目錄</div>
+      <div class="book-progress">已收集 ${page.totalGot} / ${page.totalAll} 張碎片</div>
+      ${items}
+    </div>`;
+  } else {
+    const c = page.chapter;
+    const slots = c.items.map(it => {
+      if (!it.collected) return `<div class="frag-slot locked">？ ？ ？</div>`;
+      return `<div class="frag-slot">${it.label ? `<div class="frag-slot-label">${escapeHtml(it.label)}</div>` : ''}${escapeHtml(it.text)}</div>`;
+    }).join('');
+    box.innerHTML = `<div class="book-page">
+      <div class="book-chapter-title">${escapeHtml(c.source)}</div>
+      <div class="book-progress">${c.got} / ${c.total}</div>
+      ${slots}
+    </div>`;
+  }
+  document.getElementById('notes-page-label').textContent =
+    page.type === 'toc' ? '目錄' : `${notesIndex} / ${notesPages.length - 1}`;
+  document.getElementById('notes-prev').disabled = notesIndex <= 0;
+  document.getElementById('notes-next').disabled = notesIndex >= notesPages.length - 1;
 }
 
 load();

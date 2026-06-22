@@ -415,6 +415,17 @@ function buildTvPrompt(channel, ctx) {
   return `${lorePrefix}${stateLine}\n\n你是深夜購物頻道的主持人，正在向觀眾推銷一件「白糰糰現在最需要」的商品（依他目前的飽食、心情、房間狀況挑選，例如餓了就賣零食、冷了就賣暖窩）。用浮誇熱情的購物台語氣介紹，可吹捧賣點、報出限時優惠價、製造搶購感，但這只是節目演出、實際還不能下單。${lengthRule}繁體中文，結尾自然帶一句「錢包功能即將上線，敬請期待」。只輸出主持人的口播。`;
 }
 
+// Gemini 偶爾會夾帶 markdown 符號、程式碼框、把設定提示或分隔線回吐進輸出，這裡清乾淨只留純播報文字。
+function cleanTvText(raw) {
+  let t = String(raw || '');
+  t = t.replace(/```[a-zA-Z]*\s*/g, '').replace(/```/g, '');     // 程式碼框
+  t = t.replace(/^[\s\-—–=*#>·•]+/, '');                          // 開頭殘留的符號／分隔線
+  t = t.replace(/[*_`#]+/g, '');                                  // 行內 markdown 強調符號
+  t = t.replace(/^(旁白|播報|口播|主持人|新聞)[：:]\s*/m, '');     // 角色標籤前綴
+  t = t.replace(/\n{3,}/g, '\n\n');                               // 多餘空行
+  return t.trim();
+}
+
 function dateKeyOf(date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 }
@@ -788,6 +799,33 @@ const server = http.createServer((req, res) => {
       res.end('error');
     }
 
+  } else if (req.url.startsWith('/api/fragments')) {
+    // 筆記（黑影筆記）圖鑑：依「篇章（source）」分組，回傳每張碎片的收集狀態。
+    // 未收集的不回傳 text，避免在圖鑑裡提前劇透；只有收集過才看得到全貌。
+    try {
+      const world = JSON.parse(fs.readFileSync(WORLD_FILE, 'utf8'));
+      ensureFragmentsState(world);
+      const collected = new Set(world.fragments.collected || []);
+      const chapters = [];
+      const bySource = {};
+      for (const f of FRAGMENTS) {
+        const src = f.source || '（未分類）';
+        if (!bySource[src]) { bySource[src] = { source: src, total: 0, got: 0, items: [] }; chapters.push(bySource[src]); }
+        const ch = bySource[src];
+        const isGot = collected.has(f.id);
+        ch.total++;
+        if (isGot) ch.got++;
+        ch.items.push({ id: f.id, label: f.label || '', collected: isGot, text: isGot ? f.text : null });
+      }
+      // 一張都沒收集的篇章，連篇名都不顯示（unlocked=false）。
+      chapters.forEach(c => { c.unlocked = c.got > 0; });
+      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ chapters, totalGot: collected.size, totalAll: FRAGMENTS.length }));
+    } catch (e) {
+      res.writeHead(500);
+      res.end('error');
+    }
+
   } else if (req.url.startsWith('/api/weather')) {
     // 直接抓即時天氣給前端顯示用，不經過 AI、不花 token。
     fetchWeather().then(weather => {
@@ -812,7 +850,7 @@ const server = http.createServer((req, res) => {
         if (result.error) {
           res.end(JSON.stringify({ ok: false, error: result.error, detail: result.detail || '' }));
         } else {
-          res.end(JSON.stringify({ ok: true, channel, text: result.text }));
+          res.end(JSON.stringify({ ok: true, channel, text: cleanTvText(result.text) }));
         }
       } catch (e) {
         res.writeHead(500);
@@ -850,7 +888,24 @@ const server = http.createServer((req, res) => {
       res.writeHead(500);
       res.end('error');
     }
-} else if (req.url.startsWith('/api/owner')) {
+} else if (req.url === '/api/owner-auth' && req.method === 'POST') {
+    try {
+      const body = [];
+      req.on('data', chunk => body.push(chunk));
+      req.on('end', () => {
+        const data = JSON.parse(Buffer.concat(body).toString());
+        const expected = process.env.OWNER_PANEL_PASSWORD;
+        // 沒設密碼變數時不擋，方便本機開發；正式環境在 Railway Variables 設 OWNER_PANEL_PASSWORD 即會啟用密碼保護。
+        const ok = !expected || data.password === expected;
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ ok }));
+      });
+    } catch (e) {
+      res.writeHead(500);
+      res.end('error');
+    }
+
+  } else if (req.url.startsWith('/api/owner')) {
     try {
       const body = [];
       req.on('data', chunk => body.push(chunk));
