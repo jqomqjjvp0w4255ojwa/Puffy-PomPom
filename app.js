@@ -1050,7 +1050,12 @@ function pageInnerHtml(page) {
     </div>` };
   }
   const c = page.chapter;
-  const slots = page.items.map(it => `<div class="frag-slot">${it.label ? `<div class="frag-slot-label">${escapeHtml(it.label)}</div>` : ''}${escapeHtml(it.text)}</div>`).join('');
+  let lastLabel = null;
+  const slots = page.items.map(it => {
+    const showLabel = it.label && it.label !== lastLabel;
+    lastLabel = it.label || lastLabel;
+    return `<div class="frag-slot">${showLabel ? `<div class="frag-slot-label">${escapeHtml(it.label)}</div>` : ''}${escapeHtml(it.text)}</div>`;
+  }).join('');
   return { running: c.source, body: slots };
 }
 function renderSinglePage(page, pageNum) {
