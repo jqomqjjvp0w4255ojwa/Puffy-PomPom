@@ -962,9 +962,9 @@ async function loadReview() {
 function dayRowHtml(d) {
   const [y, m, day] = d.split('-').map(Number);
   const weekday = WEEKDAY_LABELS[new Date(y, m - 1, day).getDay()];
-  const cur = d === currentDateKey ? ' current' : '';
-  const recent7 = new Set(availableDates.slice(-7));
-  const recent = recent7.has(d) ? '<span class="tree-day-count">近期</span>' : '';
+  const latest = availableDates[availableDates.length - 1];
+  const cur = d === latest ? ' current' : '';
+  const recent = d === latest ? '<span class="tree-day-count">近期</span>' : '';
   const s = daySummaries[d];
   let extra = '';
   if (s) {
@@ -975,8 +975,12 @@ function dayRowHtml(d) {
     if (bits.length) extra = `<div class="tree-day-preview">${bits.join('　')}</div>`;
   }
   return `<div class="tree-day${cur}" onclick="openMemoryOverlay('${d}')">
-    <div class="tree-day-row"><span><span class="tree-day-date">${d}</span><span class="tree-day-weekday">（週${weekday}）</span></span>${recent}</div>
-    ${extra}
+    <div class="tree-day-dot"></div>
+    <div class="tree-day-card">
+      <div class="tree-day-row"><span><span class="tree-day-date">${d}</span><span class="tree-day-weekday">（週${weekday}）</span></span>${recent}</div>
+      ${extra}
+      <i class="ti ti-chevron-right tree-day-arrow"></i>
+    </div>
   </div>`;
 }
 
