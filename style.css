@@ -962,8 +962,8 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
   transition: background 0.15s, color 0.15s;
 }
 .rail-btn i { font-size: 19px; }
-.rail-btn:hover { background: #e3d8c5; }
-.rail-btn.active { background: #fff; color: #8a5a3a; box-shadow: inset 2px 0 0 #c08050; }
+.rail-btn:hover { color: #8a5a3a; }
+.rail-btn.active { background: none; color: #c08050; box-shadow: none; font-weight: 500; }
 
 /* 主頁面融景轉換：觀察／回顧／筆記 共用同一個版面位置淡入淡出切換 */
 .page-pane {
