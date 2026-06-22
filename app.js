@@ -345,6 +345,13 @@ function createEditableField({ display, icons, input, editActions, emptyText, on
     showDisplay();
   }
 
+  // 給標籤式選項用：不經過 textarea，直接送出指定值
+  async function submitValue(v) {
+    await onSave(v);
+    render(v);
+    showDisplay();
+  }
+
   function setFromServer(text) {
     if (input.style.display === 'none' && (text || '') !== value) {
       render(text);
@@ -353,7 +360,7 @@ function createEditableField({ display, icons, input, editActions, emptyText, on
 
   render('');
   showDisplay();
-  return { edit, cancel, submit, setFromServer };
+  return { edit, cancel, submit, submitValue, setFromServer };
 }
 
 const statusField = createEditableField({
@@ -364,8 +371,26 @@ const statusField = createEditableField({
   emptyText: '尚無狀態',
   onSave: (v) => fetch('/api/owner', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'status', input: v }) }),
 });
-function editStatus() { statusField.edit(); }
-function cancelStatus() { statusField.cancel(); }
+// 狀態用固定標籤［有空/忙碌/休息/不在］，選了直接送出；「其他」才退回文字輸入。
+function editStatus() {
+  document.getElementById('status-display').style.display = 'none';
+  document.getElementById('status-icons').style.display = 'none';
+  document.getElementById('status-tag-picker').style.display = 'flex';
+}
+function cancelStatus() {
+  document.getElementById('status-tag-picker').style.display = 'none';
+  statusField.cancel();
+}
+async function pickStatusTag(tag) {
+  if (tag === '__custom__') {
+    document.getElementById('status-tag-picker').style.display = 'none';
+    statusField.edit();
+    return;
+  }
+  document.getElementById('status-tag-picker').style.display = 'none';
+  await statusField.submitValue(tag);
+  document.getElementById('panel-btn').classList.toggle('has-input', tag !== '');
+}
 function submitStatus() {
   const v = document.getElementById('owner-input').value.trim();
   statusField.submit();
@@ -432,7 +457,27 @@ function nestQuote(str) {
   return String(str || '').replace(/「/g, '『').replace(/」/g, '』');
 }
 
-let noteState = { mode: 'draft', color: 'yellow', savedId: null };
+let noteState = { mode: 'draft', color: 'yellow', savedId: null, location: 'floor' };
+const NOTE_LOCATION_LABELS = { desk_leg: '桌腳', fridge_bottom: '冰箱下方', wall: '牆上', floor: '地板', computer: '電腦' };
+
+function setNoteLocation(loc) {
+  noteState.location = loc;
+  document.querySelectorAll('#note-location-picker .note-loc-chip').forEach(el => {
+    el.classList.toggle('active', el.dataset.loc === loc);
+  });
+}
+
+setNoteLocation('floor');
+
+function renderNoteLocTag(loc) {
+  const el = document.getElementById('note-saved-loc');
+  if (loc && NOTE_LOCATION_LABELS[loc]) {
+    el.textContent = `貼在${NOTE_LOCATION_LABELS[loc]}`;
+    el.style.display = 'block';
+  } else {
+    el.style.display = 'none';
+  }
+}
 
 function toggleNote() {
   const open = document.getElementById('sticky-note').classList.toggle('open');
@@ -457,9 +502,11 @@ function renderNoteSaved(note) {
   noteState.savedId = note.id;
   document.getElementById('sticky-note').dataset.color = note.color || 'yellow';
   document.getElementById('sticky-note-textarea').style.display = 'none';
+  document.getElementById('note-location-picker').style.display = 'none';
   const saved = document.getElementById('sticky-note-saved');
   saved.style.display = 'block';
   saved.textContent = note.message;
+  renderNoteLocTag(note.location);
   document.getElementById('note-confirm-btn').style.display = 'none';
   document.getElementById('note-delete-btn').style.display = 'inline';
   document.getElementById('note-read-mark').style.display = 'none';
@@ -471,9 +518,11 @@ function renderNoteRead(note) {
   noteState.savedId = null;
   document.getElementById('sticky-note').dataset.color = note.color || 'yellow';
   document.getElementById('sticky-note-textarea').style.display = 'none';
+  document.getElementById('note-location-picker').style.display = 'none';
   const saved = document.getElementById('sticky-note-saved');
   saved.style.display = 'block';
   saved.textContent = note.message;
+  renderNoteLocTag(note.location);
   document.getElementById('note-confirm-btn').style.display = 'none';
   document.getElementById('note-delete-btn').style.display = 'none';
   document.getElementById('note-read-mark').style.display = 'flex';
@@ -483,8 +532,12 @@ function renderNoteRead(note) {
 function renderNoteDraft() {
   noteState.mode = 'draft';
   noteState.savedId = null;
+  noteState.location = 'floor';
   document.getElementById('sticky-note-textarea').style.display = 'block';
+  document.getElementById('note-location-picker').style.display = 'flex';
+  setNoteLocation('floor');
   document.getElementById('sticky-note-saved').style.display = 'none';
+  document.getElementById('note-saved-loc').style.display = 'none';
   document.getElementById('note-confirm-btn').style.display = 'inline';
   document.getElementById('note-delete-btn').style.display = 'none';
   document.getElementById('note-read-mark').style.display = 'none';
@@ -511,6 +564,7 @@ function refreshNoteWidget(pending) {
     const readNote = {
       message: document.getElementById('sticky-note-saved').textContent,
       color: document.getElementById('sticky-note').dataset.color,
+      location: noteState.location,
     };
     localStorage.setItem('lastReadNote', JSON.stringify(readNote));
     renderNoteRead(readNote);
@@ -526,14 +580,15 @@ function refreshNoteWidget(pending) {
 async function confirmNote() {
   const message = document.getElementById('sticky-note-textarea').value.trim();
   if (!message) return;
+  const location = noteState.location || 'floor';
   const res = await fetch('/api/visitor', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ message, color: noteState.color })
+    body: JSON.stringify({ message, color: noteState.color, location })
   });
   const data = await res.json();
   document.getElementById('sticky-note-textarea').value = '';
-  renderNoteSaved({ id: data.id, message, color: noteState.color });
+  renderNoteSaved({ id: data.id, message, color: noteState.color, location });
 }
 
 async function deleteNote() {
@@ -1128,7 +1183,10 @@ function reviewEntryHtml(e, ownerLog, visitorLog) {
     : '';
 
   const visitorHtml = visitors.length
-    ? `<div class="detail-box">${visitors.map(v => `<div class="detail-line"><i class="ti ti-message-circle"></i><span><b>${escapeHtml(v.name || '訪客')}</b>：${escapeHtml(v.message || '')}</span></div>`).join('')}</div>`
+    ? `<div class="detail-box">${visitors.map(v => {
+        const locTag = v.location && NOTE_LOCATION_LABELS[v.location] ? ` <span class="sub">· 貼在${NOTE_LOCATION_LABELS[v.location]}</span>` : '';
+        return `<div class="detail-line"><i class="ti ti-message-circle"></i><span><b>${escapeHtml(v.name || '訪客')}</b>：${escapeHtml(v.message || '')}${locTag}</span></div>`;
+      }).join('')}</div>`
     : '';
 
   const hasDetail = mineBox || tuanBox || visitorHtml || envHtml;

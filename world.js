@@ -1078,6 +1078,8 @@ const server = http.createServer((req, res) => {
         const name = (data.name || '').trim().slice(0, 20);
         const message = (data.message || '').trim().slice(0, 50);
         const color = (data.color || 'yellow').trim().slice(0, 20);
+        const VALID_NOTE_LOCATIONS = ['desk_leg', 'fridge_bottom', 'wall', 'floor', 'computer'];
+        const location = VALID_NOTE_LOCATIONS.includes(data.location) ? data.location : 'floor';
         if (!message) {
           res.writeHead(400, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ ok: false, error: 'empty message' }));
@@ -1086,7 +1088,7 @@ const server = http.createServer((req, res) => {
         const world = JSON.parse(fs.readFileSync(WORLD_FILE, 'utf8'));
         const { display } = getRealTime();
         const id = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-        world.visitor_messages = [...(world.visitor_messages || []), { id, name: name || '匿名訪客', message, time: display, color }];
+        world.visitor_messages = [...(world.visitor_messages || []), { id, name: name || '匿名訪客', message, time: display, color, location }];
         writeWorldFile(world);
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ ok: true, id }));
@@ -1216,10 +1218,17 @@ async function tick() {
   const ownerInput = (ownerStatus || ownerAction) ? '\n' + [ownerStatus, ownerAction].filter(Boolean).join('\n') : '';
   const awayInput = world.owner_away ? '\n巨怪現在外出不在房間（最棒的事正發生在沒人的時候）。' : '';
 
+  const NOTE_LOCATION_DESC = {
+    desk_leg: '貼在桌腳（低處，牠平常走動就會經過）',
+    fridge_bottom: '貼在冰箱下方（低處，牠很常待在那附近）',
+    floor: '貼在地板上（低處，牠隨時可能碰到、踩到或聞到）',
+    wall: '貼在牆上（高處，除非牠自己爬上去否則不會注意到）',
+    computer: '貼在電腦上（高處，除非牠自己爬上去否則不會注意到）',
+  };
   const visitorMessages = world.visitor_messages || [];
   const visitorInput = visitorMessages.length > 0
-    ? '\n訪客留言（白糰糰不懂上面寫什麼，留言對牠僅是一陣動靜或聲響。牠可能因此有反應：轉頭看一下、警戒、好奇湊近、被嚇到躲起來，也可能完全沒反應、自顧自做自己的事）：\n' +
-      visitorMessages.map(m => `${m.name || '匿名訪客'}：${m.message}`).join('\n')
+    ? '\n訪客留言（白糰糰不懂上面寫什麼，留言對牠僅是一陣動靜或聲響。牠可能因此有反應：轉頭看一下、警戒、好奇湊近、被嚇到躲起來，也可能完全沒反應、自顧自做自己的事。低處的留言牠更容易碰到，碰多了可以自然帶到「沾了點毛」「留了個小爪印」之類的細節；高處的留言牠通常不會注意到，除非牠自己爬上去）：\n' +
+      visitorMessages.map(m => `${m.name || '匿名訪客'}：${m.message}（${NOTE_LOCATION_DESC[m.location] || NOTE_LOCATION_DESC.floor}）`).join('\n')
     : '';
 
   const pendingNotes = world.pending_notes || [];
