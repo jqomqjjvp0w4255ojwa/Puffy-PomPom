@@ -1241,7 +1241,7 @@ async function tick() {
   };
   const visitorMessages = world.visitor_messages || [];
   const visitorInput = visitorMessages.length > 0
-    ? '\n訪客留言（白糰糰不懂上面寫什麼，留言對牠僅是一陣動靜或聲響。牠可能因此有反應：轉頭看一下、警戒、好奇湊近、被嚇到躲起來，也可能完全沒反應、自顧自做自己的事。低處的留言牠更容易碰到，碰多了可以自然帶到「沾了點毛」「留了個小爪印」之類的細節；高處的留言牠通常不會注意到，除非牠自己爬上去）：\n' +
+    ? '\n訪客留言（白糰糰不懂上面寫什麼，留言對牠僅是一陣動靜或聲響。牠可能因此有反應：轉頭看一下、警戒、好奇湊近、被嚇到躲起來，也可能完全沒反應、自顧自做自己的事。低處的留言牠走動時會經過、踩到，可以自然帶到牠在紙片上留下小腳印（這就是牠看過、經過的記號）；高處的留言牠通常碰不到、不會注意到，除非牠自己爬上去）：\n' +
       visitorMessages.map(m => `${m.name || '匿名訪客'}：${m.message}（${NOTE_LOCATION_DESC[m.location] || NOTE_LOCATION_DESC.floor}）`).join('\n')
     : '';
 
