@@ -919,7 +919,7 @@ function renderDrawerTimelineTree() {
         ${monthKeys.map(m => `<div class="tree-month${y === latestYear && m === latestMonth ? ' open' : ''}">
           <div class="tree-month-head" onclick="this.parentElement.classList.toggle('open')"><i class="ti ti-chevron-right"></i>${Number(m)} 月</div>
           <div class="tree-month-body">
-            ${years[y][m].map(d => `<div class="tree-day-link${d === currentDateKey ? ' current' : ''}" onclick="openMemoryOverlay('${d}')">${d.slice(8)} 日</div>`).join('')}
+            ${years[y][m].map(d => `<div class="tree-day-link${d === reviewSelectedDate ? ' current' : ''}" onclick="selectReviewDay('${d}')">${d.slice(8)} 日</div>`).join('')}
           </div>
         </div>`).join('')}
       </div>
@@ -945,8 +945,9 @@ window.addEventListener('resize', () => {
   if (!isDesktopLayout() && drawer.classList.contains('with-subnav')) closeDrawer();
 });
 
-// ---- 回顧：陪伴總天數 / 歷史上的今天 / 完整時間軸（合併為單一連續頁面） ----
+// ---- 回顧：陪伴總天數 / 歷史上的今天 / 完整時間軸 / 閱讀區（雙欄常駐，不使用 Modal） ----
 let daySummaries = {};
+let reviewSelectedDate = null;
 const WEEKDAY_LABELS = ['日', '一', '二', '三', '四', '五', '六'];
 async function loadReview() {
   try {
@@ -957,13 +958,13 @@ async function loadReview() {
   } catch (e) { daySummaries = {}; }
   renderTodayRecall();
   renderDateTimeline();
+  if (availableDates.length) selectReviewDay(availableDates[availableDates.length - 1], { silent: true });
 }
 
 function dayRowHtml(d) {
   const [y, m, day] = d.split('-').map(Number);
   const weekday = WEEKDAY_LABELS[new Date(y, m - 1, day).getDay()];
-  const latest = availableDates[availableDates.length - 1];
-  const cur = d === latest ? ' current' : '';
+  const cur = d === reviewSelectedDate ? ' current' : '';
   const s = daySummaries[d];
   let extra = '';
   if (s) {
@@ -973,16 +974,16 @@ function dayRowHtml(d) {
     if (s.ownerCount) bits.push(`你留下了動態${s.ownerPreview ? '：' + escapeHtml(s.ownerPreview) : ''}`);
     if (bits.length) extra = `<div class="tree-day-preview">${bits.join('　·　')}</div>`;
   }
-  return `<div class="tree-day${cur}" onclick="openMemoryOverlay('${d}')">
+  return `<div class="tree-day${cur}" onclick="selectReviewDay('${d}')">
     <div class="tree-day-dot"></div>
     <div class="tree-day-body">
-      <div class="tree-day-row"><span class="tree-day-date">${d}</span><span class="tree-day-weekday">週${weekday}</span></div>
+      <div class="tree-day-row"><span class="tree-day-date">${day} 日</span><span class="tree-day-weekday">週${weekday}</span></div>
       ${extra}
     </div>
   </div>`;
 }
 
-// 頂部標語（陪伴關係總天數）＋「歷史上的今天」（同月日的過去紀錄）
+// 頂部標語（陪伴關係總天數）＋「歷史上的今天」（同月日的過去紀錄，放在頁面下方，是額外發現而非主導航）
 function renderTodayRecall() {
   const headBox = document.getElementById('review-today-head');
   const annivBox = document.getElementById('anniv-row');
@@ -1003,7 +1004,7 @@ function renderTodayRecall() {
       const yearsAgo = ly - Number(d.slice(0, 4));
       const s = daySummaries[d];
       const preview = s && s.preview ? escapeHtml(s.preview) : '這天沒有留下太多紀錄。';
-      return `<div class="anniv-card" onclick="openMemoryOverlay('${d}')">
+      return `<div class="anniv-card" onclick="selectReviewDay('${d}')">
         <span class="anniv-card-label">${yearsAgo} 年前的今天</span><span class="anniv-card-date">${d}</span>
         <div class="anniv-card-preview">${preview}</div>
       </div>`;
@@ -1011,7 +1012,7 @@ function renderTodayRecall() {
   }
 }
 
-// 時間軸：連續滾動列表，依年/月分組、sticky 標頭，由新到舊，不需展開/收合。
+// 時間軸：連續滾動列表，依年/月分組，由新到舊，不需展開/收合。
 // 支援搜尋過濾。
 function renderDateTimeline() {
   const box = document.getElementById('date-tree');
@@ -1034,52 +1035,42 @@ function renderDateTimeline() {
   box.innerHTML = rows;
 }
 
-// 回憶卡：仿 GalGame 回顧介面。點日期不離開回顧頁，直接蓋一張模糊黑底的卡顯示內容。
-async function openMemoryOverlay(d) {
-  const body = document.getElementById('memory-card-body');
+// 選某一天：直接在閱讀區換內容，不開 Modal、不離開頁面。
+// 手機上會把版面切到「單頁閱讀模式」，並顯示「← 返回」。
+async function selectReviewDay(d, opts) {
+  opts = opts || {};
+  reviewSelectedDate = d;
+  renderDateTimeline();
+  if (isDesktopLayout()) renderDrawerSubnav('review');
+  const layout = document.getElementById('review-layout');
+  const body = document.getElementById('review-reading-body');
+  if (!isDesktopLayout()) layout.classList.add('reading-active');
   body.innerHTML = '<div class="drawer-empty">載入中…</div>';
-  document.getElementById('memory-overlay').classList.add('open');
   try {
     const res = await fetch('/api/day?date=' + d + '&t=' + Date.now());
     const day = await res.json();
     const ownerLog = day.ownerLog || [];
     const visitorLog = day.visitorLog || [];
-    const usedOwner = new Set();
-    const usedVisitor = new Set();
-    const cardsHtml = (day.diary || []).map(e => {
-      const owners = ownerLog.filter(o => o.time === e.time);
-      const visitors = visitorLog.filter(v => v.time === e.time);
-      owners.forEach(o => usedOwner.add(o));
-      visitors.forEach(v => usedVisitor.add(v));
-      const ownerNotesHtml = owners.map(o => `<div class="memory-owner-note"><i class="ti ti-user-circle"></i> ${escapeHtml(o.action || '')}</div>`).join('');
-      const visitorNotesHtml = visitors.map(v => `<div class="memory-visitor-note"><i class="ti ti-message-circle"></i> <b>${escapeHtml(v.name || '訪客')}</b>：${escapeHtml(v.message || '')}</div>`).join('');
-      return `<div class="memory-entry-card">
-        ${(ownerNotesHtml || visitorNotesHtml) ? `<div class="memory-entry-notes">${ownerNotesHtml}${visitorNotesHtml}</div>` : ''}
-        <div class="memory-entry-time">${escapeHtml(e.time || '')}</div>
-        <div class="memory-entry-text">${escapeHtml(e.scene || '')}</div>
-      </div>`;
-    }).join('');
-    const leftoverOwner = ownerLog.filter(o => !usedOwner.has(o));
-    const leftoverVisitor = visitorLog.filter(v => !usedVisitor.has(v));
-    const leftoverHtml = (leftoverOwner.length || leftoverVisitor.length) ? `<div class="memory-entry-card memory-entry-card-loose">
-      ${leftoverOwner.map(o => `<div class="memory-owner-note"><i class="ti ti-user-circle"></i> ${escapeHtml(o.action || '')}</div>`).join('')}
-      ${leftoverVisitor.map(v => `<div class="memory-visitor-note"><i class="ti ti-message-circle"></i> <b>${escapeHtml(v.name || '訪客')}</b>：${escapeHtml(v.message || '')}</div>`).join('')}
-    </div>` : '';
+    const diaryText = (day.diary || []).map(e => escapeHtml(e.scene || '')).join('\n\n');
+    const ownerHtml = ownerLog.map(o => `<div class="memory-owner-note"><i class="ti ti-user-circle"></i> ${escapeHtml(o.action || '')}</div>`).join('');
+    const visitorHtml = visitorLog.map(v => `<div class="memory-visitor-note"><i class="ti ti-message-circle"></i> <b>${escapeHtml(v.name || '訪客')}</b>：${escapeHtml(v.message || '')}</div>`).join('');
+    const [y, m, day2] = d.split('-').map(Number);
     body.innerHTML = `
-      <div class="memory-date">${d}</div>
-      ${cardsHtml || '<div class="drawer-empty">這天沒有留下紀錄。</div>'}
-      ${leftoverHtml}
+      <div class="memory-date">${y} 年 ${m} 月 ${day2} 日</div>
+      <div class="memory-divider"></div>
+      <div class="memory-entry-text">${diaryText || '這天沒有留下太多紀錄。'}</div>
+      ${ownerHtml ? `<div class="memory-divider"></div><div class="memory-section-label">今天留下的動態</div>${ownerHtml}` : ''}
+      ${visitorHtml ? `<div class="memory-divider"></div><div class="memory-section-label">留言</div>${visitorHtml}` : ''}
       <button class="memory-goto-btn" onclick="jumpToDay('${d}')">前往這天的完整日記 ›</button>
     `;
   } catch (e) {
     body.innerHTML = '<div class="drawer-empty">載入失敗。</div>';
   }
 }
-function closeMemoryOverlay(ev) {
-  document.getElementById('memory-overlay').classList.remove('open');
+function closeReadingPanel() {
+  document.getElementById('review-layout').classList.remove('reading-active');
 }
 function jumpToDay(d) {
-  closeMemoryOverlay();
   const idx = availableDates.indexOf(d);
   if (idx === -1) return;
   currentDateKey = d;

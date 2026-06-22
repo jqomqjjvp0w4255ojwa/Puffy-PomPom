@@ -6,7 +6,7 @@
 <title>白糰糰觀察日記</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
-<link rel="stylesheet" href="style.css?v=20260622l">
+<link rel="stylesheet" href="style.css?v=20260622m">
 </head>
 <body>
 
@@ -74,18 +74,10 @@
   </div>
 </div>
 
-<!-- 回顧的「回憶卡」：點日期不跳走，直接在回顧頁上方蓋一張模糊黑底的回憶卡，仿 GalGame 回顧介面 -->
-<div class="memory-overlay" id="memory-overlay" onclick="closeMemoryOverlay(event)">
-  <div class="memory-card" id="memory-card" onclick="event.stopPropagation()">
-    <button class="memory-close" onclick="closeMemoryOverlay()"><i class="ti ti-x"></i></button>
-    <div class="memory-card-body" id="memory-card-body"></div>
-  </div>
-</div>
-
-<!-- 回顧：生活觀察日誌的回憶檔案館，不是 Dashboard。陪伴天數降級為小標語，搜尋只是輔助工具。 -->
+<!-- 回顧：生活觀察日誌的回憶檔案館，不是 Dashboard。桌面為時間軸＋閱讀區雙欄常駐版面，不使用 Modal。 -->
 <div class="notebook page-pane" data-page="review">
-  <div class="review-layout">
-    <div class="review-main review-main-full">
+  <div class="review-layout" id="review-layout">
+    <div class="review-timeline-col" id="review-timeline-col">
       <div class="review-meta-row">
         <div class="review-daycount" id="review-today-head"></div>
         <div class="review-search-wrap">
@@ -93,8 +85,12 @@
           <input type="text" class="review-search" id="review-search" placeholder="搜尋日期、關鍵字或情緒..." oninput="renderDateTimeline()">
         </div>
       </div>
-      <div class="anniv-row" id="anniv-row"></div>
       <div class="date-tree" id="date-tree"><div class="drawer-empty">載入中…</div></div>
+      <div class="anniv-row" id="anniv-row"></div>
+    </div>
+    <div class="review-reading-col" id="review-reading-col">
+      <div class="review-reading-back" id="review-reading-back" onclick="closeReadingPanel()"><i class="ti ti-arrow-left"></i> 返回</div>
+      <div class="review-reading-body" id="review-reading-body"><div class="drawer-empty">點選左側日期，翻開那天的紀錄。</div></div>
     </div>
   </div>
 </div>
@@ -377,6 +373,6 @@
   </div>
 </div>
 
-<script src="app.js?v=20260622l"></script>
+<script src="app.js?v=20260622m"></script>
 </body>
 </html>
