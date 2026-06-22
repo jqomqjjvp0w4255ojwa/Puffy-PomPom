@@ -1014,20 +1014,43 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
 }
 .tree-day {
   cursor: pointer; padding: 7px 8px; border-radius: 6px; color: #6a5a4a;
-  display: flex; justify-content: space-between; align-items: center;
 }
+.tree-day-row { display: flex; justify-content: space-between; align-items: center; }
 .tree-day:hover { background: #f5f0e8; }
 .tree-day.current { background: #f0e6d6; color: #8a5a3a; font-weight: 500; }
 .tree-day-count { font-size: 11px; color: #c0b0a0; }
-
-/* 筆記翻頁書 */
-.notes-book { flex: 1; min-height: 280px; }
-.book-page { display: flex; flex-direction: column; gap: 10px; }
-.book-chapter-title {
-  font-size: 14px; color: #8a5a3a; font-weight: 500; text-align: center;
-  padding-bottom: 8px; border-bottom: 1px dashed #e3d8c5;
+.tree-day-preview {
+  font-size: 11.5px; color: #a08f7c; margin-top: 2px;
+  line-height: 1.4; overflow: hidden; text-overflow: ellipsis;
+  white-space: nowrap;
 }
-.book-progress { font-size: 11px; color: #b0a090; text-align: center; margin-top: -4px; }
+
+/* 筆記書本：仿實體書排版。手機單頁，電腦（≥760px）雙頁對開。 */
+.notes-book { flex: 1; min-height: 320px; }
+.book-spread { display: flex; gap: 0; }
+.book-spread.single { justify-content: center; }
+.book-page {
+  position: relative; flex: 1; min-width: 0;
+  background: #fffdf9; border: 1px solid #f0ebe2; border-radius: 8px;
+  padding: 16px 16px 30px; min-height: 320px;
+  display: flex; flex-direction: column;
+}
+.book-spread:not(.single) .book-page:first-child { border-radius: 8px 2px 2px 8px; border-right: none; }
+.book-spread:not(.single) .book-page:last-child { border-radius: 2px 8px 8px 2px; }
+.book-page.blank { background: #f7f4ee; }
+.book-running-title {
+  position: absolute; top: 10px; right: 14px;
+  font-size: 10.5px; color: #c0a888; letter-spacing: 0.05em;
+}
+.book-page-num {
+  position: absolute; bottom: 10px; left: 14px;
+  font-size: 11px; color: #c0b0a0;
+}
+.book-page-body { flex: 1; display: flex; flex-direction: column; gap: 10px; justify-content: center; }
+.book-toc-title { font-size: 15px; color: #8a5a3a; font-weight: 500; text-align: center; margin-bottom: 4px; }
+.book-cover-page { display: flex; flex-direction: column; align-items: center; justify-content: center; flex: 1; gap: 8px; }
+.book-cover-title { font-size: 19px; color: #8a5a3a; font-weight: 500; text-align: center; }
+.book-progress { font-size: 11px; color: #b0a090; text-align: center; }
 .toc-item {
   padding: 9px 12px; border-radius: 10px; background: #f7f2ea;
   font-size: 13px; color: #8a5a3a; cursor: pointer;
@@ -1038,11 +1061,9 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
 .toc-item.locked:hover { background: #f7f4ee; }
 .toc-count { font-size: 11px; color: #b0a090; }
 .frag-slot {
-  border: 1px solid #f0ebe2; border-radius: 12px; padding: 11px 13px;
-  background: #fff; font-size: 13px; line-height: 1.6;
+  font-size: 13px; line-height: 1.7; color: #5a4a3a;
 }
-.frag-slot.locked { background: #f5f2ec; color: #c8bcaa; text-align: center; letter-spacing: 0.3em; }
-.frag-slot-label { font-size: 11px; color: #c08050; margin-bottom: 4px; }
+.frag-slot-label { font-size: 11.5px; color: #c08050; margin-bottom: 4px; font-weight: 500; }
 .notes-flip { display: flex; align-items: center; justify-content: center; gap: 18px; padding-top: 10px; flex-shrink: 0; }
 .flip-btn {
   width: 36px; height: 36px; border-radius: 50%; border: 1px solid #e3d8c5;

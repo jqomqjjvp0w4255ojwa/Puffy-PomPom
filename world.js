@@ -799,6 +799,32 @@ const server = http.createServer((req, res) => {
       res.end('error');
     }
 
+  } else if (req.url.startsWith('/api/day-summaries')) {
+    // 回顧用：不經 AI，直接從既有的每日紀錄檔取材，做成「那天發生了什麼」的簡短預覽。
+    try {
+      const dates = listDateKeys();
+      const summaries = dates.map(d => {
+        const day = readDay(d);
+        const firstScene = (day.diary || []).find(e => e.scene)?.scene || '';
+        const preview = firstScene ? firstScene.slice(0, 40).trim() + (firstScene.length > 40 ? '…' : '') : '';
+        const visitorLog = day.visitorLog || [];
+        const ownerLog = day.ownerLog || [];
+        return {
+          date: d,
+          preview,
+          visitorCount: visitorLog.length,
+          visitorPreview: visitorLog.length ? visitorLog[0].message.slice(0, 24) : '',
+          ownerCount: ownerLog.length,
+          ownerPreview: ownerLog.length && ownerLog[0].action ? ownerLog[0].action.slice(0, 24) : ''
+        };
+      });
+      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ summaries }));
+    } catch (e) {
+      res.writeHead(500);
+      res.end('error');
+    }
+
   } else if (req.url.startsWith('/api/fragments')) {
     // 筆記（黑影筆記）圖鑑：依「篇章（source）」分組，回傳每張碎片的收集狀態。
     // 未收集的不回傳 text，避免在圖鑑裡提前劇透；只有收集過才看得到全貌。

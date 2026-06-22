@@ -900,7 +900,14 @@ function selectReviewSub(sub) {
   document.querySelectorAll('.folder-tab').forEach(b => b.classList.toggle('active', b.dataset.sub === sub));
   document.querySelectorAll('.review-sub').forEach(p => p.classList.toggle('active', p.dataset.sub === sub));
 }
+let daySummaries = {};
 async function loadReview() {
+  try {
+    const sres = await fetch('/api/day-summaries?t=' + Date.now());
+    const sdata = await sres.json();
+    daySummaries = {};
+    (sdata.summaries || []).forEach(s => { daySummaries[s.date] = s; });
+  } catch (e) { daySummaries = {}; }
   renderDateTimeline();
   try {
     const res = await fetch('/api/fragments?t=' + Date.now());
@@ -937,7 +944,16 @@ function renderDateTimeline() {
     }
     const cur = d === currentDateKey ? ' current' : '';
     const recent = recent7.has(d) ? '<span class="tree-day-count">近期</span>' : '';
-    return `${header}<div class="tree-day${cur}" onclick="jumpToDay('${d}')"><span>${d}</span>${recent}</div>`;
+    const s = daySummaries[d];
+    let extra = '';
+    if (s) {
+      const bits = [];
+      if (s.preview) bits.push(escapeHtml(s.preview));
+      if (s.visitorCount) bits.push(`💬 ${s.visitorCount} 則留言${s.visitorPreview ? '：' + escapeHtml(s.visitorPreview) : ''}`);
+      if (s.ownerCount) bits.push(`📌 你留下了動態${s.ownerPreview ? '：' + escapeHtml(s.ownerPreview) : ''}`);
+      if (bits.length) extra = `<div class="tree-day-preview">${bits.join('　')}</div>`;
+    }
+    return `${header}<div class="tree-day${cur}" onclick="jumpToDay('${d}')"><div class="tree-day-row"><span>${d}</span>${recent}</div>${extra}</div>`;
   }).join('');
   box.innerHTML = rows;
 }
@@ -950,15 +966,20 @@ function jumpToDay(d) {
   selectDrawerTab('observe');
 }
 
-// ---- 筆記：黑影筆記翻頁書（圖鑑） ----
-let notesPages = [];   // [{type:'toc'} | {type:'chapter', chapter}]
+// ---- 筆記：黑影筆記書本（仿實體書：目錄頁→篇名頁→內文頁，手機單頁／電腦雙頁） ----
+// 頁面模型：[{type:'toc'}, {type:'cover', chapter}, {type:'content', chapter, item}, ...]
+let notesPages = [];
 let notesIndex = 0;
+function isDesktopBook() { return window.matchMedia('(min-width: 760px)').matches; }
 async function loadNotebook() {
   try {
     const res = await fetch('/api/fragments?t=' + Date.now());
     const data = await res.json();
     notesPages = [{ type: 'toc', chapters: data.chapters, totalGot: data.totalGot, totalAll: data.totalAll }];
-    data.chapters.filter(c => c.unlocked).forEach(c => notesPages.push({ type: 'chapter', chapter: c }));
+    data.chapters.filter(c => c.unlocked).forEach(c => {
+      notesPages.push({ type: 'cover', chapter: c });
+      c.items.filter(it => it.collected).forEach(it => notesPages.push({ type: 'content', chapter: c, item: it }));
+    });
     if (notesIndex >= notesPages.length) notesIndex = 0;
     renderNotes();
   } catch (e) {
@@ -966,44 +987,73 @@ async function loadNotebook() {
   }
 }
 function flipNotes(dir) {
-  notesIndex = Math.max(0, Math.min(notesPages.length - 1, notesIndex + dir));
+  if (notesIndex === 0) {
+    notesIndex = dir > 0 ? 1 : 0;
+  } else if (isDesktopBook()) {
+    notesIndex = Math.max(1, notesIndex + dir * 2);
+  } else {
+    notesIndex = Math.max(0, notesIndex + dir);
+  }
+  notesIndex = Math.min(notesIndex, notesPages.length - 1);
   renderNotes();
 }
 function openChapterPage(source) {
-  const i = notesPages.findIndex(p => p.type === 'chapter' && p.chapter.source === source);
+  const i = notesPages.findIndex(p => p.type === 'cover' && p.chapter.source === source);
   if (i !== -1) { notesIndex = i; renderNotes(); }
 }
-function renderNotes() {
-  const box = document.getElementById('notes-book');
-  if (notesPages.length === 0) { box.innerHTML = '<div class="drawer-empty">還沒有任何碎片。<br>多陪陪白糰糰，黑影會留下些什麼。</div>'; return; }
-  const page = notesPages[notesIndex];
+function pageInnerHtml(page) {
   if (page.type === 'toc') {
     const items = page.chapters.map(c => {
       if (!c.unlocked) return `<div class="toc-item locked"><span>？？？　未發現的篇章</span><span class="toc-count">0/${c.total}</span></div>`;
       return `<div class="toc-item" onclick="openChapterPage('${c.source.replace(/'/g, "\\'")}')"><span>${escapeHtml(c.source)}</span><span class="toc-count">${c.got}/${c.total}</span></div>`;
     }).join('');
-    box.innerHTML = `<div class="book-page">
-      <div class="book-chapter-title">黑影筆記・目錄</div>
+    return { running: '', body: `<div class="book-toc-title">黑影筆記・目錄</div>
       <div class="book-progress">已收集 ${page.totalGot} / ${page.totalAll} 張碎片</div>
-      ${items}
-    </div>`;
-  } else {
-    const c = page.chapter;
-    const slots = c.items.map(it => {
-      if (!it.collected) return `<div class="frag-slot locked">？ ？ ？</div>`;
-      return `<div class="frag-slot">${it.label ? `<div class="frag-slot-label">${escapeHtml(it.label)}</div>` : ''}${escapeHtml(it.text)}</div>`;
-    }).join('');
-    box.innerHTML = `<div class="book-page">
-      <div class="book-chapter-title">${escapeHtml(c.source)}</div>
-      <div class="book-progress">${c.got} / ${c.total}</div>
-      ${slots}
-    </div>`;
+      ${items}` };
   }
-  document.getElementById('notes-page-label').textContent =
-    page.type === 'toc' ? '目錄' : `${notesIndex} / ${notesPages.length - 1}`;
+  if (page.type === 'cover') {
+    const c = page.chapter;
+    return { running: c.source, body: `<div class="book-cover-page">
+      <div class="book-cover-title">${escapeHtml(c.source)}</div>
+      <div class="book-progress">${c.got} / ${c.total}</div>
+    </div>` };
+  }
+  const c = page.chapter, it = page.item;
+  return { running: c.source, body: `<div class="frag-slot">${it.label ? `<div class="frag-slot-label">${escapeHtml(it.label)}</div>` : ''}${escapeHtml(it.text)}</div>` };
+}
+function renderSinglePage(page, pageNum) {
+  const { running, body } = pageInnerHtml(page);
+  return `<div class="book-page">
+    ${running ? `<div class="book-running-title">${escapeHtml(running)}</div>` : ''}
+    <div class="book-page-body">${body}</div>
+    ${pageNum != null ? `<div class="book-page-num">${pageNum}</div>` : ''}
+  </div>`;
+}
+function renderNotes() {
+  const box = document.getElementById('notes-book');
+  if (notesPages.length === 0) { box.innerHTML = '<div class="drawer-empty">還沒有任何碎片。<br>多陪陪白糰糰，黑影會留下些什麼。</div>'; return; }
+  const desktop = isDesktopBook();
+  let html, label;
+  if (notesIndex === 0 || !desktop) {
+    html = `<div class="book-spread single">${renderSinglePage(notesPages[notesIndex], notesIndex === 0 ? null : notesIndex)}</div>`;
+    label = notesIndex === 0 ? '目錄' : `第 ${notesIndex} 頁`;
+  } else {
+    const left = notesIndex % 2 === 1 ? notesIndex : notesIndex - 1;
+    const right = left + 1;
+    const rightPage = notesPages[right];
+    html = `<div class="book-spread">
+      ${renderSinglePage(notesPages[left], left)}
+      ${rightPage ? renderSinglePage(rightPage, right) : '<div class="book-page blank"></div>'}
+    </div>`;
+    notesIndex = left;
+    label = rightPage ? `第 ${left}–${right} 頁` : `第 ${left} 頁`;
+  }
+  box.innerHTML = html;
+  document.getElementById('notes-page-label').textContent = label;
   document.getElementById('notes-prev').disabled = notesIndex <= 0;
   document.getElementById('notes-next').disabled = notesIndex >= notesPages.length - 1;
 }
+window.addEventListener('resize', () => { if (notesPages.length) renderNotes(); });
 
 load();
 setInterval(load, 3 * 60 * 1000);
