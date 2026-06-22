@@ -6,7 +6,7 @@
 <title>白糰糰觀察日記</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
-<link rel="stylesheet" href="style.css?v=20260622k">
+<link rel="stylesheet" href="style.css?v=20260622l">
 </head>
 <body>
 
@@ -82,17 +82,18 @@
   </div>
 </div>
 
-<!-- 回顧：合併為單一連續頁面（總天數標語＋歷史上的今天＋完整時間軸）＋上方搜尋列 -->
+<!-- 回顧：生活觀察日誌的回憶檔案館，不是 Dashboard。陪伴天數降級為小標語，搜尋只是輔助工具。 -->
 <div class="notebook page-pane" data-page="review">
   <div class="review-layout">
     <div class="review-main review-main-full">
-      <div class="review-today-head" id="review-today-head"></div>
-      <div class="anniv-row" id="anniv-row"></div>
-      <div class="review-recent-label">時間軸</div>
-      <div class="review-search-wrap">
-        <i class="ti ti-search"></i>
-        <input type="text" class="review-search" id="review-search" placeholder="搜尋日期、關鍵字或情緒..." oninput="renderDateTimeline()">
+      <div class="review-meta-row">
+        <div class="review-daycount" id="review-today-head"></div>
+        <div class="review-search-wrap">
+          <i class="ti ti-search"></i>
+          <input type="text" class="review-search" id="review-search" placeholder="搜尋日期、關鍵字或情緒..." oninput="renderDateTimeline()">
+        </div>
       </div>
+      <div class="anniv-row" id="anniv-row"></div>
       <div class="date-tree" id="date-tree"><div class="drawer-empty">載入中…</div></div>
     </div>
   </div>
@@ -376,6 +377,6 @@
   </div>
 </div>
 
-<script src="app.js?v=20260622k"></script>
+<script src="app.js?v=20260622l"></script>
 </body>
 </html>

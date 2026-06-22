@@ -402,7 +402,7 @@ function buildTvPrompt(channel, ctx) {
     (ctx.eventsToday ? `今天已發生：${ctx.eventsToday}。\n` : '') +
     `白糰糰最近的動態紀錄（由舊到新）：\n${(ctx.recentMemory && ctx.recentMemory.length ? ctx.recentMemory : [ctx.recentScene]).map((m, i) => `${i + 1}. ${m}`).join('\n')}`;
 
-  const lengthRule = '請嚴格控制在 120 字以內，不要超過，寧可短也不要長；只能根據上面提供的資訊發揮，不要編造與設定矛盾的內容。';
+  const lengthRule = '篇幅維持在約 120 字左右即可，不用硬性規定字數，偶爾超過沒關係；只能根據上面提供的資訊發揮，不要編造與設定矛盾的內容。';
   const lorePrefix = `${SYSTEM_PROMPT}\n\n———\n以上是角色設定，務必遵守白糰糰的身體構造（沒有耳朵、鼻子，靠觸感與顏色感知世界）與小黑影的設定。${buildLoreSnippetForTv(ctx)}\n\n`;
 
   if (channel === 'nature') {
