@@ -1,0 +1,14 @@
+[
+  { "id": "action-seed-1", "type": "patrol", "action": "繞著房間邊界巡一圈，確認沒有東西被動過" },
+  { "id": "action-seed-2", "type": "nest", "action": "在某個角落重新理一次窩，把棉布或碎屑挪位" },
+  { "id": "action-seed-3", "type": "forage", "action": "翻找地上或縫隙裡有沒有露水、冰塊、碎屑可吃" },
+  { "id": "action-seed-4", "type": "weapon", "action": "檢查竹籤或細針還夠不夠尖，試著刺一下紙張或軟物" },
+  { "id": "action-seed-5", "type": "grind", "action": "找東西磨牙，啃一下竹籤、家具邊角" },
+  { "id": "action-seed-6", "type": "climb", "action": "貼著牆面或家具邊緣，無聲攀爬一段" },
+  { "id": "action-seed-7", "type": "squeeze", "action": "鑽進一個狹窄縫隙，試試看能不能擠過去" },
+  { "id": "action-seed-8", "type": "scratch", "action": "在粗糙表面磨蹭身體，理一理毛" },
+  { "id": "action-seed-9", "type": "invent", "action": "把垃圾或雜物堆疊排列，自認在發明糰式文明" },
+  { "id": "action-seed-10", "type": "water", "action": "跑去廁所或水邊碰一下水，小心別被沖走" },
+  { "id": "action-seed-11", "type": "sun", "action": "找一塊有光的地方靠著，留意溫度別太高" },
+  { "id": "action-seed-12", "type": "stare", "action": "盯著一個固定的小東西不動，像在判斷它算不算數" }
+]

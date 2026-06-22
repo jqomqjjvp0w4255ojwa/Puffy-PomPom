@@ -196,7 +196,8 @@ function buildLoreInput(text) {
 
 // 糰糰行為籤庫：只給「牠做什麼」的動作參考，不寫情緒（情緒由 AI 依當下脈絡自然流出）。
 // 用來在沒有強事件（訪客／特殊事件）時，給 AI 一點具體靈感，避免每回合都安靜發呆。
-const BAITUANTUAN_ACTION_POOL = [
+// 可在 /content-lab「行為籤庫」分頁編輯、上傳覆蓋 data/actions.json，能灌大量條目。
+const DEFAULT_ACTION_POOL = [
   { type: 'patrol', action: '繞著房間邊界巡一圈，確認沒有東西被動過' },
   { type: 'nest', action: '在某個角落重新理一次窩，把棉布或碎屑挪位' },
   { type: 'forage', action: '翻找地上或縫隙裡有沒有露水、冰塊、碎屑可吃' },
@@ -210,11 +211,21 @@ const BAITUANTUAN_ACTION_POOL = [
   { type: 'sun', action: '找一塊有光的地方靠著，留意溫度別太高' },
   { type: 'stare', action: '盯著一個固定的小東西不動，像在判斷它算不算數' },
 ];
+function loadActionPool() {
+  try {
+    const data = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'actions.json'), 'utf8'));
+    const pool = Array.isArray(data) ? data.filter(a => a && a.action && a.action.trim()) : [];
+    return pool.length > 0 ? pool : DEFAULT_ACTION_POOL;
+  } catch (err) {
+    return DEFAULT_ACTION_POOL;
+  }
+}
 // 選一支籤：避開最近 3 次已經用過的類型，降低重複感；全部都用過就退回完整籤庫。
 function pickActionTag(recentTypes) {
   const recent = recentTypes || [];
-  const pool = BAITUANTUAN_ACTION_POOL.filter(a => !recent.includes(a.type));
-  const usePool = pool.length > 0 ? pool : BAITUANTUAN_ACTION_POOL;
+  const allActions = loadActionPool();
+  const pool = allActions.filter(a => !recent.includes(a.type));
+  const usePool = pool.length > 0 ? pool : allActions;
   return usePool[Math.floor(Math.random() * usePool.length)];
 }
 
@@ -1168,7 +1179,7 @@ const server = http.createServer((req, res) => {
     // 給 content-lab 讀目前線上的 data/*.json，方便手機開頁面時帶出最新內容。
     try {
       const name = req.url.split('/')[3].split('?')[0];
-      const allow = { 'system-prompt': 'system-prompt.json', 'fragments': 'fragments.json', 'events': 'events.json', 'balance': 'balance.json', 'hidden-stats': 'hidden-stats.json', 'lorebook': 'lorebook.json' };
+      const allow = { 'system-prompt': 'system-prompt.json', 'fragments': 'fragments.json', 'events': 'events.json', 'balance': 'balance.json', 'hidden-stats': 'hidden-stats.json', 'lorebook': 'lorebook.json', 'actions': 'actions.json' };
       if (!allow[name]) { res.writeHead(404); res.end('not found'); return; }
       const content = fs.readFileSync(path.join(__dirname, 'data', allow[name]), 'utf8');
       res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
