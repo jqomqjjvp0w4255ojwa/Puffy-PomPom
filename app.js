@@ -883,17 +883,50 @@ function openDrawer() {
   document.getElementById('menu-btn').classList.add('hidden');
 }
 function closeDrawer() {
-  document.getElementById('side-drawer').classList.remove('open');
+  document.getElementById('side-drawer').classList.remove('open', 'with-subnav');
   document.getElementById('drawer-backdrop').classList.remove('open');
   document.getElementById('menu-btn').classList.remove('hidden');
+}
+function isDesktopLayout() { return window.matchMedia('(min-width: 760px)').matches; }
+const DRAWER_SUBNAV = {
+  review: [
+    { sub: 'today', icon: 'ti-sun', label: '今日回顧' },
+    { sub: 'stats', icon: 'ti-chart-bar', label: '統計' },
+    { sub: 'timeline', icon: 'ti-timeline', label: '時間軸' }
+  ],
+  notes: [
+    { sub: 'toc', icon: 'ti-list', label: '目錄' }
+  ]
+};
+function renderDrawerSubnav(name) {
+  const box = document.getElementById('drawer-subnav');
+  const items = DRAWER_SUBNAV[name] || [];
+  if (name === 'review') {
+    box.innerHTML = items.map(it => `<button class="review-nav-item${it.sub === 'today' ? ' active' : ''}" data-sub="${it.sub}" onclick="selectReviewSub('${it.sub}')"><i class="ti ${it.icon}"></i>${it.label}</button>`).join('');
+  } else if (name === 'notes') {
+    box.innerHTML = items.map(it => `<button class="review-nav-item" onclick="notesIndex=0;renderNotes()"><i class="ti ${it.icon}"></i>${it.label}</button>`).join('');
+  } else {
+    box.innerHTML = '';
+  }
 }
 function selectDrawerTab(name) {
   document.querySelectorAll('.rail-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
   document.querySelectorAll('.page-pane').forEach(p => p.classList.toggle('active', p.dataset.page === name));
-  closeDrawer();
+  if (isDesktopLayout() && (name === 'review' || name === 'notes')) {
+    renderDrawerSubnav(name);
+    document.getElementById('side-drawer').classList.add('open', 'with-subnav');
+    document.getElementById('drawer-backdrop').classList.remove('open');
+    document.getElementById('menu-btn').classList.add('hidden');
+  } else {
+    closeDrawer();
+  }
   if (name === 'review') loadReview();
   if (name === 'notes') loadNotebook();
 }
+window.addEventListener('resize', () => {
+  const drawer = document.getElementById('side-drawer');
+  if (!isDesktopLayout() && drawer.classList.contains('with-subnav')) closeDrawer();
+});
 
 // ---- 回顧：今日回顧 / 時間軸 / 統計 ----
 function selectReviewSub(sub) {
