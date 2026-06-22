@@ -1006,6 +1006,33 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
 .shelf-book.locked:hover { background: transparent; }
 .shelf-book.locked .shelf-book-title { color: #c0b0a0; font-weight: 400; }
 .shelf-toc .shelf-book-title { color: #9a8a78; }
+
+/* 蒐集進度條 */
+.notes-progress { padding: 12px 4px 0; }
+.notes-progress-text { font-size: 11.5px; color: #8a7660; margin-bottom: 6px; }
+.notes-progress-text b { color: #b8895a; font-family: Georgia, serif; font-weight: 500; }
+.notes-progress-bar { height: 5px; background: #e8ddca; border-radius: 999px; overflow: hidden; }
+.notes-progress-fill { height: 100%; background: linear-gradient(90deg, #d9b075, #c08050); border-radius: 999px; transition: width 0.4s; }
+
+/* 分類：全部／已蒐集／收藏 */
+.notes-filter { display: flex; gap: 6px; padding: 12px 0 4px; }
+.notes-filter-tab {
+  font-size: 11.5px; color: #9a8a78; cursor: pointer;
+  padding: 4px 10px; border-radius: 999px; border: 1px solid transparent; transition: background 0.15s, color 0.15s;
+}
+.notes-filter-tab:hover { background: rgba(191,167,143,0.12); }
+.notes-filter-tab.active { background: #e7d8bc; color: #8a5a3a; }
+
+/* 書頁裡的收藏星星：很淡地跟在句尾，不破壞閱讀心流；要在翻頁感應區之上才點得到 */
+.frag-text { }
+.frag-fav {
+  position: relative; z-index: 5;
+  margin-left: 6px; font-size: 13px; color: #d8cdbb; cursor: pointer;
+  vertical-align: baseline; transition: color 0.15s, transform 0.15s;
+}
+.frag-fav:hover { color: #c0a060; transform: scale(1.15); }
+.frag-fav.on { color: #d8a23a; }
+
 .review-drawer-head { margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid #e6dccb; }
 .rail-btn {
   width: 46px; height: 56px; border: none; background: none; color: #9a8a78;
