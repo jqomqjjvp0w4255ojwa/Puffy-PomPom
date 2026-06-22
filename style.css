@@ -1020,10 +1020,17 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
 
 /* 時間軸：連續直線串起每一天，強調時間流動感，而非資料卡片列表 */
 .date-tree { font-size: 13px; }
+.timeline-month-group + .timeline-month-group { margin-top: 4px; }
 .timeline-month-header {
   color: #8a5a3a; font-weight: 500; font-family: Georgia, 'Times New Roman', serif;
-  padding: 6px 0 12px 24px; font-size: 14px; letter-spacing: 0.5px;
+  padding: 6px 24px 12px; font-size: 14px; letter-spacing: 0.5px;
+  cursor: pointer; user-select: none;
+  display: flex; align-items: center; justify-content: space-between;
 }
+.timeline-month-caret { font-size: 14px; color: #c0a878; transition: transform 0.15s; }
+.timeline-month-group.open .timeline-month-caret { transform: rotate(180deg); }
+.timeline-month-days { display: none; }
+.timeline-month-group.open .timeline-month-days { display: block; }
 .tree-day { cursor: pointer; padding: 0 0 22px 24px; color: #6a5a4a; position: relative; }
 .tree-day::before {
   content: ''; position: absolute; left: 4px; top: 8px; bottom: -2px;
@@ -1072,11 +1079,12 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
 .review-entry.open .entry-detail { display: block; }
 .detail-box {
   border: 1px solid #efe6d6; border-radius: 8px; background: #f9f5ee;
-  padding: 8px 12px; font-size: 12.5px; color: #6a5a4a; line-height: 1.8;
+  padding: 7px 11px; font-size: 11.5px; color: #6a5a4a; line-height: 1.7;
 }
-.detail-box + .detail-box { margin-top: 8px; }
-.detail-line { display: flex; align-items: baseline; gap: 6px; }
-.detail-line i { font-size: 13.5px; color: #c0a878; width: 15px; text-align: center; flex-shrink: 0; }
+.detail-box + .detail-box { margin-top: 6px; }
+.detail-line { display: flex; align-items: baseline; gap: 5px; }
+.detail-line + .detail-line { margin-top: 2px; }
+.detail-line i { font-size: 12.5px; color: #c0a878; width: 14px; text-align: center; flex-shrink: 0; }
 .detail-line b { font-weight: 500; color: #8a5a3a; }
 
 .entry-scene { font-size: 14.5px; line-height: 2; color: #4a3a2a; margin-top: 6px; white-space: pre-wrap; }

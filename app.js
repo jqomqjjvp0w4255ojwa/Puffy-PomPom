@@ -1012,18 +1012,28 @@ function renderDateTimeline() {
   const q = (searchEl ? searchEl.value || '' : '').trim();
   const dates = availableDates.filter(d => !q || d.includes(q)).slice().reverse();
   if (dates.length === 0) { box.innerHTML = '<div class="drawer-empty">找不到符合的日期。</div>'; return; }
-  let lastGroup = null;
-  const rows = dates.map(d => {
+  // 依年/月分組，每組可收合，避免累積越多天越難翻閱；搜尋時直接展開全部分組。
+  const groups = [];
+  let cur = null;
+  dates.forEach(d => {
     const [y, m] = d.split('-');
     const groupKey = `${y}-${m}`;
-    let header = '';
-    if (groupKey !== lastGroup) {
-      lastGroup = groupKey;
-      header = `<div class="timeline-month-header">${y} 年 ${Number(m)} 月</div>`;
+    if (!cur || cur.key !== groupKey) {
+      cur = { key: groupKey, y, m: Number(m), dates: [] };
+      groups.push(cur);
     }
-    return header + dayRowHtml(d);
+    cur.dates.push(d);
+  });
+  const searching = !!q;
+  box.innerHTML = groups.map((g, i) => {
+    const open = searching || i === 0;
+    return `<div class="timeline-month-group${open ? ' open' : ''}">
+      <div class="timeline-month-header" onclick="this.closest('.timeline-month-group').classList.toggle('open')">
+        <span>${g.y} 年 ${g.m} 月</span><i class="ti ti-chevron-down timeline-month-caret"></i>
+      </div>
+      <div class="timeline-month-days">${g.dates.map(dayRowHtml).join('')}</div>
+    </div>`;
   }).join('');
-  box.innerHTML = rows;
 }
 
 // 選某一天：直接在閱讀區換內容，不開 Modal、不離開頁面。
@@ -1033,7 +1043,12 @@ async function selectReviewDay(d, opts) {
   reviewSelectedDate = d;
   // 標記時間軸目前選中的日期
   document.querySelectorAll('#date-tree .tree-day').forEach(el => {
-    el.classList.toggle('current', el.dataset.date === d);
+    const isCurrent = el.dataset.date === d;
+    el.classList.toggle('current', isCurrent);
+    if (isCurrent) {
+      const group = el.closest('.timeline-month-group');
+      if (group) group.classList.add('open');
+    }
   });
   // 手機：選完日期把時間軸收起，露出中間的完整內文
   if (!isDesktopLayout()) closeDrawer();
@@ -1089,14 +1104,16 @@ function reviewEntryHtml(e, ownerLog, visitorLog) {
     </div>`;
   }
 
-  // 糰糰狀態：健康・飽食・位置・毛況
-  const tBits = [];
-  if (typeof e.hp === 'number') tBits.push(`健康 ${e.hp}`);
-  if (typeof e.food === 'number') tBits.push(`飽食 ${e.food}`);
-  if (e.location) tBits.push(escapeHtml(e.location));
-  if (e.fur) tBits.push(escapeHtml(e.fur));
-  const tuanBox = tBits.length
-    ? `<div class="detail-box"><div class="detail-line"><i class="ti ti-paw"></i><span>${tBits.join(' · ')}</span></div></div>`
+  // 糰糰狀態：上排數值(飽食・健康・位置)，下排狀況(毛況等文字描述)
+  const tStatBits = [];
+  if (typeof e.food === 'number') tStatBits.push(`飽食 ${e.food}`);
+  if (typeof e.hp === 'number') tStatBits.push(`健康 ${e.hp}`);
+  if (e.location) tStatBits.push(escapeHtml(e.location));
+  const tuanBox = (tStatBits.length || e.fur)
+    ? `<div class="detail-box">
+      ${tStatBits.length ? `<div class="detail-line"><i class="ti ti-paw"></i><span>${tStatBits.join(' · ')}</span></div>` : ''}
+      ${e.fur ? `<div class="detail-line"><i class="ti ti-sparkles"></i><span>${escapeHtml(e.fur)}</span></div>` : ''}
+    </div>`
     : '';
 
   const visitorHtml = visitors.length
