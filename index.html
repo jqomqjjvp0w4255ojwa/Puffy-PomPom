@@ -6,7 +6,7 @@
 <title>白糰糰觀察日記</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
-<link rel="stylesheet" href="style.css?v=20260622q">
+<link rel="stylesheet" href="style.css?v=20260622r">
 </head>
 <body>
 
@@ -133,7 +133,15 @@
             </span>
           </div>
           <div class="status-display has-dot" id="status-display"></div>
-          <textarea class="owner-textarea" id="owner-input" maxlength="30" placeholder="在做什麼、有什麼變化..." style="display:none;"></textarea>
+          <div class="status-tag-picker" id="status-tag-picker" style="display:none;">
+            <span class="status-tag-chip" data-tag="有空" onclick="pickStatusTag('有空')">有空</span>
+            <span class="status-tag-chip" data-tag="忙碌" onclick="pickStatusTag('忙碌')">忙碌</span>
+            <span class="status-tag-chip" data-tag="休息" onclick="pickStatusTag('休息')">休息</span>
+            <span class="status-tag-chip" data-tag="不在" onclick="pickStatusTag('不在')">不在</span>
+            <span class="status-tag-chip status-tag-custom" data-tag="" onclick="pickStatusTag('__custom__')">其他</span>
+            <span class="status-tag-cancel" onclick="cancelStatus()">取消</span>
+          </div>
+          <textarea class="owner-textarea" id="owner-input" maxlength="30" placeholder="說說是什麼狀況..." style="display:none;"></textarea>
           <div class="edit-actions" id="owner-edit-actions" style="display:none;">
             <span class="edit-cancel" onclick="cancelStatus()">取消</span>
             <button class="owner-submit" id="owner-submit-btn" onclick="submitStatus()">記錄</button>
@@ -330,7 +338,15 @@
     </div>
   </div>
   <textarea class="sticky-note-textarea" id="sticky-note-textarea" maxlength="50" placeholder="想跟他說的話，他聽不懂，但可能會有反應..."></textarea>
+  <div class="note-location-picker" id="note-location-picker">
+    <span class="note-loc-chip" data-loc="desk_leg" onclick="setNoteLocation('desk_leg')">桌腳</span>
+    <span class="note-loc-chip" data-loc="fridge_bottom" onclick="setNoteLocation('fridge_bottom')">冰箱下方</span>
+    <span class="note-loc-chip" data-loc="wall" onclick="setNoteLocation('wall')">牆上</span>
+    <span class="note-loc-chip" data-loc="floor" onclick="setNoteLocation('floor')">地板</span>
+    <span class="note-loc-chip" data-loc="computer" onclick="setNoteLocation('computer')">電腦</span>
+  </div>
   <div class="sticky-note-saved" id="sticky-note-saved" style="display:none;"></div>
+  <div class="note-saved-loc" id="note-saved-loc" style="display:none;"></div>
   <div class="note-read-mark" id="note-read-mark" style="display:none;" title="糰糰看過了" aria-label="糰糰看過了">
     <i class="rice-step step-1"></i>
     <i class="rice-step step-2"></i>
@@ -358,6 +374,6 @@
   </div>
 </div>
 
-<script src="app.js?v=20260622q"></script>
+<script src="app.js?v=20260622r"></script>
 </body>
 </html>
