@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>回顧・當日狀態長條卡 DEMO 2</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 36px 20px 60px;
+    background: #f3ece0; font-family: 'Noto Serif TC', serif; color: #5a4a3a;
+  }
+  .wrap { max-width: 560px; margin: 0 auto; }
+  .demo-note {
+    font-size: 12px; color: #a89878; text-align: center; margin-bottom: 22px; line-height: 1.7;
+  }
+  .variant-label {
+    font-size: 12px; color: #b8895a; letter-spacing: 1px; margin: 30px 0 12px; text-align: center;
+  }
+
+  .reading {
+    background: #fffdf9; border: 1px solid #ece1d0; border-radius: 12px;
+    box-shadow: 0 2px 10px rgba(120,90,60,0.05);
+    padding: 26px 30px 34px;
+  }
+  .memory-date {
+    font-size: 17px; color: #8a5a3a; font-weight: 500; text-align: center;
+    font-family: Georgia, 'Times New Roman', serif;
+  }
+  .memory-entry-text { font-size: 14.5px; line-height: 2; color: #4a3a2a; margin-top: 18px; }
+
+  /* ============ 收合狀態：只有一個時間條，極輕量，不影響閱讀 ============ */
+  .statcard { margin-top: 14px; border: 1px solid #efe6d6; border-radius: 8px; background: #f9f5ee; overflow: hidden; }
+  .statcard-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 7px 12px; cursor: pointer; user-select: none;
+  }
+  .statcard-time {
+    font-size: 12.5px; color: #97876f; font-family: Georgia, 'Times New Roman', serif;
+    letter-spacing: 0.5px;
+  }
+  .statcard-toggle {
+    width: 18px; height: 18px; border-radius: 50%; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    background: #efe3cc; color: #a8895c; font-size: 12px; line-height: 1;
+    transition: background 0.15s;
+  }
+  .statcard-head:hover .statcard-toggle { background: #e7d8bc; }
+
+  /* ============ 展開內容：上＝客觀資訊（圖示列），下＝我的紀錄（圖示列） ============ */
+  .statcard-body {
+    display: none; padding: 2px 12px 10px;
+    border-top: 1px dashed #e8dcc8;
+  }
+  .statcard.open .statcard-body { display: block; }
+  .statcard.open .statcard-toggle i.ti-plus { display: none; }
+  .statcard:not(.open) .statcard-toggle i.ti-minus { display: none; }
+
+  .stat-band { display: flex; flex-wrap: wrap; gap: 5px 14px; padding: 9px 0; }
+  .stat-band + .stat-band { border-top: 1px dashed #e8dcc8; }
+  .stat-item { display: flex; align-items: center; gap: 5px; font-size: 12px; color: #6a5a4a; white-space: nowrap; }
+  .stat-item i { font-size: 13.5px; color: #c0a878; width: 14px; text-align: center; }
+  .stat-item b { font-weight: 500; color: #8a5a3a; }
+
+  /* 多筆時間時，每段是一個 statcard，彼此用更細的間距堆疊 */
+  .entry-block + .entry-block { margin-top: 26px; padding-top: 22px; border-top: 1px solid #f1ebe0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="demo-note">
+    版本 D ── 圖示取代文字標題，收合時只顯示時間（24h）＋ ⊕／⊖<br>
+    展開後：上排客觀資訊（天氣・居家），下排我的紀錄（狀態・動態・白糰糰）<br>
+    點時間條可展開／收合，不影響原本的閱讀
+  </div>
+
+  <div class="reading">
+    <div class="memory-date">2026 年 6 月 22 日</div>
+
+    <div class="entry-block">
+      <div class="statcard" onclick="this.classList.toggle('open')">
+        <div class="statcard-head">
+          <span class="statcard-time">13:59</span>
+          <span class="statcard-toggle"><i class="ti ti-plus"></i><i class="ti ti-minus"></i></span>
+        </div>
+        <div class="statcard-body" onclick="event.stopPropagation()">
+          <div class="stat-band">
+            <span class="stat-item"><i class="ti ti-cloud-storm"></i><b>雷雨</b> 33℃ 63%</span>
+            <span class="stat-item"><i class="ti ti-home"></i>冷氣26℃</span>
+          </div>
+          <div class="stat-band">
+            <span class="stat-item"><i class="ti ti-user-circle"></i>加班到很晚</span>
+            <span class="stat-item"><i class="ti ti-pencil"></i>換了新棉布</span>
+            <span class="stat-item"><i class="ti ti-paw"></i>82 · 70 · 冰箱最下層</span>
+          </div>
+        </div>
+      </div>
+      <div class="memory-entry-text">冰箱縫隙透進一條細光，落在層架邊緣，剛好在他腳邊。白糰糰站著，竹籤攜著，毛扁扁的，對著那條光，豆眼沒有裝東西進去……</div>
+    </div>
+
+    <div class="entry-block">
+      <div class="statcard" onclick="this.classList.toggle('open')">
+        <div class="statcard-head">
+          <span class="statcard-time">23:40</span>
+          <span class="statcard-toggle"><i class="ti ti-plus"></i><i class="ti ti-minus"></i></span>
+        </div>
+        <div class="statcard-body" onclick="event.stopPropagation()">
+          <div class="stat-band">
+            <span class="stat-item"><i class="ti ti-moon"></i>晴 26℃ 70%</span>
+            <span class="stat-item"><i class="ti ti-home"></i>窗簾拉上</span>
+          </div>
+          <div class="stat-band">
+            <span class="stat-item"><i class="ti ti-paw"></i>80 · 65 · 床邊棉布</span>
+          </div>
+        </div>
+      </div>
+      <div class="memory-entry-text">深夜，房間只剩冷氣的怪風還在悶悶地壓著，白糰糰蹲在陰影裡，動也不動。</div>
+    </div>
+  </div>
+</div>
+</body>
+</html>
