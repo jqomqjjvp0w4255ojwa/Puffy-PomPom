@@ -15,7 +15,7 @@
   <p class="cover-date"><span id="cover-date">載入中...</span><span class="cover-weather" id="cover-weather"></span></p>
 </div>
 
-<div class="notebook">
+<div class="notebook page-pane active" data-page="observe">
   <div class="notebook-header">
     <div class="header-label" onclick="toggleStatusDetail()">
       <span>現在</span>
@@ -74,7 +74,34 @@
   </div>
 </div>
 
-<!-- 側欄抽屜：三條線開啟，左側直立圖示分頁（觀察／回顧／筆記） -->
+<!-- 回顧：資料夾標籤耳朵（統計總覽 / 記錄檔案） -->
+<div class="notebook page-pane" data-page="review">
+  <div class="folder-tabs">
+    <button class="folder-tab active" data-sub="stats" onclick="selectReviewSub('stats')">統計總覽</button>
+    <button class="folder-tab" data-sub="files" onclick="selectReviewSub('files')">記錄檔案</button>
+  </div>
+  <div class="folder-body">
+    <div class="review-sub active" data-sub="stats" id="review-stats">
+      <div class="drawer-empty">載入中…</div>
+    </div>
+    <div class="review-sub" data-sub="files" id="review-files">
+      <input type="text" class="review-search" id="review-search" placeholder="搜尋日期（例如 2026-06 或 06-21）" oninput="renderDateTimeline()">
+      <div class="date-tree" id="date-tree"><div class="drawer-empty">載入中…</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- 筆記：黑影筆記翻頁書 -->
+<div class="notebook page-pane" data-page="notes">
+  <div class="notes-book" id="notes-book"><div class="drawer-empty">載入中…</div></div>
+  <div class="notes-flip">
+    <button class="flip-btn" id="notes-prev" onclick="flipNotes(-1)">‹</button>
+    <span class="notes-page-label" id="notes-page-label">—</span>
+    <button class="flip-btn" id="notes-next" onclick="flipNotes(1)">›</button>
+  </div>
+</div>
+
+<!-- 側欄抽屜：三條線開啟，只有左側直立圖示分頁（觀察／回顧／筆記），點擊後主頁面內容融景轉換 -->
 <button class="menu-btn" id="menu-btn" onclick="openDrawer()" aria-label="選單"><i class="ti ti-menu-2"></i></button>
 <div class="drawer-backdrop" id="drawer-backdrop" onclick="closeDrawer()"></div>
 <div class="side-drawer" id="side-drawer">
@@ -82,41 +109,6 @@
     <button class="rail-btn active" data-tab="observe" onclick="selectDrawerTab('observe')"><i class="ti ti-eye"></i>觀察</button>
     <button class="rail-btn" data-tab="review" onclick="selectDrawerTab('review')"><i class="ti ti-history"></i>回顧</button>
     <button class="rail-btn" data-tab="notes" onclick="selectDrawerTab('notes')"><i class="ti ti-notes"></i>筆記</button>
-  </div>
-  <div class="drawer-content">
-    <div class="drawer-content-header">
-      <span class="drawer-content-title" id="drawer-title">觀察</span>
-    </div>
-    <div class="drawer-content-body">
-
-      <!-- 回顧：資料夾標籤耳朵（統計總覽 / 記錄檔案） -->
-      <div class="drawer-pane" data-pane="review">
-        <div class="folder-tabs">
-          <button class="folder-tab active" data-sub="stats" onclick="selectReviewSub('stats')">統計總覽</button>
-          <button class="folder-tab" data-sub="files" onclick="selectReviewSub('files')">記錄檔案</button>
-        </div>
-        <div class="folder-body">
-          <div class="review-sub active" data-sub="stats" id="review-stats">
-            <div class="drawer-empty">載入中…</div>
-          </div>
-          <div class="review-sub" data-sub="files" id="review-files">
-            <input type="text" class="review-search" id="review-search" placeholder="搜尋日期（例如 2026-06 或 06-21）" oninput="renderDateTimeline()">
-            <div class="date-tree" id="date-tree"><div class="drawer-empty">載入中…</div></div>
-          </div>
-        </div>
-      </div>
-
-      <!-- 筆記：黑影筆記翻頁書 -->
-      <div class="drawer-pane" data-pane="notes">
-        <div class="notes-book" id="notes-book"><div class="drawer-empty">載入中…</div></div>
-        <div class="notes-flip">
-          <button class="flip-btn" id="notes-prev" onclick="flipNotes(-1)">‹</button>
-          <span class="notes-page-label" id="notes-page-label">—</span>
-          <button class="flip-btn" id="notes-next" onclick="flipNotes(1)">›</button>
-        </div>
-      </div>
-
-    </div>
   </div>
 </div>
 
