@@ -248,6 +248,24 @@ function distillClimate(room, weather) {
     + `白糰糰適溫0~20℃：太熱絨毛蒸發變裸糰糰並躲藏、情緒過載變紅糰糰，涼爽則絨毛蓬鬆變涼糰糰；潮濕毛軟塌、乾燥易靜電炸毛。`;
 }
 
+// 回顧頁狀態卡用：把當下房間（冷氣/窗/巨怪描述）濃縮成一句很短的居家狀況，存進每日紀錄。
+function roomBrief(room) {
+  if (!room) return '';
+  const ac = normalizeAc(room);
+  let note;
+  if (ac.on && ac.broken) note = '冷氣故障、悶熱怪風';
+  else if (ac.on) {
+    if (ac.mode === 'cool') note = `冷氣冷房 ${ac.temp}℃`;
+    else if (ac.mode === 'heat') note = `暖氣 ${ac.temp}℃`;
+    else if (ac.mode === 'dry') note = '除濕中';
+    else if (ac.mode === 'fan') note = '送風';
+    else note = '冷氣開啟';
+  } else if (room.window_open) note = '開窗';
+  else note = '門窗緊閉';
+  const extra = (room.env_desc || '').trim();
+  return extra ? `${note}・${extra}` : note;
+}
+
 function getRandomMinutes(min, max) {
   return Math.floor(Math.random() * (max - min + 1) + min);
 }
@@ -1404,6 +1422,10 @@ async function tick() {
 
     const finalBt = newWorld.characters.baituantuan;
 
+    const entryWeather = newWorld.weather
+      ? { desc: newWorld.weather.desc, temp: newWorld.weather.temp, humidity: newWorld.weather.humidity }
+      : null;
+
     appendToDay(todayKey, 'diary', [{
       time: display,
       scene: result.scene,
@@ -1411,6 +1433,9 @@ async function tick() {
       food: finalBt.food,
       location: result.baituantuan.location,
       fur: result.baituantuan.fur && result.baituantuan.fur !== '正常' ? result.baituantuan.fur : null,
+      // 回顧頁狀態卡：客觀環境（天氣）＋居家狀況（房間），從今天起逐日記錄；過去日無此欄會留空。
+      weather: entryWeather,
+      room: roomBrief(newWorld.room),
       shadowActive: !!result.shadow.active,
       // 特殊事件的腳本卡：主頁會用特殊框原文顯示在 AI 續寫的 scene 之前。
       eventKey: triggeredEvent || null,

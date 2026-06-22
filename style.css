@@ -1049,14 +1049,38 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
 /* 中間閱讀區：日記頁式排版，用分隔線取代卡片框，仿翻開一頁筆記的感覺 */
 .page-pane[data-page="review"] { padding: 26px 30px 34px; }
 .review-reading-back { display: none; }
-.memory-date { font-size: 17px; color: #8a5a3a; font-weight: 500; text-align: center; font-family: Georgia, 'Times New Roman', serif; }
-.memory-divider { border-top: 1px dashed #e3d8c5; margin: 18px 0; }
-.memory-section-label { font-size: 11px; color: #b0a08c; letter-spacing: 1px; margin-bottom: 8px; }
-.memory-entry-text { font-size: 14.5px; line-height: 2; color: #4a3a2a; white-space: pre-wrap; }
-.memory-owner-note, .memory-visitor-note {
-  font-size: 13px; color: #6a5a4a; margin-bottom: 8px; line-height: 1.7;
+.memory-date { font-size: 17px; color: #8a5a3a; font-weight: 500; text-align: center; font-family: Georgia, 'Times New Roman', serif; margin-bottom: 6px; }
+
+/* 一段觀察：時間是紀錄的一部分（不框），時間後 +／- 展開狀態卡，不影響閱讀 */
+.review-entry { margin-top: 22px; }
+.entry-time {
+  font-size: 13px; color: #b09a7c; font-family: Georgia, 'Times New Roman', serif;
+  letter-spacing: 0.5px; line-height: 1.8;
 }
-.memory-owner-note:last-child, .memory-visitor-note:last-child { margin-bottom: 0; }
+.entry-toggle { cursor: pointer; color: #c0a060; font-weight: 500; padding: 0 5px; user-select: none; }
+.entry-toggle:hover { color: #a8895c; }
+.entry-env { display: none; color: #a89878; font-size: 12px; }
+.review-entry.open .entry-env { display: inline; }
+.entry-env-item { white-space: nowrap; margin-left: 10px; }
+.entry-env-item i { font-size: 12.5px; vertical-align: -1px; margin-right: 2px; color: #c0a878; }
+/* + 收合時出現在時間後；− 展開時出現在天氣那一行最後 */
+.review-entry .entry-toggle.minus { display: none; }
+.review-entry.open .entry-toggle.plus { display: none; }
+.review-entry.open .entry-toggle.minus { display: inline; }
+
+.entry-detail { display: none; margin: 9px 0 2px; }
+.review-entry.open .entry-detail { display: block; }
+.detail-box {
+  border: 1px solid #efe6d6; border-radius: 8px; background: #f9f5ee;
+  padding: 8px 12px; font-size: 12.5px; color: #6a5a4a; line-height: 1.8;
+}
+.detail-box + .detail-box { margin-top: 8px; }
+.detail-line { display: flex; align-items: baseline; gap: 6px; }
+.detail-line i { font-size: 13.5px; color: #c0a878; width: 15px; text-align: center; flex-shrink: 0; }
+.detail-line b { font-weight: 500; color: #8a5a3a; }
+
+.entry-scene { font-size: 14.5px; line-height: 2; color: #4a3a2a; margin-top: 6px; white-space: pre-wrap; }
+
 .memory-goto-btn {
   display: block; width: 100%; margin-top: 24px; padding: 10px;
   border: 1px solid #e3d8c5; border-radius: 8px; background: #f7f2ea;

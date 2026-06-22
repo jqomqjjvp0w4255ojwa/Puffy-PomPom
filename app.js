@@ -1044,21 +1044,73 @@ async function selectReviewDay(d, opts) {
     const day = await res.json();
     const ownerLog = day.ownerLog || [];
     const visitorLog = day.visitorLog || [];
-    const diaryText = (day.diary || []).map(e => escapeHtml(e.scene || '')).join('\n\n');
-    const ownerHtml = ownerLog.map(o => `<div class="memory-owner-note"><i class="ti ti-user-circle"></i> ${escapeHtml(o.action || '')}</div>`).join('');
-    const visitorHtml = visitorLog.map(v => `<div class="memory-visitor-note"><i class="ti ti-message-circle"></i> <b>${escapeHtml(v.name || '訪客')}</b>：${escapeHtml(v.message || '')}</div>`).join('');
+    const diary = day.diary || [];
     const [y, m, day2] = d.split('-').map(Number);
+    const entriesHtml = diary.map(e => reviewEntryHtml(e, ownerLog, visitorLog)).join('');
     body.innerHTML = `
       <div class="memory-date">${y} 年 ${m} 月 ${day2} 日</div>
-      <div class="memory-divider"></div>
-      <div class="memory-entry-text">${diaryText || '這天沒有留下太多紀錄。'}</div>
-      ${ownerHtml ? `<div class="memory-divider"></div><div class="memory-section-label">今天留下的動態</div>${ownerHtml}` : ''}
-      ${visitorHtml ? `<div class="memory-divider"></div><div class="memory-section-label">留言</div>${visitorHtml}` : ''}
+      ${entriesHtml || '<div class="drawer-empty">這天沒有留下太多紀錄。</div>'}
       <button class="memory-goto-btn" onclick="jumpToDay('${d}')">前往這天的完整日記 ›</button>
     `;
   } catch (e) {
     body.innerHTML = '<div class="drawer-empty">載入失敗。</div>';
   }
+}
+// 一段觀察：時間是紀錄的一部分（不框）；時間後的 +／- 展開狀態卡。
+// 展開後：時間那行接客觀環境（天氣・氣溫・濕度），下面兩個淡框＝房間／我，再一框＝糰糰。
+function reviewEntryHtml(e, ownerLog, visitorLog) {
+  const time = e.time || '';
+  const hm = time.includes(' ') ? time.split(' ').pop() : time; // 取 24h HH:MM
+  const owner = ownerLog.find(o => o.time === time);
+  const visitors = visitorLog.filter(v => v.time === time);
+
+  // 客觀環境（天氣・氣溫・濕度），接在時間那一行
+  const w = e.weather;
+  let envHtml = '';
+  if (w) {
+    const bits = [];
+    if (w.desc) bits.push(`<span class="entry-env-item">${escapeHtml(w.desc)}</span>`);
+    if (typeof w.temp === 'number') bits.push(`<span class="entry-env-item"><i class="ti ti-temperature"></i>${w.temp}℃</span>`);
+    if (typeof w.humidity === 'number') bits.push(`<span class="entry-env-item"><i class="ti ti-droplet"></i>${w.humidity}%</span>`);
+    envHtml = bits.join('');
+  }
+
+  // 房間（居家狀況）＋我（狀態/動態）── 我能改的那些，一框，房間在上、我在下
+  const roomTxt = e.room ? escapeHtml(e.room) : '';
+  const ownerBits = [];
+  if (owner && owner.status) ownerBits.push(escapeHtml(owner.status));
+  if (owner && owner.action) ownerBits.push(escapeHtml(owner.action));
+  const myTxt = ownerBits.join(' · ');
+  let mineBox = '';
+  if (roomTxt || myTxt) {
+    mineBox = `<div class="detail-box">
+      ${roomTxt ? `<div class="detail-line"><i class="ti ti-home"></i><span>${roomTxt}</span></div>` : ''}
+      ${myTxt ? `<div class="detail-line"><i class="ti ti-user-circle"></i><span>${myTxt}</span></div>` : ''}
+    </div>`;
+  }
+
+  // 糰糰狀態：健康・飽食・位置・毛況
+  const tBits = [];
+  if (typeof e.hp === 'number') tBits.push(`健康 ${e.hp}`);
+  if (typeof e.food === 'number') tBits.push(`飽食 ${e.food}`);
+  if (e.location) tBits.push(escapeHtml(e.location));
+  if (e.fur) tBits.push(escapeHtml(e.fur));
+  const tuanBox = tBits.length
+    ? `<div class="detail-box"><div class="detail-line"><i class="ti ti-paw"></i><span>${tBits.join(' · ')}</span></div></div>`
+    : '';
+
+  const visitorHtml = visitors.length
+    ? `<div class="detail-box">${visitors.map(v => `<div class="detail-line"><i class="ti ti-message-circle"></i><span><b>${escapeHtml(v.name || '訪客')}</b>：${escapeHtml(v.message || '')}</span></div>`).join('')}</div>`
+    : '';
+
+  const hasDetail = mineBox || tuanBox || visitorHtml || envHtml;
+
+  const tog = `onclick="this.closest('.review-entry').classList.toggle('open')"`;
+  return `<div class="review-entry">
+    <div class="entry-time">${hm}${hasDetail ? `<span class="entry-toggle plus" ${tog}>+</span>` : ''}<span class="entry-env">${envHtml}</span>${hasDetail ? `<span class="entry-toggle minus" ${tog}>−</span>` : ''}</div>
+    <div class="entry-detail">${mineBox}${tuanBox}${visitorHtml}</div>
+    <div class="entry-scene">${escapeHtml(e.scene || '')}</div>
+  </div>`;
 }
 function jumpToDay(d) {
   const idx = availableDates.indexOf(d);
