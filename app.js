@@ -1098,10 +1098,8 @@ function pageInnerHtml(page) {
 function renderSinglePage(page, pageNum) {
   const { running, body } = pageInnerHtml(page);
   const numSide = pageNum != null ? (pageNum % 2 === 1 ? 'left' : 'right') : '';
-  const tocSide = numSide === 'left' ? 'right' : 'left';
   return `<div class="book-page">
     ${running ? `<div class="book-running-title ${numSide}">${escapeHtml(running)}</div>` : ''}
-    ${page.type !== 'toc' ? `<button class="book-toc-btn ${tocSide}" onclick="notesIndex=0;renderNotes()" title="回到目錄"><i class="ti ti-list"></i></button>` : ''}
     <div class="book-page-body">${body}</div>
     ${pageNum != null ? `<div class="book-page-num ${numSide}">${pageNum}</div>` : ''}
     <div class="book-tap-zone left" onclick="flipNotes(-1)"></div>
@@ -1124,6 +1122,9 @@ function renderNotes() {
       ${rightPage ? renderSinglePage(rightPage, right) : '<div class="book-page blank"></div>'}
     </div>`;
     notesIndex = left;
+  }
+  if (notesIndex !== 0) {
+    html += `<button class="book-toc-btn" onclick="notesIndex=0;renderNotes()" title="回到目錄"><i class="ti ti-list"></i></button>`;
   }
   box.innerHTML = html;
   attachSwipe(box);
