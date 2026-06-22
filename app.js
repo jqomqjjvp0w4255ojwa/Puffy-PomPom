@@ -891,48 +891,35 @@ function isDesktopLayout() { return window.matchMedia('(min-width: 760px)').matc
 function renderDrawerSubnav(name) {
   const box = document.getElementById('drawer-subnav');
   if (name === 'review') {
-    box.innerHTML = renderDrawerTimelineTree();
+    // 時間軸＝左側導覽列：陪伴天數小標語＋搜尋＋整條時間軸＋（頁尾）歷史上的今天
+    box.innerHTML = `
+      <div class="review-drawer-head">
+        <div class="review-daycount" id="review-today-head"></div>
+        <div class="review-search-wrap">
+          <i class="ti ti-search"></i>
+          <input type="text" class="review-search" id="review-search" placeholder="搜尋日期、關鍵字…" oninput="renderDateTimeline()">
+        </div>
+      </div>
+      <div class="date-tree" id="date-tree"><div class="drawer-empty">載入中…</div></div>
+      <div class="anniv-row" id="anniv-row"></div>
+    `;
   } else if (name === 'notes') {
     box.innerHTML = `<button class="review-nav-item" onclick="notesIndex=0;renderNotes()"><i class="ti ti-list"></i>目錄</button>`;
   } else {
     box.innerHTML = '';
   }
 }
-// 側欄時間軸樹：年 → 月 → 日，預設展開最新一年/月。
-function renderDrawerTimelineTree() {
-  if (!availableDates.length) return '<div class="drawer-empty">還沒有任何紀錄。</div>';
-  const years = {};
-  availableDates.slice().reverse().forEach(d => {
-    const [y, m] = d.split('-');
-    years[y] = years[y] || {};
-    years[y][m] = years[y][m] || [];
-    years[y][m].push(d);
-  });
-  const yearKeys = Object.keys(years).sort((a, b) => b.localeCompare(a));
-  const latestYear = yearKeys[0];
-  return yearKeys.map(y => {
-    const monthKeys = Object.keys(years[y]).sort((a, b) => b.localeCompare(a));
-    const latestMonth = monthKeys[0];
-    return `<div class="tree-year${y === latestYear ? ' open' : ''}">
-      <div class="tree-year-head" onclick="this.parentElement.classList.toggle('open')"><i class="ti ti-chevron-right"></i>${y} 年</div>
-      <div class="tree-year-body">
-        ${monthKeys.map(m => `<div class="tree-month${y === latestYear && m === latestMonth ? ' open' : ''}">
-          <div class="tree-month-head" onclick="this.parentElement.classList.toggle('open')"><i class="ti ti-chevron-right"></i>${Number(m)} 月</div>
-          <div class="tree-month-body">
-            ${years[y][m].map(d => `<div class="tree-day-link${d === reviewSelectedDate ? ' current' : ''}" onclick="selectReviewDay('${d}')">${d.slice(8)} 日</div>`).join('')}
-          </div>
-        </div>`).join('')}
-      </div>
-    </div>`;
-  }).join('');
-}
 function selectDrawerTab(name) {
   document.querySelectorAll('.rail-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
   document.querySelectorAll('.page-pane').forEach(p => p.classList.toggle('active', p.dataset.page === name));
-  if (isDesktopLayout() && (name === 'review' || name === 'notes')) {
+  const drawer = document.getElementById('side-drawer');
+  const backdrop = document.getElementById('drawer-backdrop');
+  if (name === 'review' || (isDesktopLayout() && name === 'notes')) {
     renderDrawerSubnav(name);
-    document.getElementById('side-drawer').classList.add('open', 'with-subnav');
-    document.getElementById('drawer-backdrop').classList.remove('open');
+    drawer.classList.add('open', 'with-subnav');
+    // 桌面：左側導覽常駐、背景不壓黑；手機：暫時疊在內文之上，可點外面收起
+    if (isDesktopLayout()) backdrop.classList.remove('open');
+    else backdrop.classList.add('open');
     document.getElementById('menu-btn').classList.add('hidden');
   } else {
     closeDrawer();
@@ -958,7 +945,10 @@ async function loadReview() {
   } catch (e) { daySummaries = {}; }
   renderTodayRecall();
   renderDateTimeline();
-  if (availableDates.length) selectReviewDay(availableDates[availableDates.length - 1], { silent: true });
+  // 桌面：預設翻開最新一天到中間閱讀區；手機：先停在時間軸，讓使用者自己挑
+  if (isDesktopLayout() && availableDates.length && !reviewSelectedDate) {
+    selectReviewDay(availableDates[availableDates.length - 1]);
+  }
 }
 
 function dayRowHtml(d) {
@@ -974,7 +964,7 @@ function dayRowHtml(d) {
     if (s.ownerCount) bits.push(`你留下了動態${s.ownerPreview ? '：' + escapeHtml(s.ownerPreview) : ''}`);
     if (bits.length) extra = `<div class="tree-day-preview">${bits.join('　·　')}</div>`;
   }
-  return `<div class="tree-day${cur}" onclick="selectReviewDay('${d}')">
+  return `<div class="tree-day${cur}" data-date="${d}" onclick="selectReviewDay('${d}')">
     <div class="tree-day-dot"></div>
     <div class="tree-day-body">
       <div class="tree-day-row"><span class="tree-day-date">${day} 日</span><span class="tree-day-weekday">週${weekday}</span></div>
@@ -1018,7 +1008,8 @@ function renderDateTimeline() {
   const box = document.getElementById('date-tree');
   if (!box) return;
   if (availableDates.length === 0) { box.innerHTML = '<div class="drawer-empty">還沒有任何紀錄。</div>'; return; }
-  const q = (document.getElementById('review-search').value || '').trim();
+  const searchEl = document.getElementById('review-search');
+  const q = (searchEl ? searchEl.value || '' : '').trim();
   const dates = availableDates.filter(d => !q || d.includes(q)).slice().reverse();
   if (dates.length === 0) { box.innerHTML = '<div class="drawer-empty">找不到符合的日期。</div>'; return; }
   let lastGroup = null;
@@ -1040,11 +1031,13 @@ function renderDateTimeline() {
 async function selectReviewDay(d, opts) {
   opts = opts || {};
   reviewSelectedDate = d;
-  renderDateTimeline();
-  if (isDesktopLayout()) renderDrawerSubnav('review');
-  const layout = document.getElementById('review-layout');
+  // 標記時間軸目前選中的日期
+  document.querySelectorAll('#date-tree .tree-day').forEach(el => {
+    el.classList.toggle('current', el.dataset.date === d);
+  });
+  // 手機：選完日期把時間軸收起，露出中間的完整內文
+  if (!isDesktopLayout()) closeDrawer();
   const body = document.getElementById('review-reading-body');
-  if (!isDesktopLayout()) layout.classList.add('reading-active');
   body.innerHTML = '<div class="drawer-empty">載入中…</div>';
   try {
     const res = await fetch('/api/day?date=' + d + '&t=' + Date.now());
@@ -1066,9 +1059,6 @@ async function selectReviewDay(d, opts) {
   } catch (e) {
     body.innerHTML = '<div class="drawer-empty">載入失敗。</div>';
   }
-}
-function closeReadingPanel() {
-  document.getElementById('review-layout').classList.remove('reading-active');
 }
 function jumpToDay(d) {
   const idx = availableDates.indexOf(d);
