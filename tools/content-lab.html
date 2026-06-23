@@ -588,21 +588,47 @@ function refreshDevStatsWithWorld(est) {
   p2.push(`<tr><td>output（scene 輸出）</td><td class="num">${OUTPUT_EST}</td><td>取最近一則 scene 實際字數估算</td></tr>`);
   document.getElementById('dev-pertick-table').innerHTML = p2.join('');
 
-  // ③ 費用預測（依數值平衡的更新頻率推算每天 tick 次數）
+  // ③ 費用預測（依數值平衡的更新頻率推算每天 tick 次數，並套用模型價格與快取效果）
   const b = balanceData || {};
   const avgDay = ((Number(b.tickDayMinMin)||15) + (Number(b.tickDayMaxMin)||60)) / 2;
   const avgNight = ((Number(b.tickNightMinMin)||180) + (Number(b.tickNightMaxMin)||360)) / 2;
   const ticksDay = avgDay > 0 ? (16 * 60 / avgDay) : 0;     // 06:00~22:00
   const ticksNight = avgNight > 0 ? (8 * 60 / avgNight) : 0; // 22:00~06:00
   const ticksPerDay = ticksDay + ticksNight;
-  const priceIn = Number(document.getElementById('dev-price-in').value) || 0;
-  const priceOut = Number(document.getElementById('dev-price-out').value) || 0;
+  const MODEL_PRICES = {
+    'claude-sonnet-4-6': { in: 3, out: 15 },
+    'claude-sonnet-4-5': { in: 3, out: 15 },
+    'claude-3-7-sonnet-latest': { in: 3, out: 15 },
+    'claude-3-5-sonnet-latest': { in: 3, out: 15 },
+    'claude-haiku-4-5': { in: 1, out: 5 }
+  };
+  const modelPrice = MODEL_PRICES[b.model] || { in: 3, out: 15 };
+  const priceInEl = document.getElementById('dev-price-in');
+  const priceOutEl = document.getElementById('dev-price-out');
+  priceInEl.value = modelPrice.in;
+  priceOutEl.value = modelPrice.out;
+  const priceIn = modelPrice.in;
+  const priceOut = modelPrice.out;
+  const cacheEnabled = !!b.cacheEnabled;
+  // 白天若間隔均值在快取TTL(60分)內，假設每16小時窗口只有1次快取寫入(miss)，其餘命中；
+  // 超過TTL則視為幾乎每次都重新寫入(沒有讀取折扣)
+  const dayMisses = !cacheEnabled ? ticksDay : (avgDay <= 60 ? Math.min(1, ticksDay) : ticksDay);
+  const dayHits = cacheEnabled && avgDay <= 60 ? Math.max(0, ticksDay - dayMisses) : 0;
+  const costNoCache = (sysTotal + PERTICK_WORLD_EST) * priceIn / 1e6 + OUTPUT_EST * priceOut / 1e6;
+  const costCacheWrite = (sysTotal * 2 + PERTICK_WORLD_EST) * priceIn / 1e6 + OUTPUT_EST * priceOut / 1e6;
+  const costCacheHit = (sysTotal * 0.1 + PERTICK_WORLD_EST) * priceIn / 1e6 + OUTPUT_EST * priceOut / 1e6;
+  const dayCost = cacheEnabled
+    ? dayMisses * costCacheWrite + dayHits * costCacheHit
+    : ticksDay * costNoCache;
+  const nightCost = ticksNight * costNoCache; // 夜間間隔遠超TTL，系統不套用快取
+  const dailyCost = dayCost + nightCost;
   const dailyIn = ticksPerDay * inPerTick;
   const dailyOut = ticksPerDay * OUTPUT_EST;
-  const dailyCost = dailyIn / 1e6 * priceIn + dailyOut / 1e6 * priceOut;
   const c = [`<tr><th>項目</th><th>數值</th></tr>`];
+  c.push(`<tr><td>模型</td><td class="num">${b.model || 'claude-sonnet-4-6'}（input $${modelPrice.in}／output $${modelPrice.out} 每M token）</td></tr>`);
+  c.push(`<tr><td>白天快取</td><td class="num">${cacheEnabled ? `開啟（${avgDay <= 60 ? '間隔在TTL內，大多命中' : '間隔超過TTL，幾乎都是寫入無折扣'}）` : '關閉'}</td></tr>`);
   c.push(`<tr><td>白天每天約</td><td class="num">${ticksDay.toFixed(1)} 次（間隔均值 ${avgDay} 分）</td></tr>`);
-  c.push(`<tr><td>夜間每天約</td><td class="num">${ticksNight.toFixed(1)} 次（間隔均值 ${avgNight} 分）</td></tr>`);
+  c.push(`<tr><td>夜間每天約</td><td class="num">${ticksNight.toFixed(1)} 次（間隔均值 ${avgNight} 分，不套用快取）</td></tr>`);
   c.push(`<tr class="total"><td>每天總更新</td><td class="num">${ticksPerDay.toFixed(1)} 次</td></tr>`);
   c.push(`<tr><td>每天 input / output</td><td class="num">${Math.round(dailyIn).toLocaleString()} / ${Math.round(dailyOut).toLocaleString()} tokens</td></tr>`);
   c.push(`<tr class="total"><td>每天估算花費</td><td class="num">$${dailyCost.toFixed(3)}</td></tr>`);
