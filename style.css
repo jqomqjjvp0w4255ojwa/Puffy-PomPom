@@ -301,9 +301,9 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
 }
 .switch-tile:hover { background: #f7f3ec; }
 .ac-tile:has(.switch.on) {
-  grid-column: 1 / -1;
-  justify-content: space-between;
-  gap: 10px;
+  grid-column: span 2;
+  justify-content: flex-start;
+  gap: 4px;
   min-width: 0;
 }
 .ac-tile-header { display: contents; }
@@ -722,7 +722,7 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
 .profile-name-row .status-display { flex: 1; min-width: 0; }
 .profile-name { font-size: 15px; color: #4a3a2a; font-weight: 600; }
 .profile-meta { font-size: 10px; color: #b0a090; margin-top: 5px; }
-.card-time-tag { font-size: 10px; color: #b0a090; text-align: right; margin: -10px 4px 0 0; }
+.card-time-tag { font-size: 10px; color: #b0a090; text-align: right; margin: 6px 4px 0 0; }
 .status-display.has-dot::before {
   content: '';
   display: inline-block;
