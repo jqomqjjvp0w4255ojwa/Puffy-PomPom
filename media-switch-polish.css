@@ -1,0 +1,54 @@
+/* Compact media switch controls for the side panel. */
+.switch-grid {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
+.switch-tile {
+  grid-column: span 2;
+}
+
+.ac-tile:has(.switch.on) {
+  grid-column: span 3;
+  gap: 5px;
+}
+
+#ac-tile:has(.switch.on) {
+  grid-column: span 4;
+}
+
+.ac-tile:has(.switch.on) .ac-tile-pills {
+  flex: 0 1 auto;
+}
+
+.ac-pill {
+  justify-content: center;
+  line-height: 1;
+  padding: 5px 9px;
+}
+
+#tv-tile:has(.switch.on),
+#stereo-tile:has(.switch.on) {
+  padding-inline: 5px;
+}
+
+#tv-tile:has(.switch.on) .ac-tile-header,
+#stereo-tile:has(.switch.on) .ac-tile-header {
+  flex: 0 0 auto;
+}
+
+#tv-tile:has(.switch.on) .ac-tile-pills,
+#stereo-tile:has(.switch.on) .ac-tile-pills {
+  flex: 1 1 auto;
+  justify-content: center;
+  overflow: hidden;
+}
+
+#tv-tile:has(.switch.on) .ac-pill,
+#stereo-tile:has(.switch.on) .ac-pill {
+  min-width: 58px;
+  max-width: 100%;
+  padding-inline: 8px;
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
