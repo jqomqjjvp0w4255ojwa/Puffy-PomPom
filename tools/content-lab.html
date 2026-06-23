@@ -871,6 +871,20 @@ const BALANCE_ADV_GROUPS = [
       { key: 'tickNightMinMin', label: '夜間最短(分)', desc: '下限', step: 1 },
       { key: 'tickNightMaxMin', label: '夜間最長(分)', desc: '上限', step: 1 }
     ]
+  },
+  {
+    title: 'API 設定',
+    desc: '模型與快取',
+    fields: [
+      { key: 'cacheEnabled', label: '白天快取開關', desc: '開啟時白天更新會用1小時prompt快取，間隔需在1小時內才有效益', type: 'bool' },
+      { key: 'model', label: '模型', desc: '選擇呼叫的Claude模型', type: 'select', options: [
+        { value: 'claude-sonnet-4-6', label: 'Sonnet 4.6（目前預設）' },
+        { value: 'claude-sonnet-4-5', label: 'Sonnet 4.5（較舊／較便宜）' },
+        { value: 'claude-3-7-sonnet-latest', label: 'Sonnet 3.7（更舊）' },
+        { value: 'claude-3-5-sonnet-latest', label: 'Sonnet 3.5（最舊）' },
+        { value: 'claude-haiku-4-5', label: 'Haiku 4.5（最便宜，品質較弱）' }
+      ] }
+    ]
   }
 ];
 let balanceData = {};
@@ -887,11 +901,26 @@ function buildBalanceCards(box, groups) {
     group.fields.forEach(f => {
       const row = document.createElement('div');
       row.className = 'tile-adjust';
-      row.innerHTML = `<span class="adjust-label"${f.desc ? ` title="${f.desc}"` : ''}>${f.label}</span><input type="number" class="input-control" id="balance-${f.key}" step="${f.step || 1}">`;
-      card.appendChild(row);
-      const inp = row.querySelector('input');
-      inp.value = balanceData[f.key] ?? 0;
-      inp.oninput = e => { balanceData[f.key] = Number(e.target.value); saveLocal(); };
+      if (f.type === 'bool') {
+        row.innerHTML = `<span class="adjust-label"${f.desc ? ` title="${f.desc}"` : ''}>${f.label}</span><input type="checkbox" class="input-control" id="balance-${f.key}">`;
+        card.appendChild(row);
+        const inp = row.querySelector('input');
+        inp.checked = !!balanceData[f.key];
+        inp.onchange = e => { balanceData[f.key] = e.target.checked; saveLocal(); };
+      } else if (f.type === 'select') {
+        const opts = (f.options || []).map(o => `<option value="${o.value}">${escapeHtml(o.label)}</option>`).join('');
+        row.innerHTML = `<span class="adjust-label"${f.desc ? ` title="${f.desc}"` : ''}>${f.label}</span><select class="input-control" id="balance-${f.key}">${opts}</select>`;
+        card.appendChild(row);
+        const sel = row.querySelector('select');
+        sel.value = balanceData[f.key] || (f.options && f.options[0] && f.options[0].value) || '';
+        sel.onchange = e => { balanceData[f.key] = e.target.value; saveLocal(); };
+      } else {
+        row.innerHTML = `<span class="adjust-label"${f.desc ? ` title="${f.desc}"` : ''}>${f.label}</span><input type="number" class="input-control" id="balance-${f.key}" step="${f.step || 1}">`;
+        card.appendChild(row);
+        const inp = row.querySelector('input');
+        inp.value = balanceData[f.key] ?? 0;
+        inp.oninput = e => { balanceData[f.key] = Number(e.target.value); saveLocal(); };
+      }
     });
     box.appendChild(card);
   });
@@ -921,7 +950,10 @@ function collectBalanceData() {
   const allGroups = [...BALANCE_BASIC_GROUPS, ...BALANCE_ADV_GROUPS];
   allGroups.forEach(g => {
     g.fields.forEach(f => {
-      out[f.key] = Number(document.getElementById(`balance-${f.key}`).value);
+      const el = document.getElementById(`balance-${f.key}`);
+      if (f.type === 'bool') out[f.key] = el.checked;
+      else if (f.type === 'select') out[f.key] = el.value;
+      else out[f.key] = Number(el.value);
     });
   });
   return out;
