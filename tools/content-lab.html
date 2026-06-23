@@ -219,6 +219,7 @@
     <button class="tab-btn" data-tab="frag" onclick="switchTab('frag')">紙片碎片</button>
     <button class="tab-btn" data-tab="lore" onclick="switchTab('lore')">世界書</button>
     <button class="tab-btn" data-tab="action" onclick="switchTab('action')">行為籤庫</button>
+    <button class="tab-btn" data-tab="tv" onclick="switchTab('tv')">電視台</button>
     <button class="tab-btn" data-tab="event" onclick="switchTab('event')">特殊事件</button>
     <button class="tab-btn" data-tab="dev" onclick="switchTab('dev')">開發者專區</button>
   </div>
@@ -414,6 +415,27 @@
     </div>
     <div id="lore-list"></div>
     <div class="status-line off" id="lore-status"></div>
+  </div>
+
+  <!-- ============ 電視台（Gemini） ============ -->
+  <div class="tab-panel" id="panel-tv">
+    <div class="panel-head">
+      <div class="desc">用免費的 Gemini 模型呼叫，玩家點頻道時即時生成一段播報，不佔主世界AI的tick預算。結構是「頻道人設＝主指令（放最前面）」＋「目前狀態」＋「世界設定參考（補充用，請AI遵守但不要逐字唸出）」，避免把整份角色設定塞最前面淹沒掉人設指令，導致小模型輸出跑題或夾雜亂碼。</div>
+      <div class="actions">
+        <button class="ghost" onclick="loadFromServer('tv', applyTvData)">↻ 拉取最新</button>
+        <button class="primary" onclick="uploadJSON('data/tv.json', collectTvData(), 'tv-status')">上傳</button>
+      </div>
+    </div>
+    <div class="mini-tile">
+      <div class="tile-header"><span class="tile-title">共用設定</span><span class="tile-desc">所有頻道都會帶上的精簡世界參考，不要整段貼主世界系統prompt，越精簡小模型越不容易跑題</span></div>
+      <textarea id="tv-settingNote" rows="3" style="width:100%;font-size:13px;padding:6px;border:1px solid #e8c8b0;border-radius:4px;font-family:inherit;resize:vertical;"></textarea>
+    </div>
+    <div class="mini-tile">
+      <div class="tile-header"><span class="tile-title">篇幅規則</span><span class="tile-desc">套用在每個頻道結尾</span></div>
+      <textarea id="tv-lengthRule" rows="2" style="width:100%;font-size:13px;padding:6px;border:1px solid #e8c8b0;border-radius:4px;font-family:inherit;resize:vertical;"></textarea>
+    </div>
+    <div id="tv-channel-list"></div>
+    <div class="status-line off" id="tv-status"></div>
   </div>
 
   <!-- ============ 糰糰行為籤庫 ============ -->
@@ -1477,6 +1499,42 @@ function renderLorebook() {
   status.textContent = `共 ${loreData.length} 條（${loreData.filter(e => e.content && e.content.trim()).length} 條已填內容會送出）`;
 }
 
+// ===================== 電視台（Gemini 頻道） =====================
+// 結構：{ lengthRule, settingNote, channels: { <key>: { label, persona } } }
+let tvData = { lengthRule: '', settingNote: '', channels: {} };
+function applyTvData(data) {
+  tvData = (data && data.channels) ? data : { lengthRule: '', settingNote: '', channels: {} };
+  renderTv();
+}
+function collectTvData() {
+  tvData.lengthRule = document.getElementById('tv-lengthRule').value;
+  tvData.settingNote = document.getElementById('tv-settingNote').value;
+  document.querySelectorAll('#tv-channel-list [data-channel]').forEach(card => {
+    const key = card.dataset.channel;
+    if (!tvData.channels[key]) tvData.channels[key] = {};
+    tvData.channels[key].label = card.querySelector('[data-k="label"]').value;
+    tvData.channels[key].persona = card.querySelector('[data-k="persona"]').value;
+  });
+  return tvData;
+}
+function renderTv() {
+  document.getElementById('tv-settingNote').value = tvData.settingNote || '';
+  document.getElementById('tv-lengthRule').value = tvData.lengthRule || '';
+  const list = document.getElementById('tv-channel-list');
+  list.innerHTML = '';
+  Object.entries(tvData.channels || {}).forEach(([key, ch]) => {
+    const card = document.createElement('div');
+    card.className = 'mini-tile';
+    card.dataset.channel = key;
+    card.innerHTML = `
+      <div class="tile-header"><span class="tile-title">頻道：${esc(key)}</span><span class="tile-desc">頻道人設＝主指令，放在prompt最前面</span></div>
+      <div class="row"><div><label>頻道名稱（顯示用）</label><input data-k="label" value="${esc(ch.label || '')}"></div></div>
+      <div class="row"><div style="flex-basis:100%"><label>人設指令（主指令，AI會把這段當成最優先遵守的角色身分）</label><textarea data-k="persona" rows="4" style="width:100%;font-size:13px;padding:6px;border:1px solid #e8c8b0;border-radius:4px;font-family:inherit;resize:vertical;">${esc(ch.persona || '')}</textarea></div></div>`;
+    card.querySelectorAll('[data-k]').forEach(el => { el.oninput = saveLocal; });
+    list.appendChild(card);
+  });
+}
+
 // ===================== 糰糰行為籤庫 =====================
 // 條目＝{ id, type, action }。type 是英文短字，用來判斷「最近重複過沒有」；action 只寫動作不寫情緒。
 let actionData = [];
@@ -1622,7 +1680,7 @@ function saveLocal() {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({
       promptData: collectPromptData(), balanceData: collectBalanceData(),
-      fragData, eventData: collectEventData(), traitData: collectTraitData(), loreData, actionData
+      fragData, eventData: collectEventData(), traitData: collectTraitData(), loreData, actionData, tvData: collectTvData()
     }));
   } catch (e) {}
 }
@@ -1637,6 +1695,7 @@ function loadLocal() {
     if (d.eventData) eventData = d.eventData;
     if (d.loreData) loreData = d.loreData;
     if (d.actionData) actionData = d.actionData;
+    if (d.tvData) applyTvData(d.tvData);
     if (d.traitData) {
       if (d.traitData.nicknameGrid) nicknameGrid = d.traitData.nicknameGrid;
       if (d.traitData.textureGrid) textureGrid = d.traitData.textureGrid;
@@ -1756,6 +1815,7 @@ async function uploadAll() {
     ['data/events.json', collectEventData, 'event-status'],
     ['data/lorebook.json', collectLoreData, 'lore-status'],
     ['data/actions.json', collectActionData, 'action-status'],
+    ['data/tv.json', collectTvData, 'tv-status'],
   ];
   let done = 0, failed = 0;
   setStatus('upload-all-status', 'busy', `全部上傳中… 0/${jobs.length}`);
@@ -1791,6 +1851,7 @@ document.getElementById('stat-preview-name').onblur = () => { statUpdatePreview(
 renderFragments();
 renderLorebook();
 renderActions();
+renderTv();
 buildEventFields();
 
 if (!restored) {
@@ -1801,6 +1862,7 @@ if (!restored) {
   loadFromServer('hidden-stats', applyTraitData);
   loadFromServer('lorebook', applyLoreData);
   loadFromServer('actions', applyActionData);
+  loadFromServer('tv', applyTvData);
 }
 </script>
 
