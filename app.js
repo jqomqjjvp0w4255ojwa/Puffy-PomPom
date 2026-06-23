@@ -1080,7 +1080,46 @@ window.addEventListener('resize', () => {
 // ---- 回顧：陪伴總天數 / 歷史上的今天 / 完整時間軸 / 閱讀區（雙欄常駐，不使用 Modal） ----
 let daySummaries = {};
 let reviewSelectedDate = null;
+let weekSummaryCache = {};
 const WEEKDAY_LABELS = ['日', '一', '二', '三', '四', '五', '六'];
+
+function weekStartKeyOf(dateKey) {
+  const [y, m, d] = dateKey.split('-').map(Number);
+  const date = new Date(y, m - 1, d);
+  const dow = date.getDay();
+  const diffToMonday = dow === 0 ? 6 : dow - 1;
+  date.setDate(date.getDate() - diffToMonday);
+  const yy = date.getFullYear();
+  const mm = String(date.getMonth() + 1).padStart(2, '0');
+  const dd = String(date.getDate()).padStart(2, '0');
+  return `${yy}-${mm}-${dd}`;
+}
+
+async function fetchWeekDigest(weekStart) {
+  if (weekSummaryCache[weekStart] !== undefined) return weekSummaryCache[weekStart];
+  try {
+    const res = await fetch('/api/week-summary?start=' + weekStart);
+    const data = await res.json();
+    weekSummaryCache[weekStart] = data.digest || '';
+  } catch (e) {
+    weekSummaryCache[weekStart] = '';
+  }
+  return weekSummaryCache[weekStart];
+}
+
+function weekCardHtml(weekStart) {
+  return `<div class="tree-week-card" data-week="${weekStart}" onclick="toggleWeekCard(this)">
+    <div class="tree-week-label"><i class="ti ti-calendar-week"></i> 本週回顧</div>
+    <div class="tree-week-digest">點一下查看…</div>
+  </div>`;
+}
+
+async function toggleWeekCard(el) {
+  const box = el.querySelector('.tree-week-digest');
+  const weekStart = el.dataset.week;
+  const digest = await fetchWeekDigest(weekStart);
+  box.textContent = digest || '這週還在累積中，還沒有回顧摘要。';
+}
 async function loadReview() {
   try {
     const sres = await fetch('/api/day-summaries?t=' + Date.now());
@@ -1176,9 +1215,22 @@ function renderDateTimeline() {
       <div class="timeline-month-header" onclick="this.closest('.timeline-month-group').classList.toggle('open')">
         <span>${g.y} 年 ${g.m} 月</span><i class="ti ti-chevron-down timeline-month-caret"></i>
       </div>
-      <div class="timeline-month-days">${g.dates.map(dayRowHtml).join('')}</div>
+      <div class="timeline-month-days">${weekGroupedRowsHtml(g.dates)}</div>
     </div>`;
   }).join('');
+}
+
+// dates 是新到舊排序；每當往下捲跨入新的一週（週一為起點），插入一張「本週回顧」卡。
+function weekGroupedRowsHtml(dates) {
+  const out = [];
+  let prevWeek = null;
+  dates.forEach(d => {
+    const wk = weekStartKeyOf(d);
+    if (prevWeek !== null && wk !== prevWeek) out.push(weekCardHtml(prevWeek));
+    out.push(dayRowHtml(d));
+    prevWeek = wk;
+  });
+  return out.join('');
 }
 
 // 選某一天：直接在閱讀區換內容，不開 Modal、不離開頁面。
@@ -1207,8 +1259,10 @@ async function selectReviewDay(d, opts) {
     const diary = day.diary || [];
     const [y, m, day2] = d.split('-').map(Number);
     const entriesHtml = diary.map(e => reviewEntryHtml(e, ownerLog, visitorLog)).join('');
+    const digestHtml = day.digest ? `<div class="tree-week-card" style="cursor:default"><div class="tree-week-label"><i class="ti ti-sparkles"></i> 這天的回顧摘要</div><div class="tree-week-digest">${escapeHtml(day.digest)}</div></div>` : '';
     body.innerHTML = `
       <div class="memory-date">${y} 年 ${m} 月 ${day2} 日</div>
+      ${digestHtml}
       ${entriesHtml || '<div class="drawer-empty">這天沒有留下太多紀錄。</div>'}
       <button class="memory-goto-btn" onclick="jumpToDay('${d}')">前往這天的完整日記 ›</button>
     `;
