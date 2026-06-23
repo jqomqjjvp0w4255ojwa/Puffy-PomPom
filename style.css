@@ -286,6 +286,7 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
 .switch-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(68px, 1fr));
+  grid-auto-flow: dense;
   gap: 4px;
 }
 .switch-tile {
@@ -321,6 +322,9 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
 }
 .ac-tile-pills::-webkit-scrollbar { display: none; }
 .ac-tile:has(.switch.on) .ac-tile-pills { display: flex; }
+.media-tile:has(.switch.on) { grid-column: span 2; gap: 6px; }
+.media-tile .ac-tile-pills { flex: 0 1 auto; justify-content: center; }
+.media-tile .ac-pill { justify-content: center; min-width: 64px; }
 .ac-pill {
   display: flex;
   align-items: center;
