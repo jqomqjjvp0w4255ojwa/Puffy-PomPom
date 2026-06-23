@@ -1957,16 +1957,17 @@ renderActions();
 renderTv();
 buildEventFields();
 
-if (!restored) {
-  loadFromServer('system-prompt', applyPromptData);
-  loadFromServer('balance', applyBalanceData);
-  loadFromServer('fragments', applyFragData);
-  loadFromServer('events', applyEventData);
-  loadFromServer('hidden-stats', applyTraitData);
-  loadFromServer('lorebook', applyLoreData);
-  loadFromServer('actions', applyActionData);
-  loadFromServer('tv', applyTvData);
-}
+// 伺服器上的檔案才是唯一真相；本地暫存只是「重新整理頁面時別丟掉正在打的字」的緩衝，
+// 絕不能讓舊的本地暫存永久蓋掉伺服器資料（曾因此把已上傳的世界書內容覆蓋成空陣列），
+// 所以每次開啟頁面都一定要重新拉取最新版本。
+loadFromServer('system-prompt', applyPromptData);
+loadFromServer('balance', applyBalanceData);
+loadFromServer('fragments', applyFragData);
+loadFromServer('events', applyEventData);
+loadFromServer('hidden-stats', applyTraitData);
+loadFromServer('lorebook', applyLoreData);
+loadFromServer('actions', applyActionData);
+loadFromServer('tv', applyTvData);
 </script>
 
 </body>
