@@ -1193,29 +1193,42 @@ async function openSummariesTimeline(userTriggered) {
   });
   const monthKeys = Object.keys(monthGroups).sort().reverse();
 
-  const dayCardHtml = d => `<div class="sum-card sum-day-card" onclick="toggleSumCard(this)">
+  const dayCardHtml = d => `<div class="sum-card sum-day-card" onclick="event.stopPropagation();toggleSumCard(this)">
     <div class="sum-card-head"><span class="sum-card-date">${d}</span><i class="ti ti-minus sum-card-toggle"></i></div>
     <div class="sum-card-body">${escapeHtml(daySummaries[d].digest)}<button class="sum-card-goto" onclick="event.stopPropagation();selectReviewDay('${d}')">查看當天完整日記 ›</button></div>
   </div>`;
 
-  const weekBlockHtml = wk => {
+  // 週幾號到幾號：週起始日（週一）加 6 天就是週末
+  const weekRangeLabel = wk => {
+    const [y, m, d] = wk.split('-').map(Number);
+    const start = new Date(y, m - 1, d);
+    const end = new Date(y, m - 1, d + 6);
+    return `${start.getMonth() + 1}/${start.getDate()} - ${end.getMonth() + 1}/${end.getDate()}`;
+  };
+
+  // 週卡片把當週每天的日摘要卡框在裡面，整個區塊一起收合；標題寫「第 n 週」（當月第幾週）
+  const weekBlockHtml = (wk, weekNo) => {
     const days = (weekDays[wk] || []).slice().sort().reverse();
     const weekDigest = weekSummaries[wk] || '';
-    return `<div class="sum-week-block">
-      <div class="sum-card sum-week-card" onclick="toggleSumCard(this)">
-        <div class="sum-card-head"><span class="sum-card-date">${wk} 那一週</span><i class="ti ti-minus sum-card-toggle"></i></div>
-        <div class="sum-card-body">${weekDigest ? escapeHtml(weekDigest) : '這週還在累積中，還沒有回顧摘要。'}</div>
+    return `<div class="sum-card sum-week-card" onclick="toggleSumCard(this)">
+      <div class="sum-card-head">
+        <span class="sum-card-date">第 ${weekNo} 週<span class="sum-card-subdate">${weekRangeLabel(wk)}</span></span>
+        <i class="ti ti-minus sum-card-toggle"></i>
       </div>
-      <div class="sum-day-list">${days.map(dayCardHtml).join('')}</div>
+      <div class="sum-card-body">
+        <div class="sum-week-text">${weekDigest ? escapeHtml(weekDigest) : '這週還在累積中，還沒有回顧摘要。'}</div>
+        <div class="sum-day-list">${days.map(dayCardHtml).join('')}</div>
+      </div>
     </div>`;
   };
 
   const html = monthKeys.map(mk => {
     const [yy, mm] = mk.split('-');
-    const weeks = monthGroups[mk].slice().sort().reverse();
+    const weeksAsc = monthGroups[mk].slice().sort();
+    const weeksDesc = weeksAsc.slice().reverse();
     return `<div class="sum-month-group">
       <div class="sum-month-label">${yy} 年 ${Number(mm)} 月</div>
-      ${weeks.map(weekBlockHtml).join('')}
+      ${weeksDesc.map(wk => weekBlockHtml(wk, weeksAsc.indexOf(wk) + 1)).join('')}
     </div>`;
   }).join('');
 
@@ -1336,11 +1349,9 @@ function weekGroupedRowsHtml(dates) {
   return out.join('');
 }
 
-// +/- 控制的是「本日摘要」本身的收合，不是整天的日記內容
+// ✨ icon 控制的是「本日摘要」本身的收合，不是整天的日記內容
 function toggleDayDigest(el) {
-  const digestBox = el.closest('.memory-date-row').nextElementSibling;
-  const collapsed = digestBox.classList.toggle('collapsed');
-  el.className = 'ti memory-date-toggle ' + (collapsed ? 'ti-plus' : 'ti-minus');
+  el.closest('.memory-date-row').nextElementSibling.classList.toggle('collapsed');
 }
 
 // 選某一天：直接在閱讀區換內容，不開 Modal、不離開頁面。
@@ -1369,8 +1380,8 @@ async function selectReviewDay(d, opts) {
     const diary = day.diary || [];
     const [y, m, day2] = d.split('-').map(Number);
     const entriesHtml = diary.map(e => reviewEntryHtml(e, ownerLog, visitorLog)).join('');
-    const digestHtml = day.digest ? `<div class="day-digest"><i class="ti ti-sparkles"></i><span class="day-digest-text">${escapeHtml(day.digest)}</span><span class="day-digest-collapsed-label">摘要（點一下展開）</span></div>` : '';
-    const toggleHtml = day.digest ? `<i class="ti ti-minus memory-date-toggle" onclick="toggleDayDigest(this)" title="收合／展開摘要"></i>` : '';
+    const digestHtml = day.digest ? `<div class="day-digest"><i class="ti ti-sparkles"></i><span class="day-digest-text">${escapeHtml(day.digest)}</span></div>` : '';
+    const toggleHtml = day.digest ? `<i class="ti ti-sparkles memory-date-toggle" onclick="toggleDayDigest(this)" title="收合／展開摘要"></i>` : '';
     body.innerHTML = `
       <div class="memory-date-row">
         <span class="memory-date">${y} 年 ${m} 月 ${day2} 日</span>

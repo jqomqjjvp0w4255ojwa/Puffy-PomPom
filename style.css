@@ -1224,19 +1224,26 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
 }
 .sum-month-label::before { left: 0; }
 .sum-month-label::after { right: 0; }
-.sum-week-block { margin-bottom: 14px; }
 .sum-card {
   border-radius: 10px; background: #fbf3e7; border: 1px solid #ecdcc4; cursor: pointer;
-  padding: 10px 12px; margin-bottom: 8px;
+  padding: 10px 12px; margin-bottom: 14px;
 }
-.sum-day-card { margin-left: 18px; background: #fffdf9; }
 .sum-card-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .sum-card-date { font-size: 12.5px; font-weight: 600; color: #8a5a3a; }
+.sum-card-subdate { font-size: 11px; font-weight: 400; color: #a89878; margin-left: 6px; display: block; }
 .sum-card-toggle { font-size: 11px; color: #b8895a; flex-shrink: 0; }
 .sum-card-body {
   font-size: 12.5px; color: #7a6a55; line-height: 1.6; margin-top: 6px;
 }
 .sum-card.collapsed .sum-card-body { display: none; }
+.sum-week-text { margin-bottom: 4px; }
+/* 週卡片把當週每天的日摘要卡框在裡面，日卡片上下用虛線分隔，呼應「———｜日摘要｜———」的層級感 */
+.sum-day-list:not(:empty) { margin-top: 10px; }
+.sum-day-card {
+  background: none; border: none; border-top: 1px dashed #d8c8ac; border-bottom: 1px dashed #d8c8ac;
+  border-radius: 0; margin: 0 0 10px; padding: 8px 2px;
+}
+.sum-day-card:last-child { margin-bottom: 0; }
 .sum-card-goto {
   display: block; margin-top: 8px; border: none; background: none; color: #b8895a;
   font-size: 11.5px; font-family: inherit; cursor: pointer; padding: 0;
@@ -1254,13 +1261,11 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
 /* 本日摘要：不做卡片，自然存在於畫面中，像一段灰字小記，點一下收合 */
 .day-digest {
   font-size: 12.5px; color: #9a8a72; font-style: italic; line-height: 1.7;
-  margin: 4px 0 20px; cursor: pointer; display: flex; align-items: flex-start; gap: 6px; text-align: center;
+  margin: 4px 0 20px; display: flex; align-items: flex-start; gap: 6px; text-align: center;
   justify-content: center;
 }
 .day-digest i { flex-shrink: 0; margin-top: 2px; color: #c0a878; }
-.day-digest-collapsed-label { display: none; }
-.day-digest.collapsed .day-digest-text { display: none; }
-.day-digest.collapsed .day-digest-collapsed-label { display: inline; }
+.day-digest.collapsed { display: none; }
 
 /* 一段觀察：時間是紀錄的一部分（不框），時間後 +／- 展開狀態卡，不影響閱讀 */
 .review-entry { margin-top: 22px; }
