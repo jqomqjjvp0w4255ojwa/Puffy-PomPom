@@ -88,9 +88,12 @@
   .tile-title { font-size: 13px; font-weight: 700; color: #5a3a2a; }
   .tile-desc { font-size: 11px; color: #b0a298; margin-top: 1px; }
   .tile-adjust { display: flex; align-items: center; justify-content: flex-start; gap: 8px; }
-  .adjust-label { font-size: 12px; color: #8a766a; width: 65px; }
+  .adjust-label { font-size: 12px; color: #8a766a; width: 65px; flex-shrink: 0; }
   .input-control { width: 64px; padding: 3px 6px; border: 1px solid #e8c8b0; border-radius: 4px; text-align: right; font-family: monospace; background: #faf9f6; font-size: 13px; color: #4a3a2a; -moz-appearance: textfield; }
   .input-control::-webkit-outer-spin-button, .input-control::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  .input-control[type="checkbox"] { width: auto; padding: 0; }
+  select.input-control { width: auto; max-width: 260px; text-align: left; font-family: inherit; }
+  .tile-note { font-size: 11px; color: #8a766a; line-height: 1.5; background: #faf6f0; border-radius: 4px; padding: 6px 8px; margin-top: 2px; }
   .input-control:focus { outline: 2px solid #e8a070; background: #fff; }
 
   .dev-section { background: #fff; border: 1px solid #e8c8b0; border-radius: 10px; padding: 14px 16px; margin-bottom: 14px; }
@@ -867,24 +870,26 @@ const BALANCE_ADV_GROUPS = [
     desc: '每次更新的間隔分鐘',
     fields: [
       { key: 'tickDayMinMin', label: '白天最短(分)', desc: '下限', step: 1 },
-      { key: 'tickDayMaxMin', label: '白天最長(分)', desc: '上限', step: 1 },
+      { key: 'tickDayMaxMin', label: '白天最長(分)', desc: '上限，建議搭配快取開關時設在60分以內，間隔超過60分快取會失效、反而多付寫入費', step: 1 },
       { key: 'tickNightMinMin', label: '夜間最短(分)', desc: '下限', step: 1 },
-      { key: 'tickNightMaxMin', label: '夜間最長(分)', desc: '上限', step: 1 }
-    ]
+      { key: 'tickNightMaxMin', label: '夜間最長(分)', desc: '上限，夜間間隔通常遠超1小時，系統會自動不套用快取', step: 1 }
+    ],
+    note: '間隔均值越短，每天更新次數越多、發文量越多，但呼叫次數也越多。白天目前建議落在25-60分之間（一天約16-24次），可兼顧快取效益與發文量；夜間建議維持3-6小時（一天約1.5-2次），半夜沒人看，拉長間隔最省錢。'
   },
   {
     title: 'API 設定',
-    desc: '模型與快取',
+    desc: '模型與快取，直接影響月費',
     fields: [
-      { key: 'cacheEnabled', label: '白天快取開關', desc: '開啟時白天更新會用1小時prompt快取，間隔需在1小時內才有效益', type: 'bool' },
-      { key: 'model', label: '模型', desc: '選擇呼叫的Claude模型', type: 'select', options: [
-        { value: 'claude-sonnet-4-6', label: 'Sonnet 4.6（目前預設）' },
-        { value: 'claude-sonnet-4-5', label: 'Sonnet 4.5（較舊／較便宜）' },
-        { value: 'claude-3-7-sonnet-latest', label: 'Sonnet 3.7（更舊）' },
-        { value: 'claude-3-5-sonnet-latest', label: 'Sonnet 3.5（最舊）' },
-        { value: 'claude-haiku-4-5', label: 'Haiku 4.5（最便宜，品質較弱）' }
+      { key: 'cacheEnabled', label: '白天快取開關', desc: '開啟時白天更新會用1小時prompt快取（system prompt部分），命中時省約35-50%輸入費；間隔若超過1小時沒被讀到，那次反而多付約1.25-2倍寫入費。建議：白天間隔上限設在60分以內才開', type: 'bool' },
+      { key: 'model', label: '模型', desc: '選擇呼叫的Claude模型，價格差異大，請依預算調整', type: 'select', options: [
+        { value: 'claude-sonnet-4-6', label: 'Sonnet 4.6（預設，input $3/output $15 每M token）' },
+        { value: 'claude-sonnet-4-5', label: 'Sonnet 4.5（同價位，較舊版本）' },
+        { value: 'claude-3-7-sonnet-latest', label: 'Sonnet 3.7（同價位，更舊）' },
+        { value: 'claude-3-5-sonnet-latest', label: 'Sonnet 3.5（同價位，最舊）' },
+        { value: 'claude-haiku-4-5', label: 'Haiku 4.5（input $1/output $5 每M token，約省70%，但敘事品質會明顯下降）' }
       ] }
-    ]
+    ],
+    note: '以目前白天25-55分、夜間180-360分的設定估算：用 Sonnet 系列、開快取，一個月大約 $8-9；若改用 Haiku，月費可降到約 $2-3，但建議先試跑幾天觀察文字品質再決定要不要長期用。'
   }
 ];
 let balanceData = {};
@@ -922,6 +927,12 @@ function buildBalanceCards(box, groups) {
         inp.oninput = e => { balanceData[f.key] = Number(e.target.value); saveLocal(); };
       }
     });
+    if (group.note) {
+      const note = document.createElement('div');
+      note.className = 'tile-note';
+      note.textContent = group.note;
+      card.appendChild(note);
+    }
     box.appendChild(card);
   });
 }
