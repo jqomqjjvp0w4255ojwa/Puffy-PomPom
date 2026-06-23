@@ -1201,39 +1201,55 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
   line-height: 1.55; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
 }
 
-/* 本週摘要：不做卡片，在時間軸上呈現一個分支點，點一下展開灰字內容 */
-.tree-week-branch {
-  margin: 2px 0 18px 24px; cursor: pointer; font-size: 12px; color: #b8895a;
-  display: flex; align-items: center; gap: 4px; flex-wrap: wrap; user-select: none;
-}
-.tree-week-branch-icon { font-size: 11px; }
+/* 本週摘要：不做卡片，在時間軸上呈現一條置中的水平線分支，點一下展開灰字內容 */
+.tree-week-branch { margin: 4px 0 18px 24px; cursor: pointer; user-select: none; }
+.tree-week-branch-row { display: flex; align-items: center; gap: 8px; }
+.tree-week-branch-line { flex: 1; height: 1px; background: #e0d6c4; }
+.tree-week-branch-label { font-size: 12px; color: #b8895a; white-space: nowrap; }
+.tree-week-branch-icon { font-size: 11px; color: #b8895a; flex-shrink: 0; }
 .tree-week-branch-body {
-  width: 100%; font-size: 12.5px; color: #8a7c6c; font-style: italic; line-height: 1.65;
-  margin-top: 5px; display: none;
+  font-size: 12.5px; color: #8a7c6c; font-style: italic; line-height: 1.65; text-align: center;
+  margin-top: 6px; display: none;
 }
 .tree-week-branch.expanded .tree-week-branch-body { display: block; }
 
-/* 摘要時間軸首頁：日／週摘要混排的總覽列表 */
-.summary-timeline-list { display: flex; flex-direction: column; gap: 0; }
-.summary-timeline-item { cursor: pointer; padding: 12px 0; border-bottom: 1px dashed #e6dccb; }
-.summary-timeline-item:last-child { border-bottom: none; }
-.summary-timeline-item.week .summary-timeline-label { color: #b8895a; }
-.summary-timeline-label { font-size: 12px; font-weight: 600; color: #8a5a3a; margin-bottom: 4px; }
-.summary-timeline-text { font-size: 13px; color: #7a6a55; line-height: 1.6; }
-.summary-timeline-item:hover .summary-timeline-text { color: #5a4a3a; }
+/* 摘要時間軸首頁：年（無則跳過）→ 月（灰字分隔線，不做卡片）→ 週卡片 → 日卡片，都可收合 */
+.sum-month-group + .sum-month-group { margin-top: 18px; }
+.sum-month-label {
+  font-size: 12px; color: #a89878; text-align: center; letter-spacing: 1px;
+  margin-bottom: 12px; position: relative;
+}
+.sum-month-label::before, .sum-month-label::after {
+  content: ''; position: absolute; top: 50%; width: 30%; height: 1px; background: #ecdcc4;
+}
+.sum-month-label::before { left: 0; }
+.sum-month-label::after { right: 0; }
+.sum-week-block { margin-bottom: 14px; }
+.sum-card {
+  border-radius: 10px; background: #fbf3e7; border: 1px solid #ecdcc4; cursor: pointer;
+  padding: 10px 12px; margin-bottom: 8px;
+}
+.sum-day-card { margin-left: 18px; background: #fffdf9; }
+.sum-card-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.sum-card-date { font-size: 12.5px; font-weight: 600; color: #8a5a3a; }
+.sum-card-toggle { font-size: 11px; color: #b8895a; flex-shrink: 0; }
+.sum-card-body {
+  font-size: 12.5px; color: #7a6a55; line-height: 1.6; margin-top: 6px;
+}
+.sum-card.collapsed .sum-card-body { display: none; }
+.sum-card-goto {
+  display: block; margin-top: 8px; border: none; background: none; color: #b8895a;
+  font-size: 11.5px; font-family: inherit; cursor: pointer; padding: 0;
+}
+.sum-card-goto:hover { color: #8a5a3a; }
 
 /* 中間閱讀區：日記頁式排版，用分隔線取代卡片框，仿翻開一頁筆記的感覺 */
 .page-pane[data-page="review"] { padding: 26px 30px 34px; }
 .review-reading-back { display: none; }
 .memory-date { font-size: 17px; color: #8a5a3a; font-weight: 500; text-align: center; font-family: Georgia, 'Times New Roman', serif; }
 .memory-date-row { display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 6px; }
-.memory-date-toggle {
-  font-size: 12px; color: #c0a878; cursor: pointer; border-radius: 50%;
-  width: 18px; height: 18px; display: flex; align-items: center; justify-content: center;
-  background: #fbf3e7; flex-shrink: 0;
-}
-.memory-date-toggle:hover { background: #f3e6d2; }
-.memory-day-body.collapsed { display: none; }
+.memory-date-toggle { font-size: 12px; color: #c0a878; cursor: pointer; flex-shrink: 0; }
+.memory-date-toggle:hover { color: #a87c4a; }
 
 /* 本日摘要：不做卡片，自然存在於畫面中，像一段灰字小記，點一下收合 */
 .day-digest {
