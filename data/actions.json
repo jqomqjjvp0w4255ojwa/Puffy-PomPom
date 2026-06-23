@@ -1,14 +1,197 @@
 [
-  { "id": "action-seed-1", "type": "patrol", "action": "繞著房間邊界巡一圈，確認沒有東西被動過" },
-  { "id": "action-seed-2", "type": "nest", "action": "在某個角落重新理一次窩，把棉布或碎屑挪位" },
-  { "id": "action-seed-3", "type": "forage", "action": "翻找地上或縫隙裡有沒有露水、冰塊、碎屑可吃" },
-  { "id": "action-seed-4", "type": "weapon", "action": "檢查竹籤或細針還夠不夠尖，試著刺一下紙張或軟物" },
-  { "id": "action-seed-5", "type": "grind", "action": "找東西磨牙，啃一下竹籤、家具邊角" },
-  { "id": "action-seed-6", "type": "climb", "action": "貼著牆面或家具邊緣，無聲攀爬一段" },
-  { "id": "action-seed-7", "type": "squeeze", "action": "鑽進一個狹窄縫隙，試試看能不能擠過去" },
-  { "id": "action-seed-8", "type": "scratch", "action": "在粗糙表面磨蹭身體，理一理毛" },
-  { "id": "action-seed-9", "type": "invent", "action": "把垃圾或雜物堆疊排列，自認在發明糰式文明" },
-  { "id": "action-seed-10", "type": "water", "action": "跑去廁所或水邊碰一下水，小心別被沖走" },
-  { "id": "action-seed-11", "type": "sun", "action": "找一塊有光的地方靠著，留意溫度別太高" },
-  { "id": "action-seed-12", "type": "stare", "action": "盯著一個固定的小東西不動，像在判斷它算不算數" }
+  {
+    "id": "action-1782134241435",
+    "type": "body",
+    "action": "在房間裡四處走動，最後趴在溫度較低的磁磚縫隙上乘涼"
+  },
+  {
+    "id": "action-1782134191032",
+    "type": "body",
+    "action": "拼命把周圍的毛髮往頭中央撥弄，讓頂毛更尖更英挺"
+  },
+  {
+    "id": "action-1782134190504",
+    "type": "body",
+    "action": "找了個固定的角落坐好，用小手反覆梳理全身的毛髮"
+  },
+  {
+    "id": "action-1782134047935",
+    "type": "nest",
+    "action": "在軟質雜物堆上原地轉圈並反覆踩踏，試圖壓出一個符合身型的睡窩"
+  },
+  {
+    "id": "action-1782134047777",
+    "type": "nest",
+    "action": "用力拖著廢棄紙片的一角搬往睡墊的方向"
+  },
+  {
+    "id": "action-1782134047603",
+    "type": "nest",
+    "action": "用身體反覆推擠和理順掉落的棉布，讓它變得更平整"
+  },
+  {
+    "id": "action-1782133909169",
+    "type": "hoard",
+    "action": "將收集來的寶貝在暗處一字排開，收起來，再排開"
+  },
+  {
+    "id": "action-1782133909003",
+    "type": "collect",
+    "action": "翻找垃圾桶邊緣，挑選了一顆大小剛好的彩色紙片"
+  },
+  {
+    "id": "action-1782133908839",
+    "type": "collect",
+    "action": "小心地接近冰箱邊緣，採集表面凝結的微小霜晶"
+  },
+  {
+    "id": "action-1782133908667",
+    "type": "collect",
+    "action": "用小手捏住一根掉落的線頭，慢慢把它捲起來帶走"
+  },
+  {
+    "id": "action-1782133882112",
+    "type": "collect",
+    "action": "在地上四處巡視，把發現的散落屑屑一顆顆撿起來"
+  },
+  {
+    "id": "action-1782133881717",
+    "type": "martial",
+    "action": "壓低身體並自顧自地抱拳鞠躬，認真執行一套江湖儀式"
+  },
+  {
+    "id": "action-1782133881437",
+    "type": "martial",
+    "action": "對著空無一物的牆角擺出防禦姿態，與假想敵來回對峙"
+  },
+  {
+    "id": "action-1782133881173",
+    "type": "martial",
+    "action": "瞄準前方的小障礙物，用力一蹬朝著上方高高跳躍"
+  },
+  {
+    "id": "action-1782133815361",
+    "type": "martial",
+    "action": "用後腳勾住家具邊緣嘗試倒掛，鍛鍊身體的支撐力"
+  },
+  {
+    "id": "action-1782133815103",
+    "type": "martial",
+    "action": "緊緊握著竹籤奮力向前刺擊，練習攻擊的準確度"
+  },
+  {
+    "id": "action-1782133814826",
+    "type": "study",
+    "action": "迎著風停下動作，轉動身體來測試風向與風力的大小"
+  },
+  {
+    "id": "action-1782133814500",
+    "type": "study",
+    "action": "湊近紙張或牆面，認真研究上面殘留的文字與紋路走向"
+  },
+  {
+    "id": "action-1782133732842",
+    "type": "study",
+    "action": "靜靜待在有光的地方，專注觀察地面光斑的形狀與移動"
+  },
+  {
+    "id": "action-1782133732663",
+    "type": "study",
+    "action": "湊過去舔了舔冰塊，仔細感受舌尖上傳來的溫度變化"
+  },
+  {
+    "id": "action-1782133732476",
+    "type": "combat",
+    "action": "衝過去跟小黑影爭搶地上的灰塵，絕對不讓給牠"
+  },
+  {
+    "id": "action-1782133732241",
+    "type": "combat",
+    "action": "用碎屑和雜物在角落設下精密的陷阱，準備捕捉小黑影"
+  },
+  {
+    "id": "action-1782133729553",
+    "type": "combat",
+    "action": "躲在暗處死死監視著小黑影的動向，一步也不退讓"
+  },
+  {
+    "id": "action-1782133642283",
+    "type": "combat",
+    "action": "發現小黑影！試著用竹籤朝牠戳過去"
+  },
+  {
+    "id": "action-1782133631244",
+    "type": "ritual",
+    "action": "任命米粒"
+  },
+  {
+    "id": "action-1782133616072",
+    "type": "ritual",
+    "action": "封印桌腳"
+  },
+  {
+    "id": "action-1782133476397",
+    "type": "ritual",
+    "action": "拜冰箱"
+  },
+  {
+    "id": "action-seed-1",
+    "type": "patrol",
+    "action": "繞著房間邊界巡一圈，確認沒有東西被動過"
+  },
+  {
+    "id": "action-seed-2",
+    "type": "nest",
+    "action": "在某個角落重新理一次窩，把棉布或碎屑挪位"
+  },
+  {
+    "id": "action-seed-3",
+    "type": "forage",
+    "action": "翻找地上或縫隙裡有沒有露水、冰塊、碎屑可吃"
+  },
+  {
+    "id": "action-seed-4",
+    "type": "weapon",
+    "action": "檢查竹籤或細針還夠不夠尖，試著刺一下紙張或軟物"
+  },
+  {
+    "id": "action-seed-5",
+    "type": "grind",
+    "action": "找東西磨牙，啃一下竹籤、家具邊角"
+  },
+  {
+    "id": "action-seed-6",
+    "type": "climb",
+    "action": "貼著牆面或家具邊緣，無聲攀爬一段"
+  },
+  {
+    "id": "action-seed-7",
+    "type": "squeeze",
+    "action": "鑽進一個狹窄縫隙，試試看能不能擠過去"
+  },
+  {
+    "id": "action-seed-8",
+    "type": "scratch",
+    "action": "在粗糙表面磨蹭身體，理一理毛"
+  },
+  {
+    "id": "action-seed-9",
+    "type": "invent",
+    "action": "把垃圾或雜物堆疊排列，自認在發明糰式文明"
+  },
+  {
+    "id": "action-seed-10",
+    "type": "water",
+    "action": "跑去廁所或水邊碰一下水，小心別被沖走"
+  },
+  {
+    "id": "action-seed-11",
+    "type": "sun",
+    "action": "找一塊有光的地方靠著，留意溫度別太高"
+  },
+  {
+    "id": "action-seed-12",
+    "type": "stare",
+    "action": "盯著一個固定的小東西不動，像在判斷它算不算數"
+  }
 ]
