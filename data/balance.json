@@ -21,8 +21,8 @@
   "textureEase": 0.05,
   "ownerFeedFoodBoost": 30,
   "rebirthTicks": 0.01,
-  "tickDayMinMin": 30,
-  "tickDayMaxMin": 120,
+  "tickDayMinMin": 25,
+  "tickDayMaxMin": 55,
   "tickNightMinMin": 180,
   "tickNightMaxMin": 360
 }
