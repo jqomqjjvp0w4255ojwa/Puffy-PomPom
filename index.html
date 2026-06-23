@@ -238,11 +238,23 @@
           </div>
           <div class="switch" id="it-ac" onclick="acTogglePower()"><div class="switch-knob"></div></div>
         </div>
-        <div class="switch-tile" onclick="openTv()">
-          <div class="switch-icon-label"><i class="ti ti-device-tv"></i><span>電視</span></div>
+        <div class="switch-tile ac-tile" id="tv-tile">
+          <div class="ac-tile-header" onclick="toggleTvPower()">
+            <div class="switch-icon-label"><i class="ti ti-device-tv"></i><span>電視</span></div>
+          </div>
+          <div class="ac-tile-pills" id="tv-tile-pills" onclick="openTv()">
+            <span class="ac-pill ac-pill-mode" id="tv-tile-channel"></span>
+          </div>
+          <div class="switch" id="it-tv" onclick="toggleTvPower()"><div class="switch-knob"></div></div>
         </div>
-        <div class="switch-tile" onclick="openStereo()">
-          <div class="switch-icon-label"><i class="ti ti-disc"></i><span>音響</span></div>
+        <div class="switch-tile ac-tile" id="stereo-tile">
+          <div class="ac-tile-header" onclick="toggleStereoPower()">
+            <div class="switch-icon-label"><i class="ti ti-disc"></i><span>音響</span></div>
+          </div>
+          <div class="ac-tile-pills" id="stereo-tile-pills" onclick="openStereo()">
+            <span class="ac-pill ac-pill-mode" id="stereo-tile-channel"></span>
+          </div>
+          <div class="switch" id="it-stereo" onclick="toggleStereoPower()"><div class="switch-knob"></div></div>
         </div>
       </div>
     </div>

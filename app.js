@@ -215,16 +215,23 @@ function closeTv() {
   document.getElementById('tv-remote').classList.remove('open');
 }
 
+function updateTvPowerUI() {
+  document.getElementById('tv-power').classList.toggle('on', tvPowerOn);
+  document.getElementById('it-tv').classList.toggle('on', tvPowerOn);
+  const label = tvPowerOn ? (TV_CHANNEL_LABEL[tvLastChannel] || tvLastChannel || '') : '';
+  document.getElementById('tv-current-label').textContent = label;
+  document.getElementById('tv-tile-channel').textContent = label;
+}
+
 async function toggleTvPower() {
   tvPowerOn = !tvPowerOn;
-  document.getElementById('tv-power').classList.toggle('on', tvPowerOn);
+  updateTvPowerUI();
   if (tvPowerOn && tvLastChannel) {
     await loadTvChannels();
     playChannel(tvLastChannel);
     return;
   }
   if (!tvPowerOn) {
-    document.getElementById('tv-current-label').textContent = '未開機';
     document.getElementById('tv-screen').innerHTML = '<div class="tv-screen-static" id="tv-static">— 選一個頻道 —</div>';
     document.querySelectorAll('.tv-channel-btn').forEach(b => b.classList.remove('active'));
   }
@@ -258,8 +265,7 @@ async function playChannel(channel) {
       screen.innerHTML = `<div class="tv-program">${data.text.replace(/</g, '&lt;')}</div>`;
       tvPowerOn = true;
       tvLastChannel = channel;
-      document.getElementById('tv-power').classList.add('on');
-      document.getElementById('tv-current-label').textContent = TV_CHANNEL_LABEL[channel] || channel;
+      updateTvPowerUI();
       fetch('/api/room', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -320,16 +326,23 @@ function closeStereo() {
   document.getElementById('stereo-remote').classList.remove('open');
 }
 
+function updateStereoPowerUI() {
+  document.getElementById('stereo-power').classList.toggle('on', stereoPowerOn);
+  document.getElementById('it-stereo').classList.toggle('on', stereoPowerOn);
+  const label = stereoPowerOn ? (STEREO_CHANNEL_LABEL[stereoLastChannel] || stereoLastChannel || '') : '';
+  document.getElementById('stereo-current-label').textContent = label;
+  document.getElementById('stereo-tile-channel').textContent = label;
+}
+
 async function toggleStereoPower() {
   stereoPowerOn = !stereoPowerOn;
-  document.getElementById('stereo-power').classList.toggle('on', stereoPowerOn);
+  updateStereoPowerUI();
   if (stereoPowerOn && stereoLastChannel) {
     await loadStereoChannels();
     playStereoChannel(stereoLastChannel);
     return;
   }
   if (!stereoPowerOn) {
-    document.getElementById('stereo-current-label').textContent = '未開機';
     document.getElementById('stereo-screen').innerHTML = '<div class="tv-screen-static" id="stereo-static">— 選一個頻道 —</div>';
     document.querySelectorAll('#stereo-channels .tv-channel-btn').forEach(b => b.classList.remove('active'));
   }
@@ -363,8 +376,7 @@ async function playStereoChannel(channel) {
       screen.innerHTML = `<div class="tv-program">${data.text.replace(/</g, '&lt;')}</div>`;
       stereoPowerOn = true;
       stereoLastChannel = channel;
-      document.getElementById('stereo-power').classList.add('on');
-      document.getElementById('stereo-current-label').textContent = STEREO_CHANNEL_LABEL[channel] || channel;
+      updateStereoPowerUI();
       fetch('/api/room', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1086,12 +1098,10 @@ async function load() {
     roomState.cleanliness = world.room.cleanliness;
     tvPowerOn = !!world.room.tv_on;
     tvLastChannel = world.room.tv_channel || tvLastChannel;
-    document.getElementById('tv-power').classList.toggle('on', tvPowerOn);
-    document.getElementById('tv-current-label').textContent = tvPowerOn ? (TV_CHANNEL_LABEL[tvLastChannel] || tvLastChannel || '頻道') : '未開機';
+    updateTvPowerUI();
     stereoPowerOn = !!world.room.stereo_on;
     stereoLastChannel = world.room.stereo_channel || stereoLastChannel;
-    document.getElementById('stereo-power').classList.toggle('on', stereoPowerOn);
-    document.getElementById('stereo-current-label').textContent = stereoPowerOn ? (STEREO_CHANNEL_LABEL[stereoLastChannel] || stereoLastChannel || '頻道') : '未開機';
+    updateStereoPowerUI();
     updateAllToggles();
     if (document.getElementById('ac-remote').classList.contains('open')) renderAcRemote();
     updateCleanUI();
