@@ -181,6 +181,7 @@ let tvChannelsLoaded = false;
 let tvLoading = false;
 const TV_COOLDOWN_MS = 8000; // 轉台冷卻：免費層有每分鐘請求上限，連點容易撞到 429
 let tvCooldownUntil = 0;
+let tvChannelCache = {}; // 頻道內容快取（除了生物頻道）
 
 async function loadTvChannels() {
   if (tvChannelsLoaded) return;
@@ -250,6 +251,23 @@ async function playChannel(channel) {
     screen.innerHTML = `<div class="tv-screen-static">轉台太快了，再等 ${wait} 秒…</div>`;
     return;
   }
+
+  // 非生物頻道且有快取，直接顯示快取
+  if (channel !== 'nature' && tvChannelCache[channel]) {
+    document.querySelectorAll('.tv-channel-btn').forEach(b =>
+      b.classList.toggle('active', b.dataset.channel === channel));
+    screen.innerHTML = `<div class="tv-program">${tvChannelCache[channel]}</div>`;
+    tvPowerOn = true;
+    tvLastChannel = channel;
+    updateTvPowerUI();
+    fetch('/api/room', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tv_on: true, tv_channel: channel })
+    }).catch(() => {});
+    return;
+  }
+
   tvLoading = true;
   document.querySelectorAll('.tv-channel-btn').forEach(b =>
     b.classList.toggle('active', b.dataset.channel === channel));
@@ -262,7 +280,12 @@ async function playChannel(channel) {
     });
     const data = await res.json();
     if (data.ok) {
-      screen.innerHTML = `<div class="tv-program">${data.text.replace(/</g, '&lt;')}</div>`;
+      const contentHtml = data.text.replace(/</g, '&lt;');
+      screen.innerHTML = `<div class="tv-program">${contentHtml}</div>`;
+      // 非生物頻道才快取
+      if (channel !== 'nature') {
+        tvChannelCache[channel] = contentHtml;
+      }
       tvPowerOn = true;
       tvLastChannel = channel;
       updateTvPowerUI();
@@ -292,6 +315,7 @@ let stereoChannelsLoaded = false;
 let stereoLoading = false;
 const STEREO_COOLDOWN_MS = 8000;
 let stereoCooldownUntil = 0;
+let stereoChannelCache = {}; // 頻道內容快取（除了生物頻道）
 
 async function loadStereoChannels() {
   if (stereoChannelsLoaded) return;
@@ -361,6 +385,23 @@ async function playStereoChannel(channel) {
     screen.innerHTML = `<div class="tv-screen-static">轉台太快了，再等 ${wait} 秒…</div>`;
     return;
   }
+
+  // 非lofi頻道且有快取，直接顯示快取
+  if (channel !== 'lofi' && stereoChannelCache[channel]) {
+    document.querySelectorAll('#stereo-channels .tv-channel-btn').forEach(b =>
+      b.classList.toggle('active', b.dataset.channel === channel));
+    screen.innerHTML = `<div class="tv-program">${stereoChannelCache[channel]}</div>`;
+    stereoPowerOn = true;
+    stereoLastChannel = channel;
+    updateStereoPowerUI();
+    fetch('/api/room', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ stereo_on: true, stereo_channel: channel })
+    }).catch(() => {});
+    return;
+  }
+
   stereoLoading = true;
   document.querySelectorAll('#stereo-channels .tv-channel-btn').forEach(b =>
     b.classList.toggle('active', b.dataset.channel === channel));
@@ -373,7 +414,12 @@ async function playStereoChannel(channel) {
     });
     const data = await res.json();
     if (data.ok) {
-      screen.innerHTML = `<div class="tv-program">${data.text.replace(/</g, '&lt;')}</div>`;
+      const contentHtml = data.text.replace(/</g, '&lt;');
+      screen.innerHTML = `<div class="tv-program">${contentHtml}</div>`;
+      // 非lofi頻道才快取
+      if (channel !== 'lofi') {
+        stereoChannelCache[channel] = contentHtml;
+      }
       stereoPowerOn = true;
       stereoLastChannel = channel;
       updateStereoPowerUI();
