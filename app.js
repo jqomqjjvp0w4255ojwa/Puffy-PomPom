@@ -1052,7 +1052,10 @@ function renderDrawerSubnav(name) {
     // 時間軸＝左側導覽列：陪伴天數小標語＋搜尋＋整條時間軸＋（頁尾）歷史上的今天
     box.innerHTML = `
       <div class="review-drawer-head">
-        <div class="review-daycount" id="review-today-head"></div>
+        <div class="review-drawer-head-top">
+          <button class="review-home-btn" onclick="openSummariesTimeline(true)" title="摘要時間軸"><i class="ti ti-sparkles"></i></button>
+          <div class="review-daycount" id="review-today-head"></div>
+        </div>
         <div class="review-search-wrap">
           <i class="ti ti-search"></i>
           <input type="text" class="review-search" id="review-search" placeholder="搜尋日期、關鍵字…" oninput="renderDateTimeline()">
@@ -1131,18 +1134,58 @@ async function fetchWeekDigest(weekStart) {
 }
 
 function weekCardHtml(weekStart) {
-  return `<div class="tree-week-card" data-week="${weekStart}" onclick="toggleWeekCard(this)">
-    <div class="tree-week-label"><i class="ti ti-calendar-week"></i> 本週回顧</div>
-    <div class="tree-week-digest">點一下查看…</div>
+  return `<div class="tree-week-branch" data-week="${weekStart}" onclick="toggleWeekCard(this)">
+    <span class="tree-week-branch-dash">—</span><span class="tree-week-branch-label">本週摘要</span><i class="ti ti-plus tree-week-branch-icon"></i>
+    <div class="tree-week-branch-body"></div>
   </div>`;
 }
 
 async function toggleWeekCard(el) {
-  const box = el.querySelector('.tree-week-digest');
+  const expanded = el.classList.toggle('expanded');
+  const icon = el.querySelector('.tree-week-branch-icon');
+  icon.className = 'ti tree-week-branch-icon ' + (expanded ? 'ti-minus' : 'ti-plus');
+  if (!expanded) return;
+  const body = el.querySelector('.tree-week-branch-body');
+  body.textContent = '載入中…';
   const weekStart = el.dataset.week;
   const digest = await fetchWeekDigest(weekStart);
-  box.textContent = digest || '這週還在累積中，還沒有回顧摘要。';
+  body.textContent = digest || '這週還在累積中，還沒有回顧摘要。';
 }
+
+// 摘要時間軸：所有已生成的每日／每週摘要依時間排成一條總覽，是點「回顧」時的首頁。
+async function openSummariesTimeline(userTriggered) {
+  reviewSelectedDate = null;
+  document.querySelectorAll('#date-tree .tree-day').forEach(el => el.classList.remove('current'));
+  if (userTriggered && !isDesktopLayout()) closeDrawer();
+  const body = document.getElementById('review-reading-body');
+  if (!body) return;
+  body.innerHTML = '<div class="drawer-empty">載入中…</div>';
+  let weekSummaries = {};
+  try {
+    const res = await fetch('/api/week-summaries?t=' + Date.now());
+    const data = await res.json();
+    weekSummaries = data.summaries || {};
+  } catch (e) {}
+  const items = [];
+  availableDates.forEach(d => {
+    const s = daySummaries[d];
+    if (s && s.digest) items.push({ key: d, date: d, type: 'day', text: s.digest });
+  });
+  Object.keys(weekSummaries).forEach(wk => {
+    if (weekSummaries[wk]) items.push({ key: wk + '-z', date: wk, type: 'week', text: weekSummaries[wk] });
+  });
+  items.sort((a, b) => b.key.localeCompare(a.key));
+  const html = items.map(it => `
+    <div class="summary-timeline-item ${it.type}" onclick="selectReviewDay('${it.date}')">
+      <div class="summary-timeline-label">${it.type === 'week' ? '本週摘要' : it.date}</div>
+      <div class="summary-timeline-text">${escapeHtml(it.text)}</div>
+    </div>`).join('');
+  body.innerHTML = `
+    <div class="memory-date">摘要時間軸</div>
+    <div class="summary-timeline-list">${html || '<div class="drawer-empty">還沒有任何摘要。</div>'}</div>
+  `;
+}
+
 async function loadReview() {
   try {
     const sres = await fetch('/api/day-summaries?t=' + Date.now());
@@ -1152,10 +1195,8 @@ async function loadReview() {
   } catch (e) { daySummaries = {}; }
   renderTodayRecall();
   renderDateTimeline();
-  // 桌面：預設翻開最新一天到中間閱讀區；手機：先停在時間軸，讓使用者自己挑
-  if (isDesktopLayout() && availableDates.length && !reviewSelectedDate) {
-    selectReviewDay(availableDates[availableDates.length - 1]);
-  }
+  // 點「回顧」的首頁是摘要時間軸，不是直接翻開某一天
+  if (!reviewSelectedDate) openSummariesTimeline();
 }
 
 function dayRowHtml(d) {
@@ -1256,6 +1297,14 @@ function weekGroupedRowsHtml(dates) {
   return out.join('');
 }
 
+function toggleDayBody(el) {
+  const body = el.closest('.memory-date-row').nextElementSibling.classList.contains('day-digest')
+    ? el.closest('.memory-date-row').nextElementSibling.nextElementSibling
+    : el.closest('.memory-date-row').nextElementSibling;
+  const collapsed = body.classList.toggle('collapsed');
+  el.className = 'ti memory-date-toggle ' + (collapsed ? 'ti-plus' : 'ti-minus');
+}
+
 // 選某一天：直接在閱讀區換內容，不開 Modal、不離開頁面。
 // 手機上會把版面切到「單頁閱讀模式」，並顯示「← 返回」。
 async function selectReviewDay(d, opts) {
@@ -1282,12 +1331,17 @@ async function selectReviewDay(d, opts) {
     const diary = day.diary || [];
     const [y, m, day2] = d.split('-').map(Number);
     const entriesHtml = diary.map(e => reviewEntryHtml(e, ownerLog, visitorLog)).join('');
-    const digestHtml = day.digest ? `<div class="tree-week-card" style="cursor:default"><div class="tree-week-label"><i class="ti ti-sparkles"></i> 這天的回顧摘要</div><div class="tree-week-digest">${escapeHtml(day.digest)}</div></div>` : '';
+    const digestHtml = day.digest ? `<div class="day-digest" onclick="this.classList.toggle('collapsed')"><i class="ti ti-sparkles"></i><span class="day-digest-text">${escapeHtml(day.digest)}</span><span class="day-digest-collapsed-label">摘要（點一下展開）</span></div>` : '';
     body.innerHTML = `
-      <div class="memory-date">${y} 年 ${m} 月 ${day2} 日</div>
+      <div class="memory-date-row">
+        <span class="memory-date">${y} 年 ${m} 月 ${day2} 日</span>
+        <i class="ti ti-minus memory-date-toggle" onclick="toggleDayBody(this)" title="收合／展開這天"></i>
+      </div>
       ${digestHtml}
-      ${entriesHtml || '<div class="drawer-empty">這天沒有留下太多紀錄。</div>'}
-      <button class="memory-goto-btn" onclick="jumpToDay('${d}')">前往這天的完整日記 ›</button>
+      <div class="memory-day-body">
+        ${entriesHtml || '<div class="drawer-empty">這天沒有留下太多紀錄。</div>'}
+        <button class="memory-goto-btn" onclick="jumpToDay('${d}')">前往這天的完整日記 ›</button>
+      </div>
     `;
   } catch (e) {
     body.innerHTML = '<div class="drawer-empty">載入失敗。</div>';
