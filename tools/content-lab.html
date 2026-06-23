@@ -434,6 +434,9 @@
       <div class="tile-header"><span class="tile-title">篇幅規則</span><span class="tile-desc">套用在每個頻道結尾</span></div>
       <textarea id="tv-lengthRule" rows="2" style="width:100%;font-size:13px;padding:6px;border:1px solid #e8c8b0;border-radius:4px;font-family:inherit;resize:vertical;"></textarea>
     </div>
+    <div class="frag-search-row">
+      <button class="ghost" onclick="addTvChannel()">＋ 新增頻道</button>
+    </div>
     <div id="tv-channel-list"></div>
     <div class="status-line off" id="tv-status"></div>
   </div>
@@ -1514,8 +1517,25 @@ function collectTvData() {
     if (!tvData.channels[key]) tvData.channels[key] = {};
     tvData.channels[key].label = card.querySelector('[data-k="label"]').value;
     tvData.channels[key].persona = card.querySelector('[data-k="persona"]').value;
+    tvData.channels[key].icon = card.querySelector('[data-k="icon"]').value;
   });
   return tvData;
+}
+function addTvChannel() {
+  let key = (prompt('頻道代號（英文/數字，遙控器與後端都用這個識別，建立後不要再改）：') || '').trim();
+  if (!key) return;
+  key = key.replace(/[^a-zA-Z0-9_-]/g, '');
+  if (!key) { alert('代號只能是英文、數字、- 或 _'); return; }
+  if (tvData.channels[key]) { alert('這個代號已經存在了'); return; }
+  tvData.channels[key] = { label: '新頻道', persona: '', icon: 'ti-broadcast' };
+  renderTv();
+  saveLocal();
+}
+function removeTvChannel(key) {
+  if (!confirm(`確定要刪除頻道「${key}」嗎？`)) return;
+  delete tvData.channels[key];
+  renderTv();
+  saveLocal();
 }
 function renderTv() {
   document.getElementById('tv-settingNote').value = tvData.settingNote || '';
@@ -1527,8 +1547,11 @@ function renderTv() {
     card.className = 'mini-tile';
     card.dataset.channel = key;
     card.innerHTML = `
-      <div class="tile-header"><span class="tile-title">頻道：${esc(key)}</span><span class="tile-desc">頻道人設＝主指令，放在prompt最前面</span></div>
-      <div class="row"><div><label>頻道名稱（顯示用）</label><input data-k="label" value="${esc(ch.label || '')}"></div></div>
+      <div class="tile-header"><span class="tile-title">頻道：${esc(key)}</span><span class="tile-desc">頻道人設＝主指令，放在prompt最前面</span><button class="ghost" style="margin-left:auto" onclick="removeTvChannel('${esc(key)}')">刪除</button></div>
+      <div class="row">
+        <div><label>頻道名稱（顯示用）</label><input data-k="label" value="${esc(ch.label || '')}"></div>
+        <div><label>圖示（Tabler icon class，例如 ti-paw）</label><input data-k="icon" value="${esc(ch.icon || 'ti-broadcast')}"></div>
+      </div>
       <div class="row"><div style="flex-basis:100%"><label>人設指令（主指令，AI會把這段當成最優先遵守的角色身分）</label><textarea data-k="persona" rows="4" style="width:100%;font-size:13px;padding:6px;border:1px solid #e8c8b0;border-radius:4px;font-family:inherit;resize:vertical;">${esc(ch.persona || '')}</textarea></div></div>`;
     card.querySelectorAll('[data-k]').forEach(el => { el.oninput = saveLocal; });
     list.appendChild(card);

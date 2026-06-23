@@ -1030,6 +1030,20 @@ const server = http.createServer((req, res) => {
       res.end(JSON.stringify({ weather: null }));
     });
 
+  } else if (req.url.startsWith('/api/tv-channels')) {
+    // 遙控器用：頻道清單完全來自 data/tv.json，後台增減頻道不用改前端程式碼。
+    try {
+      const tv = loadTvConfig();
+      const channels = Object.entries(tv.channels || {}).map(([key, ch]) => ({
+        key, label: ch.label || key, icon: ch.icon || 'ti-broadcast'
+      }));
+      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ channels }));
+    } catch (e) {
+      res.writeHead(500);
+      res.end('error');
+    }
+
   } else if (req.url.startsWith('/api/tv')) {
     // 電視頻道：玩家點頻道時即時呼叫 Gemini 回一段短文字，不改世界狀態。
     const body = [];
@@ -1037,7 +1051,9 @@ const server = http.createServer((req, res) => {
     req.on('end', async () => {
       try {
         const data = JSON.parse(Buffer.concat(body).toString() || '{}');
-        const channel = ['nature', 'news', 'shopping'].includes(data.channel) ? data.channel : 'nature';
+        const tv = loadTvConfig();
+        const validKeys = Object.keys(tv.channels || {});
+        const channel = validKeys.includes(data.channel) ? data.channel : (validKeys[0] || 'nature');
         const ctx = buildTvContext();
         const result = await callGemini(buildTvPrompt(channel, ctx), 280);
         res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });

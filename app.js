@@ -176,14 +176,37 @@ function renderAcRemote() {
 }
 
 // ===== 電視（接 Gemini，獨立小請求） =====
-const TV_CHANNEL_LABEL = { nature: '生物頻道', news: '新聞頻道', shopping: '購物頻道' };
+let TV_CHANNEL_LABEL = {};
+let tvChannelsLoaded = false;
 let tvLoading = false;
 const TV_COOLDOWN_MS = 8000; // 轉台冷卻：免費層有每分鐘請求上限，連點容易撞到 429
 let tvCooldownUntil = 0;
 
+async function loadTvChannels() {
+  if (tvChannelsLoaded) return;
+  try {
+    const res = await fetch('/api/tv-channels?t=' + Date.now());
+    const data = await res.json();
+    const box = document.getElementById('tv-channels');
+    box.innerHTML = '';
+    TV_CHANNEL_LABEL = {};
+    (data.channels || []).forEach(ch => {
+      TV_CHANNEL_LABEL[ch.key] = ch.label;
+      const btn = document.createElement('button');
+      btn.className = 'tv-channel-btn';
+      btn.dataset.channel = ch.key;
+      btn.onclick = () => playChannel(ch.key);
+      btn.innerHTML = `<i class="ti ${ch.icon}"></i><span>${ch.label}</span>`;
+      box.appendChild(btn);
+    });
+    tvChannelsLoaded = true;
+  } catch (e) { /* 拿不到頻道清單就維持空白，下次開電視再試一次 */ }
+}
+
 function openTv() {
   document.getElementById('tv-overlay').classList.add('open');
   document.getElementById('tv-remote').classList.add('open');
+  loadTvChannels();
 }
 function closeTv() {
   document.getElementById('tv-overlay').classList.remove('open');
