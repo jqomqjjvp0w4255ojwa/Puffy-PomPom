@@ -1017,6 +1017,16 @@ const server = http.createServer((req, res) => {
       res.end('error');
     }
 
+  } else if (req.url.startsWith('/api/week-summaries')) {
+    // 回顧用：摘要時間軸要一次列出所有已生成的週摘要，避免逐週發請求。
+    try {
+      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ summaries: loadWeekSummaries() }));
+    } catch (e) {
+      res.writeHead(500);
+      res.end('error');
+    }
+
   } else if (req.url.startsWith('/api/week-summary')) {
     // 回顧用：取某週起始日（週一）的 AI 摘要，沒有則回傳空字串（代表還沒生成，通常是本週進行中）。
     try {

@@ -1132,7 +1132,14 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
 
 /* 回顧：時間軸＝左側導覽列（在側欄抽屜內），中間只放當天完整內文。不使用 Modal。 */
 /* 頂部小資訊區：陪伴天數降級為輔助標語，搜尋只是工具，不搶視覺重心 */
-.review-daycount { font-size: 13px; color: #8a7660; letter-spacing: 0.3px; margin-bottom: 10px; }
+.review-drawer-head-top { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.review-home-btn {
+  flex-shrink: 0; width: 26px; height: 26px; border-radius: 50%; border: none;
+  background: #fbf3e7; color: #b8895a; font-size: 12px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; transition: background 0.15s;
+}
+.review-home-btn:hover { background: #f3e6d2; }
+.review-daycount { font-size: 13px; color: #8a7660; letter-spacing: 0.3px; margin-bottom: 0; }
 .review-daycount b { font-weight: 500; color: #b8895a; font-family: Georgia, 'Times New Roman', serif; }
 .review-search-wrap {
   display: flex; align-items: center; gap: 6px;
@@ -1194,19 +1201,50 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
   line-height: 1.55; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
 }
 
-.tree-week-card {
-  margin: 4px 0 18px 24px; padding: 10px 12px; border-radius: 10px;
-  background: #fbf3e7; border: 1px solid #ecdcc4; cursor: pointer;
+/* 本週摘要：不做卡片，在時間軸上呈現一個分支點，點一下展開灰字內容 */
+.tree-week-branch {
+  margin: 2px 0 18px 24px; cursor: pointer; font-size: 12px; color: #b8895a;
+  display: flex; align-items: center; gap: 4px; flex-wrap: wrap; user-select: none;
 }
-.tree-week-label { font-size: 12px; font-weight: 600; color: #b8895a; display: flex; align-items: center; gap: 5px; }
-.tree-week-digest {
-  font-size: 12.5px; color: #7a6a55; margin-top: 5px; line-height: 1.6;
+.tree-week-branch-icon { font-size: 11px; }
+.tree-week-branch-body {
+  width: 100%; font-size: 12.5px; color: #8a7c6c; font-style: italic; line-height: 1.65;
+  margin-top: 5px; display: none;
 }
+.tree-week-branch.expanded .tree-week-branch-body { display: block; }
+
+/* 摘要時間軸首頁：日／週摘要混排的總覽列表 */
+.summary-timeline-list { display: flex; flex-direction: column; gap: 0; }
+.summary-timeline-item { cursor: pointer; padding: 12px 0; border-bottom: 1px dashed #e6dccb; }
+.summary-timeline-item:last-child { border-bottom: none; }
+.summary-timeline-item.week .summary-timeline-label { color: #b8895a; }
+.summary-timeline-label { font-size: 12px; font-weight: 600; color: #8a5a3a; margin-bottom: 4px; }
+.summary-timeline-text { font-size: 13px; color: #7a6a55; line-height: 1.6; }
+.summary-timeline-item:hover .summary-timeline-text { color: #5a4a3a; }
 
 /* 中間閱讀區：日記頁式排版，用分隔線取代卡片框，仿翻開一頁筆記的感覺 */
 .page-pane[data-page="review"] { padding: 26px 30px 34px; }
 .review-reading-back { display: none; }
-.memory-date { font-size: 17px; color: #8a5a3a; font-weight: 500; text-align: center; font-family: Georgia, 'Times New Roman', serif; margin-bottom: 6px; }
+.memory-date { font-size: 17px; color: #8a5a3a; font-weight: 500; text-align: center; font-family: Georgia, 'Times New Roman', serif; }
+.memory-date-row { display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 6px; }
+.memory-date-toggle {
+  font-size: 12px; color: #c0a878; cursor: pointer; border-radius: 50%;
+  width: 18px; height: 18px; display: flex; align-items: center; justify-content: center;
+  background: #fbf3e7; flex-shrink: 0;
+}
+.memory-date-toggle:hover { background: #f3e6d2; }
+.memory-day-body.collapsed { display: none; }
+
+/* 本日摘要：不做卡片，自然存在於畫面中，像一段灰字小記，點一下收合 */
+.day-digest {
+  font-size: 12.5px; color: #9a8a72; font-style: italic; line-height: 1.7;
+  margin: 4px 0 20px; cursor: pointer; display: flex; align-items: flex-start; gap: 6px; text-align: center;
+  justify-content: center;
+}
+.day-digest i { flex-shrink: 0; margin-top: 2px; color: #c0a878; }
+.day-digest-collapsed-label { display: none; }
+.day-digest.collapsed .day-digest-text { display: none; }
+.day-digest.collapsed .day-digest-collapsed-label { display: inline; }
 
 /* 一段觀察：時間是紀錄的一部分（不框），時間後 +／- 展開狀態卡，不影響閱讀 */
 .review-entry { margin-top: 22px; }
