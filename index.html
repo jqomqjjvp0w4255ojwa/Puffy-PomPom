@@ -223,6 +223,10 @@
           <div class="switch-icon-label"><i class="ti ti-window"></i><span>窗戶</span></div>
           <div class="switch" id="it-window"><div class="switch-knob"></div></div>
         </div>
+        <div class="switch-tile" onclick="toggle('fridge_open')">
+          <div class="switch-icon-label"><i class="ti ti-fridge"></i><span>冰箱門</span></div>
+          <div class="switch" id="it-fridge"><div class="switch-knob"></div></div>
+        </div>
         <div class="switch-tile ac-tile" id="ac-tile">
           <div class="ac-tile-header" onclick="acTogglePower()">
             <div class="switch-icon-label"><i class="ti ti-snowflake"></i><span>空調</span></div>
@@ -236,6 +240,9 @@
         </div>
         <div class="switch-tile" onclick="openTv()">
           <div class="switch-icon-label"><i class="ti ti-device-tv"></i><span>電視</span></div>
+        </div>
+        <div class="switch-tile" onclick="openStereo()">
+          <div class="switch-icon-label"><i class="ti ti-disc"></i><span>音響</span></div>
         </div>
       </div>
     </div>
@@ -308,6 +315,18 @@
     <div class="tv-screen-static" id="tv-static">— 選一個頻道 —</div>
   </div>
   <div class="tv-channels" id="tv-channels"></div>
+</div>
+
+<div class="ac-overlay" id="stereo-overlay" onclick="closeStereo()"></div>
+<div class="ac-remote tv-remote" id="stereo-remote">
+  <div class="ac-remote-head">
+    <span class="ac-remote-title">音響</span>
+    <button class="ac-power" id="stereo-close" onclick="closeStereo()" aria-label="關閉"><i class="ti ti-x"></i></button>
+  </div>
+  <div class="tv-screen" id="stereo-screen">
+    <div class="tv-screen-static" id="stereo-static">— 選一個頻道 —</div>
+  </div>
+  <div class="tv-channels" id="stereo-channels"></div>
 </div>
 
 <div class="pause-overlay" id="pause-overlay" style="display:none;">

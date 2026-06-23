@@ -516,6 +516,33 @@ function cleanTvText(raw) {
   return t.trim();
 }
 
+// 音響頻道設定：在 content-lab 編輯、上傳覆蓋 data/stereo.json，結構與電視台相同。
+function loadStereoConfig() {
+  try {
+    const data = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'stereo.json'), 'utf8'));
+    return data && data.channels ? data : { lengthRule: '', settingNote: '', channels: {} };
+  } catch (err) {
+    return { lengthRule: '', settingNote: '', channels: {} };
+  }
+}
+
+function buildStereoPrompt(channel, ctx) {
+  const stereo = loadStereoConfig();
+  const ch = stereo.channels[channel] || Object.values(stereo.channels)[0] || { label: '頻道', persona: '' };
+
+  const stateLine = `白糰糰目前狀態：飽食${ctx.food}、健康${ctx.hp}、心情「${ctx.mood}」、位置「${ctx.location}」、毛況「${ctx.fur}」。\n` +
+    `房間：清潔度${ctx.cleanliness}（${ctx.envDesc || '無特別描述'}）、窗戶${ctx.windowOpen ? '開' : '關'}、燈${ctx.lightOn ? '開' : '關'}、空調${ctx.acOn ? '開' : '關'}、小黑影${ctx.shadowActive ? '出沒中' : '潛伏'}。\n` +
+    (ctx.weather ? `戶外天氣：${ctx.weather}。\n` : '') +
+    `白糰糰最近的動態紀錄（由舊到新）：\n${(ctx.recentMemory && ctx.recentMemory.length ? ctx.recentMemory : [ctx.recentScene]).map((m, i) => `${i + 1}. ${m}`).join('\n')}`;
+
+  const lengthRule = stereo.lengthRule || '篇幅維持在約80字左右即可。';
+  const settingRef = `${stereo.settingNote || ''}${buildLoreSnippetForTv(ctx)}`;
+
+  return `${ch.persona}\n\n${stateLine}\n\n` +
+    (settingRef.trim() ? `世界設定參考（請遵守，但不要逐字唸出）：${settingRef}\n\n` : '') +
+    `${lengthRule}繁體中文，只輸出${ch.label}本身的播放內容描述，不要加標題、前言或角色標籤。`;
+}
+
 function dateKeyOf(date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 }
@@ -1148,6 +1175,44 @@ const server = http.createServer((req, res) => {
       }
     });
 
+  } else if (req.url.startsWith('/api/stereo-channels')) {
+    // 遙控器用：頻道清單完全來自 data/stereo.json，後台增減頻道不用改前端程式碼。
+    try {
+      const stereo = loadStereoConfig();
+      const channels = Object.entries(stereo.channels || {}).map(([key, ch]) => ({
+        key, label: ch.label || key, icon: ch.icon || 'ti-disc'
+      }));
+      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ channels }));
+    } catch (e) {
+      res.writeHead(500);
+      res.end('error');
+    }
+
+  } else if (req.url.startsWith('/api/stereo')) {
+    // 音響頻道：玩家點頻道時即時呼叫 Gemini 回一段短文字，不改世界狀態。
+    const body = [];
+    req.on('data', chunk => body.push(chunk));
+    req.on('end', async () => {
+      try {
+        const data = JSON.parse(Buffer.concat(body).toString() || '{}');
+        const stereo = loadStereoConfig();
+        const validKeys = Object.keys(stereo.channels || {});
+        const channel = validKeys.includes(data.channel) ? data.channel : (validKeys[0] || 'lofi');
+        const ctx = buildTvContext();
+        const result = await callGemini(buildStereoPrompt(channel, ctx), 200);
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+        if (result.error) {
+          res.end(JSON.stringify({ ok: false, error: result.error, detail: result.detail || '' }));
+        } else {
+          res.end(JSON.stringify({ ok: true, channel, text: cleanTvText(result.text) }));
+        }
+      } catch (e) {
+        res.writeHead(500);
+        res.end('error');
+      }
+    });
+
   } else if (req.url.startsWith('/api/day')) {
     try {
       const url = new URL(req.url, 'http://localhost');
@@ -1371,7 +1436,7 @@ const server = http.createServer((req, res) => {
     // 給 content-lab 讀目前線上的 data/*.json，方便手機開頁面時帶出最新內容。
     try {
       const name = req.url.split('/')[3].split('?')[0];
-      const allow = { 'system-prompt': 'system-prompt.json', 'fragments': 'fragments.json', 'events': 'events.json', 'balance': 'balance.json', 'hidden-stats': 'hidden-stats.json', 'lorebook': 'lorebook.json', 'actions': 'actions.json', 'tv': 'tv.json' };
+      const allow = { 'system-prompt': 'system-prompt.json', 'fragments': 'fragments.json', 'events': 'events.json', 'balance': 'balance.json', 'hidden-stats': 'hidden-stats.json', 'lorebook': 'lorebook.json', 'actions': 'actions.json', 'tv': 'tv.json', 'stereo': 'stereo.json' };
       if (!allow[name]) { res.writeHead(404); res.end('not found'); return; }
       const content = fs.readFileSync(path.join(__dirname, 'data', allow[name]), 'utf8');
       res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
@@ -1562,6 +1627,18 @@ async function tick() {
     ? `\n戶外天氣（台北實況）：${weather.desc} ${weather.temp}℃ 濕度${weather.humidity}%`
     : '';
 
+  // 冰箱門開太久：整個房間跳電（燈、冷氣全斷）。只在「持續開著」期間觸發一次，
+  // 關門後重置，下次再開太久又能再觸發一次，不會每個 tick 都重複跳電。
+  if (world.room.fridge_open && !world.room.fridge_power_cut) {
+    world.room.light_on = false;
+    world.room.ac = { ...normalizeAc(world.room), on: false };
+    world.room.fridge_power_cut = true;
+    pushPendingNote(world, '冰箱門開太久，跳電了——全部電源都斷了！', display);
+    console.log('冰箱門開太久，觸發跳電。');
+  } else if (!world.room.fridge_open && world.room.fridge_power_cut) {
+    world.room.fridge_power_cut = false;
+  }
+
   // 冷氣偶發故障：開機中約 4% 機率壞掉，壞了維持到玩家重新開機（前端重開會清掉 broken）。
   const acNow = normalizeAc(world.room);
   if (acNow.on && !acNow.broken && Math.random() < 0.04) {
@@ -1602,7 +1679,7 @@ async function tick() {
 白糰糰目前狀態：${vitalLine} · 毛況:${bt.fur || '正常'} · 位置:${bt.location}
 小黑影：${shadowShouldAppear ? '活躍' : '潛伏'} 位置:${world.characters.shadow.location} 灰塵:${world.characters.shadow.dust_count}
 房間清潔度：${world.room.cleanliness}
-窗戶：${world.room.window_open ? '開' : '關'} 冷氣：${acLabel} 燈：${world.room.light_on ? '開' : '關'} 廁所門：${world.room.toilet_open ? '開' : '關'}
+窗戶：${world.room.window_open ? '開' : '關'} 冷氣：${acLabel} 燈：${world.room.light_on ? '開' : '關'} 廁所門：${world.room.toilet_open ? '開' : '關'} 冰箱門：${world.room.fridge_open ? '開' : '關'}${world.room.fridge_power_cut ? '（剛跳電）' : ''}
 巨怪對房間環境的描述：${world.room.env_desc || '無'}
 今天已發生：${world.room.events_today.join('，') || '無'}
 近期記憶：${memoryLine}（這只是延續性參考，不要被它的安靜基調綁住——白糰糰本來就靈動古怪、有自己的事要做，沒人理牠時也會主動找事做，不是發呆等待）${weatherInput}${climateInput}${shadowInput}${actionInput}${ownerInput}${awayInput}${visitorInput}${eventInput}${pendingNotesInput}${hiddenInput}${loreInput}
