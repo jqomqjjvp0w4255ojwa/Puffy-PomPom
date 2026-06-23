@@ -175,13 +175,26 @@ function renderAcRemote() {
   document.getElementById('ac-sleep-switch').classList.toggle('on', !!ac.sleep);
 }
 
+function getChannelOffset(channel, slotMs) {
+  let hash = 0;
+  for (let i = 0; i < channel.length; i++) {
+    hash = (hash * 31 + channel.charCodeAt(i)) >>> 0;
+  }
+  return hash % slotMs;
+}
+
+function getChannelSlot(channel, slotMs) {
+  return Math.floor((Date.now() + getChannelOffset(channel, slotMs)) / slotMs);
+}
+
 // ===== 電視（接 Gemini，獨立小請求） =====
 let TV_CHANNEL_LABEL = {};
 let tvChannelsLoaded = false;
 let tvLoading = false;
 const TV_COOLDOWN_MS = 8000; // 轉台冷卻：免費層有每分鐘請求上限，連點容易撞到 429
+const TV_CACHE_SLOT_MS = 60 * 60 * 1000; // 其他電視頻道每 60 分鐘錯開更新
 let tvCooldownUntil = 0;
-let tvChannelCache = {}; // 頻道內容快取（除了生物頻道）
+let tvChannelCache = {}; // 其他電視頻道的時段快取；nature 由最新觀察紀錄控制
 
 async function loadTvChannels() {
   if (tvChannelsLoaded) return;
@@ -252,11 +265,13 @@ async function playChannel(channel) {
     return;
   }
 
-  // 非生物頻道且有快取，直接顯示快取
-  if (channel !== 'nature' && tvChannelCache[channel]) {
+  const tvCacheKey = `${channel}:${getChannelSlot(channel, TV_CACHE_SLOT_MS)}`;
+
+  // 非生物頻道且同一時段有快取，直接顯示快取
+  if (channel !== 'nature' && tvChannelCache[tvCacheKey]) {
     document.querySelectorAll('.tv-channel-btn').forEach(b =>
       b.classList.toggle('active', b.dataset.channel === channel));
-    screen.innerHTML = `<div class="tv-program">${tvChannelCache[channel]}</div>`;
+    screen.innerHTML = `<div class="tv-program">${tvChannelCache[tvCacheKey]}</div>`;
     tvPowerOn = true;
     tvLastChannel = channel;
     updateTvPowerUI();
@@ -282,9 +297,9 @@ async function playChannel(channel) {
     if (data.ok) {
       const contentHtml = data.text.replace(/</g, '&lt;');
       screen.innerHTML = `<div class="tv-program">${contentHtml}</div>`;
-      // 非生物頻道才快取
+      // 非生物頻道才快取，並跟著各自錯開的時段更新
       if (channel !== 'nature') {
-        tvChannelCache[channel] = contentHtml;
+        tvChannelCache[tvCacheKey] = contentHtml;
       }
       tvPowerOn = true;
       tvLastChannel = channel;
@@ -314,8 +329,9 @@ let STEREO_CHANNEL_LABEL = {};
 let stereoChannelsLoaded = false;
 let stereoLoading = false;
 const STEREO_COOLDOWN_MS = 8000;
+const STEREO_CACHE_SLOT_MS = 30 * 60 * 1000; // 其他音響頻道每 30 分鐘錯開更新
 let stereoCooldownUntil = 0;
-let stereoChannelCache = {}; // 頻道內容快取（除了生物頻道）
+let stereoChannelCache = {}; // 其他音響頻道的時段快取；lofi 由最新觀察紀錄控制
 
 async function loadStereoChannels() {
   if (stereoChannelsLoaded) return;
@@ -386,11 +402,13 @@ async function playStereoChannel(channel) {
     return;
   }
 
-  // 非lofi頻道且有快取，直接顯示快取
-  if (channel !== 'lofi' && stereoChannelCache[channel]) {
+  const stereoCacheKey = `${channel}:${getChannelSlot(channel, STEREO_CACHE_SLOT_MS)}`;
+
+  // 非lofi頻道且同一時段有快取，直接顯示快取
+  if (channel !== 'lofi' && stereoChannelCache[stereoCacheKey]) {
     document.querySelectorAll('#stereo-channels .tv-channel-btn').forEach(b =>
       b.classList.toggle('active', b.dataset.channel === channel));
-    screen.innerHTML = `<div class="tv-program">${stereoChannelCache[channel]}</div>`;
+    screen.innerHTML = `<div class="tv-program">${stereoChannelCache[stereoCacheKey]}</div>`;
     stereoPowerOn = true;
     stereoLastChannel = channel;
     updateStereoPowerUI();
@@ -416,9 +434,9 @@ async function playStereoChannel(channel) {
     if (data.ok) {
       const contentHtml = data.text.replace(/</g, '&lt;');
       screen.innerHTML = `<div class="tv-program">${contentHtml}</div>`;
-      // 非lofi頻道才快取
+      // 非lofi頻道才快取，並跟著各自錯開的時段更新
       if (channel !== 'lofi') {
-        stereoChannelCache[channel] = contentHtml;
+        stereoChannelCache[stereoCacheKey] = contentHtml;
       }
       stereoPowerOn = true;
       stereoLastChannel = channel;
