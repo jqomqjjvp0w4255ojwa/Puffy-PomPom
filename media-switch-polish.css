@@ -1,81 +1,40 @@
-/* Compact media switch controls for the side panel. */
-.switch-grid {
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+/* 讓電視與音響在打開時，能夠並排在同一排 */
+.device-item:has(.ti-device-tv),
+.device-item:has(.ti-disc) {
+  display: inline-block !important;
+  width: 48% !important; /* 兩者各佔近一半寬度，使其並排 */
+  margin-right: 2% !important;
+  vertical-align: top !important;
+  box-sizing: border-box !important;
 }
 
-.switch-tile {
-  grid-column: span 2;
+/* 去除原本可能的區塊強迫換行 */
+.device-item:has(.ti-device-tv):after,
+.device-item:has(.ti-disc):after {
+  content: none !important;
 }
 
-.ac-tile:has(.switch.on) {
-  grid-column: span 3;
-  gap: 5px;
+/* 膠囊標籤（生態紀錄片/Lofi電台）文字水平與垂直置中 */
+.device-item .status-badge,
+.device-item span[class*="badge"] {
+  display: inline-block !important;
+  text-align: center !important;
+  line-height: 20px !important; /* 依據你實際標籤高度調整，確保垂直置中 */
+  padding: 2px 8px !important;
+  margin: 0 4px !important;
+  vertical-align: middle !important;
 }
 
-#ac-tile:has(.switch.on) {
-  grid-column: span 4;
+/* 縮短開關按鈕與標籤的距離，讓整體更緊湊 */
+.device-item:has(.switch.on) .switch,
+.device-item:has(input[type="checkbox"]:checked) input[type="checkbox"] {
+  margin-left: 2px !important;
+  display: inline-block !important;
+  vertical-align: middle !important;
 }
 
-.ac-tile:has(.switch.on) .ac-tile-pills {
-  flex: 0 1 auto;
-}
-
-.ac-pill {
-  justify-content: center;
-  line-height: 1;
-  padding: 5px 9px;
-}
-
-#tv-tile:has(.switch.on),
-#stereo-tile:has(.switch.on) {
-  padding-inline: 3px;
-  gap: 2px;
-  justify-content: center;
-}
-
-#tv-tile:has(.switch.on) .ac-tile-header,
-#stereo-tile:has(.switch.on) .ac-tile-header {
-  flex: 0 0 auto;
-}
-
-#tv-tile:has(.switch.on) .switch-icon-label,
-#stereo-tile:has(.switch.on) .switch-icon-label {
-  gap: 3px;
-}
-
-#tv-tile:has(.switch.on) .ac-tile-pills,
-#stereo-tile:has(.switch.on) .ac-tile-pills {
-  flex: 0 1 auto;
-  justify-content: center;
-  overflow: hidden;
-}
-
-#tv-tile:has(.switch.on) .ac-pill,
-#stereo-tile:has(.switch.on) .ac-pill {
-  min-width: 52px;
-  max-width: 60px;
-  padding-inline: 7px;
-  font-size: 9px;
-  text-align: center;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-#tv-tile:has(.switch.on) .switch,
-#stereo-tile:has(.switch.on) .switch {
-  width: 24px;
-  height: 14px;
-  border-radius: 8px;
-  flex: 0 0 auto;
-}
-
-#tv-tile:has(.switch.on) .switch-knob,
-#stereo-tile:has(.switch.on) .switch-knob {
-  width: 10px;
-  height: 10px;
-}
-
-#tv-tile:has(.switch.on) .switch.on .switch-knob,
-#stereo-tile:has(.switch.on) .switch.on .switch-knob {
-  left: 12px;
+/* 微調內部文字與圖標的對齊 */
+.device-item {
+  white-space: nowrap !important; /* 防止字數稍多時爆行 */
+  font-size: 11px !important; /* 稍微縮小字體以確保一排能塞下兩個 */
 }
