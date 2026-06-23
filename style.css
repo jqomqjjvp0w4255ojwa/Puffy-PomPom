@@ -1264,7 +1264,6 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
   margin: 4px 0 20px; display: flex; align-items: flex-start; gap: 6px; text-align: center;
   justify-content: center;
 }
-.day-digest i { flex-shrink: 0; margin-top: 2px; color: #c0a878; }
 .day-digest.collapsed { display: none; }
 
 /* 一段觀察：時間是紀錄的一部分（不框），時間後 +／- 展開狀態卡，不影響閱讀 */

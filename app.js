@@ -1349,9 +1349,10 @@ function weekGroupedRowsHtml(dates) {
   return out.join('');
 }
 
-// ✨ icon 控制的是「本日摘要」本身的收合，不是整天的日記內容
+// icon 控制的是「本日摘要」本身的收合，不是整天的日記內容；展開時顯示「-」，收合時顯示「✨」
 function toggleDayDigest(el) {
-  el.closest('.memory-date-row').nextElementSibling.classList.toggle('collapsed');
+  const collapsed = el.closest('.memory-date-row').nextElementSibling.classList.toggle('collapsed');
+  el.className = 'ti memory-date-toggle ' + (collapsed ? 'ti-sparkles' : 'ti-minus');
 }
 
 // 選某一天：直接在閱讀區換內容，不開 Modal、不離開頁面。
@@ -1380,8 +1381,8 @@ async function selectReviewDay(d, opts) {
     const diary = day.diary || [];
     const [y, m, day2] = d.split('-').map(Number);
     const entriesHtml = diary.map(e => reviewEntryHtml(e, ownerLog, visitorLog)).join('');
-    const digestHtml = day.digest ? `<div class="day-digest"><i class="ti ti-sparkles"></i><span class="day-digest-text">${escapeHtml(day.digest)}</span></div>` : '';
-    const toggleHtml = day.digest ? `<i class="ti ti-sparkles memory-date-toggle" onclick="toggleDayDigest(this)" title="收合／展開摘要"></i>` : '';
+    const digestHtml = day.digest ? `<div class="day-digest"><span class="day-digest-text">${escapeHtml(day.digest)}</span></div>` : '';
+    const toggleHtml = day.digest ? `<i class="ti ti-minus memory-date-toggle" onclick="toggleDayDigest(this)" title="收合／展開摘要"></i>` : '';
     body.innerHTML = `
       <div class="memory-date-row">
         <span class="memory-date">${y} 年 ${m} 月 ${day2} 日</span>
