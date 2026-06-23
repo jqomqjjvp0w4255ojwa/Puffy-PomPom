@@ -1032,6 +1032,34 @@ const server = http.createServer((req, res) => {
       res.end(JSON.stringify({ weather: null }));
     });
 
+  } else if (req.url.startsWith('/api/backfill-digests')) {
+    // 補產生「目前還沒有摘要」的舊日子／舊週的回顧摘要（tick()平常只會往前補昨天，
+    // 上線前已存在的歷史天數不會自動補，這個端點讓你手動一次補齊）。冪等，已存在的不會重打。
+    (async () => {
+      try {
+        const todayKey = getTodayKey();
+        const dates = listDateKeys().filter(d => d !== todayKey);
+        const dayResults = {};
+        for (const d of dates) {
+          dayResults[d] = await ensureDailyDigest(d);
+        }
+        const weekStarts = [...new Set(dates.map(weekStartKeyOf))].filter(w => w !== weekStartKeyOf(todayKey));
+        const weekResults = {};
+        for (const w of weekStarts) {
+          weekResults[w] = await ensureWeeklyDigest(w);
+        }
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({
+          ok: true,
+          daysFilled: Object.values(dayResults).filter(Boolean).length,
+          weeksFilled: Object.values(weekResults).filter(Boolean).length
+        }));
+      } catch (e) {
+        res.writeHead(500);
+        res.end('error');
+      }
+    })();
+
   } else if (req.url.startsWith('/api/tv-channels')) {
     // 遙控器用：頻道清單完全來自 data/tv.json，後台增減頻道不用改前端程式碼。
     try {

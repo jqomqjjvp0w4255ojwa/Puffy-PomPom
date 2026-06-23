@@ -439,6 +439,13 @@
     </div>
     <div id="tv-channel-list"></div>
     <div class="status-line off" id="tv-status"></div>
+    <div class="mini-tile">
+      <div class="tile-header"><span class="tile-title">回顧摘要補產生</span><span class="tile-desc">tick()平常只會往前補昨天，上線前已存在的舊天數不會自動生成摘要；按一次補齊所有缺摘要的舊日子/舊週（已存在的不會重打，可放心重複按）</span></div>
+      <div class="tile-adjust">
+        <button class="primary" onclick="backfillDigests()">補產生回顧摘要</button>
+        <span id="backfill-status" style="font-size:12px;color:#8a7a65;"></span>
+      </div>
+    </div>
   </div>
 
   <!-- ============ 糰糰行為籤庫 ============ -->
@@ -1764,6 +1771,18 @@ function refreshLiveStats() {
         liveTile('小黑影/狀態', [['小黑影', sh.active ? '出沒中' : '潛伏'], ['暗影好感', fix(sh.affection)], ['暫停', world.paused ? '是' : '否'], ['外出', world.owner_away ? '是' : '否']]);
     })
     .catch(() => { box.innerHTML = '<div class="dev-note">抓取失敗，可能是還沒部署或不在遊戲網域下開啟。</div>'; });
+}
+
+async function backfillDigests() {
+  const status = document.getElementById('backfill-status');
+  status.textContent = '生成中…可能需要一段時間（依舊資料量呼叫 Gemini）';
+  try {
+    const res = await fetch('/api/backfill-digests');
+    const data = await res.json();
+    status.textContent = data.ok ? `完成：補了 ${data.daysFilled} 天、${data.weeksFilled} 週的摘要。` : '失敗，可能還沒部署或不在遊戲網域下開啟。';
+  } catch (e) {
+    status.textContent = '失敗，可能還沒部署或不在遊戲網域下開啟。';
+  }
 }
 
 // ===================== 從遊戲伺服器拉目前線上的 data/*.json =====================
