@@ -1198,12 +1198,23 @@ async function openSummariesTimeline(userTriggered) {
     <div class="sum-card-body">${escapeHtml(daySummaries[d].digest)}<button class="sum-card-goto" onclick="event.stopPropagation();selectReviewDay('${d}')">查看當天完整日記 ›</button></div>
   </div>`;
 
-  // 週卡片把當週每天的日摘要卡框在裡面，整個區塊一起收合
-  const weekBlockHtml = wk => {
+  // 週幾號到幾號：週起始日（週一）加 6 天就是週末
+  const weekRangeLabel = wk => {
+    const [y, m, d] = wk.split('-').map(Number);
+    const start = new Date(y, m - 1, d);
+    const end = new Date(y, m - 1, d + 6);
+    return `${start.getMonth() + 1}/${start.getDate()} - ${end.getMonth() + 1}/${end.getDate()}`;
+  };
+
+  // 週卡片把當週每天的日摘要卡框在裡面，整個區塊一起收合；標題寫「第 n 週」（當月第幾週）
+  const weekBlockHtml = (wk, weekNo) => {
     const days = (weekDays[wk] || []).slice().sort().reverse();
     const weekDigest = weekSummaries[wk] || '';
     return `<div class="sum-card sum-week-card" onclick="toggleSumCard(this)">
-      <div class="sum-card-head"><span class="sum-card-date">${wk} 那一週</span><i class="ti ti-minus sum-card-toggle"></i></div>
+      <div class="sum-card-head">
+        <span class="sum-card-date">第 ${weekNo} 週<span class="sum-card-subdate">${weekRangeLabel(wk)}</span></span>
+        <i class="ti ti-minus sum-card-toggle"></i>
+      </div>
       <div class="sum-card-body">
         <div class="sum-week-text">${weekDigest ? escapeHtml(weekDigest) : '這週還在累積中，還沒有回顧摘要。'}</div>
         <div class="sum-day-list">${days.map(dayCardHtml).join('')}</div>
@@ -1213,10 +1224,11 @@ async function openSummariesTimeline(userTriggered) {
 
   const html = monthKeys.map(mk => {
     const [yy, mm] = mk.split('-');
-    const weeks = monthGroups[mk].slice().sort().reverse();
+    const weeksAsc = monthGroups[mk].slice().sort();
+    const weeksDesc = weeksAsc.slice().reverse();
     return `<div class="sum-month-group">
       <div class="sum-month-label">${yy} 年 ${Number(mm)} 月</div>
-      ${weeks.map(weekBlockHtml).join('')}
+      ${weeksDesc.map(wk => weekBlockHtml(wk, weeksAsc.indexOf(wk) + 1)).join('')}
     </div>`;
   }).join('');
 
