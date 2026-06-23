@@ -83,7 +83,7 @@
 
   /* 方正緊湊的迷你小卡：每組一張卡，欄位直排（標籤＋右對齊等寬輸入框） */
   .num-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; max-width: 700px; }
-  .mini-tile { background: #fff; border: 1px solid #e8c8b0; border-radius: 6px; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; box-shadow: 0 1px 3px rgba(90,75,65,0.04); }
+  .mini-tile { background: #fff; border: 1px solid #e8c8b0; border-radius: 6px; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; box-shadow: 0 1px 3px rgba(90,75,65,0.04); margin-bottom: 14px; }
   .tile-header { border-bottom: 1px solid #f2ede6; padding-bottom: 6px; display: flex; flex-direction: column; }
   .tile-title { font-size: 13px; font-weight: 700; color: #5a3a2a; }
   .tile-desc { font-size: 11px; color: #b0a298; margin-top: 1px; }
@@ -944,6 +944,19 @@ const BALANCE_API_GROUPS = [
       ] }
     ],
     note: '以目前白天25-55分、夜間180-360分的設定估算：用 Sonnet 系列、開快取，一個月大約 $8-9；若改用 Haiku，月費可降到約 $2-3，但建議先試跑幾天觀察文字品質再決定要不要長期用。'
+  },
+  {
+    title: 'Gemini 設定（電視台／回顧摘要）',
+    desc: '免費額度，不影響Claude月費，但思考模式會多吃token、容易撞到免費層的速率限制',
+    fields: [
+      { key: 'geminiModel', label: '模型', desc: '電視台與每日/每週摘要共用這個模型', type: 'select', options: [
+        { value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash（預設，快且免費額度高）' },
+        { value: 'gemini-2.5-flash-lite', label: 'Gemini 2.5 Flash-Lite（更便宜更快，品質會更陽春）' },
+        { value: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro（品質較好，免費額度低很多，容易撞限）' }
+      ] },
+      { key: 'geminiThinking', label: '開啟思考模式', desc: '目前預設關閉思考（thinkingBudget=0），因為小請求被思考吃光token容易回空白；開啟後輸出可能更連貫，但會變慢、更容易超出免費額度', type: 'bool' }
+    ],
+    note: '這兩個設定只影響 Gemini（電視台播報、每日/每週回顧摘要），跟主世界用的 Claude 模型是分開計費的兩個系統。'
   }
 ];
 let balanceData = {};

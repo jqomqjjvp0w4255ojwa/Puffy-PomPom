@@ -374,14 +374,16 @@ async function fetchWeather() {
 
 // ===== Gemini（電視頻道專用，獨立於主世界的 Claude 呼叫）=====
 // 玩家主動點頻道才觸發，回傳一段短文字，不改世界數值、不佔 tick 預算。
-// gemini-2.5-flash 在免費層有自己的配額；把 thinking 關掉避免思考吃光 token 回空白。
-const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
-
+// 預設用 gemini-2.5-flash、關閉 thinking（避免小請求被思考吃光 token 回空白）；
+// 兩者都可在 content-lab 的「API 設定」分頁切換，存在 balance.json 的 geminiModel/geminiThinking。
 async function callGemini(prompt, maxTokens = 400) {
   const key = process.env.GEMINI_API_KEY;
   if (!key) return { error: 'no_key' };
   try {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${key}`;
+    const bal = loadBalance();
+    const geminiModel = bal.geminiModel || 'gemini-2.5-flash';
+    const thinkingBudget = bal.geminiThinking ? -1 : 0; // -1 = 讓模型自行決定思考預算
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${key}`;
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 20000);
     const res = await fetch(url, {
@@ -389,7 +391,7 @@ async function callGemini(prompt, maxTokens = 400) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 1.0, maxOutputTokens: maxTokens, thinkingConfig: { thinkingBudget: 0 } }
+        generationConfig: { temperature: 1.0, maxOutputTokens: maxTokens, thinkingConfig: { thinkingBudget } }
       }),
       signal: controller.signal
     });
