@@ -795,7 +795,8 @@ function collectPromptData() {
 // ===================== 數值平衡 =====================
 const BALANCE_GROUPS = [
   { key: 'basic', label: '基礎衰減' },
-  { key: 'adv', label: '隱藏數值累積／回覆頻率' }
+  { key: 'adv', label: '隱藏數值累積' },
+  { key: 'api', label: '更新頻率／API 設定' }
 ];
 const BALANCE_BASIC_GROUPS = [
   {
@@ -864,7 +865,9 @@ const BALANCE_ADV_GROUPS = [
       { key: 'ownerFeedFoodBoost', label: '餵食加成', desc: 'AI判斷有餵食時，飽食每輪+多少', step: 1 },
       { key: 'rebirthTicks', label: '死亡後再生(次)', desc: '死亡後幾次更新自動再生', step: 1 }
     ]
-  },
+  }
+];
+const BALANCE_API_GROUPS = [
   {
     title: '回覆頻率',
     desc: '每次更新的間隔分鐘',
@@ -954,11 +957,12 @@ function buildBalanceFields() {
   };
   buildBalanceCards(makePanel('basic', balanceActiveGroup === 'basic'), BALANCE_BASIC_GROUPS);
   buildBalanceCards(makePanel('adv', balanceActiveGroup === 'adv'), BALANCE_ADV_GROUPS);
+  buildBalanceCards(makePanel('api', balanceActiveGroup === 'api'), BALANCE_API_GROUPS);
 }
 function applyBalanceData(data) { balanceData = data || {}; buildBalanceFields(); }
 function collectBalanceData() {
   const out = {};
-  const allGroups = [...BALANCE_BASIC_GROUPS, ...BALANCE_ADV_GROUPS];
+  const allGroups = [...BALANCE_BASIC_GROUPS, ...BALANCE_ADV_GROUPS, ...BALANCE_API_GROUPS];
   allGroups.forEach(g => {
     g.fields.forEach(f => {
       const el = document.getElementById(`balance-${f.key}`);
