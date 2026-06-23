@@ -1237,6 +1237,14 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
 }
 .sum-card.collapsed .sum-card-body { display: none; }
 .sum-week-text { margin-bottom: 4px; }
+/* 週摘要做成引言，字級／字體都跟日摘要的小灰字明顯不同 */
+.sum-week-quote, .tree-week-branch-body .sum-week-quote {
+  margin: 2px 0 10px; padding: 0 6px; font-size: 15px; font-family: Georgia, 'Times New Roman', serif;
+  font-style: italic; color: #8a5a3a; line-height: 1.8; text-align: center;
+}
+.sum-week-quote .quote-mark { font-size: 18px; color: #d2a868; font-style: normal; }
+.sum-week-quote .quote-mark.open { margin-right: 2px; }
+.sum-week-quote .quote-mark.close { margin-left: 2px; }
 /* 週卡片把當週每天的日摘要卡框在裡面：日卡片本身也要是一張看得出邊框的卡，不能只剩上下兩條線 */
 .sum-day-list:not(:empty) { margin-top: 10px; }
 .sum-day-card {

@@ -1154,7 +1154,9 @@ async function toggleWeekCard(el) {
   body.textContent = '載入中…';
   const weekStart = el.dataset.week;
   const digest = await fetchWeekDigest(weekStart);
-  body.textContent = digest || '這週還在累積中，還沒有回顧摘要。';
+  body.innerHTML = digest
+    ? `<blockquote class="sum-week-quote"><span class="quote-mark open">❝</span>${escapeHtml(digest)}<span class="quote-mark close">❞</span></blockquote>`
+    : '這週還在累積中，還沒有回顧摘要。';
 }
 
 function toggleSumCard(el) {
@@ -1216,7 +1218,9 @@ async function openSummariesTimeline(userTriggered) {
         <i class="ti ti-minus sum-card-toggle"></i>
       </div>
       <div class="sum-card-body">
-        <div class="sum-week-text">${weekDigest ? escapeHtml(weekDigest) : '這週還在累積中，還沒有回顧摘要。'}</div>
+        ${weekDigest
+          ? `<blockquote class="sum-week-quote"><span class="quote-mark open">❝</span>${escapeHtml(weekDigest)}<span class="quote-mark close">❞</span></blockquote>`
+          : `<div class="sum-week-text">這週還在累積中，還沒有回顧摘要。</div>`}
         <div class="sum-day-list">${days.map(dayCardHtml).join('')}</div>
       </div>
     </div>`;
