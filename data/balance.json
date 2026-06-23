@@ -26,7 +26,7 @@
   "tickNightMinMin": 180,
   "tickNightMaxMin": 360,
   "cacheEnabled": true,
-  "model": "claude-sonnet-4-6",
+  "model": "claude-3-7-sonnet-latest",
   "geminiModel": "gemini-2.5-flash",
   "geminiThinking": false
 }
