@@ -1,7 +1,7 @@
 let roomState = {
   window_open: false,
   ac: { on: false, mode: 'cool', temp: 22, fan: 'auto', sleep: false, broken: false },
-  light_on: true, toilet_open: false, cleanliness: 78
+  light_on: true, toilet_open: false, fridge_open: false, cleanliness: 78
 };
 
 const ROOM_PLACEHOLDERS = [
@@ -104,7 +104,7 @@ function updateCleanUI() {
 }
 
 function updateAllToggles() {
-  const map = { light_on:'it-light', toilet_open:'it-toilet', window_open:'it-window' };
+  const map = { light_on:'it-light', toilet_open:'it-toilet', window_open:'it-window', fridge_open:'it-fridge' };
   for (const [key, id] of Object.entries(map)) {
     document.getElementById(id).classList.toggle('on', !!roomState[key]);
   }
@@ -246,6 +246,80 @@ async function playChannel(channel) {
   } finally {
     tvLoading = false;
     tvCooldownUntil = Date.now() + TV_COOLDOWN_MS;
+  }
+}
+
+// ===== 音響（接 Gemini，獨立小請求，跟電視同一套邏輯） =====
+let STEREO_CHANNEL_LABEL = {};
+let stereoChannelsLoaded = false;
+let stereoLoading = false;
+const STEREO_COOLDOWN_MS = 8000;
+let stereoCooldownUntil = 0;
+
+async function loadStereoChannels() {
+  if (stereoChannelsLoaded) return;
+  try {
+    const res = await fetch('/api/stereo-channels?t=' + Date.now());
+    const data = await res.json();
+    const box = document.getElementById('stereo-channels');
+    box.innerHTML = '';
+    STEREO_CHANNEL_LABEL = {};
+    (data.channels || []).forEach(ch => {
+      STEREO_CHANNEL_LABEL[ch.key] = ch.label;
+      const btn = document.createElement('button');
+      btn.className = 'tv-channel-btn';
+      btn.dataset.channel = ch.key;
+      btn.onclick = () => playStereoChannel(ch.key);
+      btn.innerHTML = `<i class="ti ${ch.icon}"></i><span>${ch.label}</span>`;
+      box.appendChild(btn);
+    });
+    stereoChannelsLoaded = true;
+  } catch (e) { /* 拿不到頻道清單就維持空白，下次開音響再試一次 */ }
+}
+
+function openStereo() {
+  document.getElementById('stereo-overlay').classList.add('open');
+  document.getElementById('stereo-remote').classList.add('open');
+  loadStereoChannels();
+}
+function closeStereo() {
+  document.getElementById('stereo-overlay').classList.remove('open');
+  document.getElementById('stereo-remote').classList.remove('open');
+}
+
+async function playStereoChannel(channel) {
+  if (stereoLoading) return;
+  const screen = document.getElementById('stereo-screen');
+  const wait = Math.ceil((stereoCooldownUntil - Date.now()) / 1000);
+  if (wait > 0) {
+    screen.innerHTML = `<div class="tv-screen-static">轉台太快了，再等 ${wait} 秒…</div>`;
+    return;
+  }
+  stereoLoading = true;
+  document.querySelectorAll('#stereo-channels .tv-channel-btn').forEach(b =>
+    b.classList.toggle('active', b.dataset.channel === channel));
+  screen.innerHTML = `<div class="tv-screen-static">${STEREO_CHANNEL_LABEL[channel]}・播放中…</div>`;
+  try {
+    const res = await fetch('/api/stereo', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ channel })
+    });
+    const data = await res.json();
+    if (data.ok) {
+      screen.innerHTML = `<div class="tv-program">${data.text.replace(/</g, '&lt;')}</div>`;
+    } else {
+      let msg = '訊號不穩，稍後再轉台看看…';
+      if (data.error === 'no_key') msg = '訊號中斷（音響台還沒設定）';
+      else if (data.error === 'http_429') msg = '訊號過載，免費額度暫時用滿了，等一下再轉台…';
+      const detail = data.detail ? `<div class="tv-screen-detail">${String(data.detail).replace(/</g, '&lt;')}</div>` : '';
+      screen.innerHTML = `<div class="tv-screen-static">${msg}${detail}</div>`;
+    }
+  } catch (e) {
+    screen.innerHTML = `<div class="tv-screen-static">收訊失敗，沙沙聲…</div>`;
+  } finally {
+    stereoLoading = false;
+    stereoCooldownUntil = Date.now() + STEREO_COOLDOWN_MS;
   }
 }
 
@@ -946,6 +1020,7 @@ async function load() {
     };
     roomState.light_on = world.room.light_on !== false;
     roomState.toilet_open = world.room.toilet_open || false;
+    roomState.fridge_open = world.room.fridge_open || false;
     roomState.cleanliness = world.room.cleanliness;
     updateAllToggles();
     if (document.getElementById('ac-remote').classList.contains('open')) renderAcRemote();
