@@ -1658,6 +1658,16 @@ async function tick() {
     ? `${acNow.broken ? '故障' : { cool: '冷氣', heat: '暖氣', fan: '送風', dry: '除濕' }[acNow.mode] || '冷氣'}${acNow.mode === 'fan' ? '' : acNow.temp + '℃'}`
     : '關';
 
+  // 電視/音響開著時，糰糰能聽到聲音，把目前頻道帶進房間狀態讓AI自然寫進敘述。
+  const tvCfg = loadTvConfig();
+  const tvOnLabel = world.room.tv_on
+    ? `開（${(tvCfg.channels[world.room.tv_channel] || {}).label || '頻道'}）`
+    : '關';
+  const stereoCfg = loadStereoConfig();
+  const stereoOnLabel = world.room.stereo_on
+    ? `開（${(stereoCfg.channels[world.room.stereo_channel] || {}).label || '頻道'}）`
+    : '關';
+
   // 小黑影出沒條件：房間髒（清潔度<40）或環境暗（關燈／深夜 22:00-06:00），或死亡復仇期間。
   const roomDirty = (world.room.cleanliness ?? 100) < 40;
   const isDark = world.room.light_on === false || getRealTime().hour >= 22 || getRealTime().hour < 6;
@@ -1680,6 +1690,7 @@ async function tick() {
 小黑影：${shadowShouldAppear ? '活躍' : '潛伏'} 位置:${world.characters.shadow.location} 灰塵:${world.characters.shadow.dust_count}
 房間清潔度：${world.room.cleanliness}
 窗戶：${world.room.window_open ? '開' : '關'} 冷氣：${acLabel} 燈：${world.room.light_on ? '開' : '關'} 廁所門：${world.room.toilet_open ? '開' : '關'} 冰箱門：${world.room.fridge_open ? '開' : '關'}${world.room.fridge_power_cut ? '（剛跳電）' : ''}
+電視：${tvOnLabel} 音響：${stereoOnLabel}${(world.room.tv_on || world.room.stereo_on) ? '（房間裡有聲音，白糰糰會聽到並做出反應）' : ''}
 巨怪對房間環境的描述：${world.room.env_desc || '無'}
 今天已發生：${world.room.events_today.join('，') || '無'}
 近期記憶：${memoryLine}（這只是延續性參考，不要被它的安靜基調綁住——白糰糰本來就靈動古怪、有自己的事要做，沒人理牠時也會主動找事做，不是發呆等待）${weatherInput}${climateInput}${shadowInput}${actionInput}${ownerInput}${awayInput}${visitorInput}${eventInput}${pendingNotesInput}${hiddenInput}${loreInput}
