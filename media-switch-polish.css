@@ -28,7 +28,9 @@
 
 #tv-tile:has(.switch.on),
 #stereo-tile:has(.switch.on) {
-  padding-inline: 5px;
+  padding-inline: 3px;
+  gap: 2px;
+  justify-content: center;
 }
 
 #tv-tile:has(.switch.on) .ac-tile-header,
@@ -36,19 +38,44 @@
   flex: 0 0 auto;
 }
 
+#tv-tile:has(.switch.on) .switch-icon-label,
+#stereo-tile:has(.switch.on) .switch-icon-label {
+  gap: 3px;
+}
+
 #tv-tile:has(.switch.on) .ac-tile-pills,
 #stereo-tile:has(.switch.on) .ac-tile-pills {
-  flex: 1 1 auto;
+  flex: 0 1 auto;
   justify-content: center;
   overflow: hidden;
 }
 
 #tv-tile:has(.switch.on) .ac-pill,
 #stereo-tile:has(.switch.on) .ac-pill {
-  min-width: 58px;
-  max-width: 100%;
-  padding-inline: 8px;
+  min-width: 52px;
+  max-width: 60px;
+  padding-inline: 7px;
+  font-size: 9px;
   text-align: center;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+#tv-tile:has(.switch.on) .switch,
+#stereo-tile:has(.switch.on) .switch {
+  width: 24px;
+  height: 14px;
+  border-radius: 8px;
+  flex: 0 0 auto;
+}
+
+#tv-tile:has(.switch.on) .switch-knob,
+#stereo-tile:has(.switch.on) .switch-knob {
+  width: 10px;
+  height: 10px;
+}
+
+#tv-tile:has(.switch.on) .switch.on .switch-knob,
+#stereo-tile:has(.switch.on) .switch.on .switch-knob {
+  left: 12px;
 }
