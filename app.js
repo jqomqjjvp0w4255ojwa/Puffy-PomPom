@@ -1135,7 +1135,12 @@ async function fetchWeekDigest(weekStart) {
 
 function weekCardHtml(weekStart) {
   return `<div class="tree-week-branch" data-week="${weekStart}" onclick="toggleWeekCard(this)">
-    <span class="tree-week-branch-dash">—</span><span class="tree-week-branch-label">本週摘要</span><i class="ti ti-plus tree-week-branch-icon"></i>
+    <div class="tree-week-branch-row">
+      <span class="tree-week-branch-line"></span>
+      <span class="tree-week-branch-label">本週摘要</span>
+      <i class="ti ti-plus tree-week-branch-icon"></i>
+      <span class="tree-week-branch-line"></span>
+    </div>
     <div class="tree-week-branch-body"></div>
   </div>`;
 }
@@ -1152,7 +1157,13 @@ async function toggleWeekCard(el) {
   body.textContent = digest || '這週還在累積中，還沒有回顧摘要。';
 }
 
-// 摘要時間軸：所有已生成的每日／每週摘要依時間排成一條總覽，是點「回顧」時的首頁。
+function toggleSumCard(el) {
+  const collapsed = el.classList.toggle('collapsed');
+  const icon = el.querySelector('.sum-card-toggle');
+  if (icon) icon.className = 'ti sum-card-toggle ' + (collapsed ? 'ti-plus' : 'ti-minus');
+}
+
+// 摘要時間軸：依「月（灰字分隔）→ 週卡片 → 日卡片」的層級排列，是點「回顧」時的首頁。
 async function openSummariesTimeline(userTriggered) {
   reviewSelectedDate = null;
   document.querySelectorAll('#date-tree .tree-day').forEach(el => el.classList.remove('current'));
@@ -1166,20 +1177,48 @@ async function openSummariesTimeline(userTriggered) {
     const data = await res.json();
     weekSummaries = data.summaries || {};
   } catch (e) {}
-  const items = [];
+
+  const weekDays = {}; // weekStart -> 有日摘要的日期（新到舊）
   availableDates.forEach(d => {
     const s = daySummaries[d];
-    if (s && s.digest) items.push({ key: d, date: d, type: 'day', text: s.digest });
+    if (!s || !s.digest) return;
+    const wk = weekStartKeyOf(d);
+    (weekDays[wk] = weekDays[wk] || []).push(d);
   });
-  Object.keys(weekSummaries).forEach(wk => {
-    if (weekSummaries[wk]) items.push({ key: wk + '-z', date: wk, type: 'week', text: weekSummaries[wk] });
+  const allWeeks = new Set([...Object.keys(weekDays), ...Object.keys(weekSummaries).filter(w => weekSummaries[w])]);
+  const monthGroups = {}; // 'YYYY-MM' -> [weekStart...]（用週起始日所在月份分組）
+  allWeeks.forEach(wk => {
+    const monthKey = wk.slice(0, 7);
+    (monthGroups[monthKey] = monthGroups[monthKey] || []).push(wk);
   });
-  items.sort((a, b) => b.key.localeCompare(a.key));
-  const html = items.map(it => `
-    <div class="summary-timeline-item ${it.type}" onclick="selectReviewDay('${it.date}')">
-      <div class="summary-timeline-label">${it.type === 'week' ? '本週摘要' : it.date}</div>
-      <div class="summary-timeline-text">${escapeHtml(it.text)}</div>
-    </div>`).join('');
+  const monthKeys = Object.keys(monthGroups).sort().reverse();
+
+  const dayCardHtml = d => `<div class="sum-card sum-day-card" onclick="toggleSumCard(this)">
+    <div class="sum-card-head"><span class="sum-card-date">${d}</span><i class="ti ti-minus sum-card-toggle"></i></div>
+    <div class="sum-card-body">${escapeHtml(daySummaries[d].digest)}<button class="sum-card-goto" onclick="event.stopPropagation();selectReviewDay('${d}')">查看當天完整日記 ›</button></div>
+  </div>`;
+
+  const weekBlockHtml = wk => {
+    const days = (weekDays[wk] || []).slice().sort().reverse();
+    const weekDigest = weekSummaries[wk] || '';
+    return `<div class="sum-week-block">
+      <div class="sum-card sum-week-card" onclick="toggleSumCard(this)">
+        <div class="sum-card-head"><span class="sum-card-date">${wk} 那一週</span><i class="ti ti-minus sum-card-toggle"></i></div>
+        <div class="sum-card-body">${weekDigest ? escapeHtml(weekDigest) : '這週還在累積中，還沒有回顧摘要。'}</div>
+      </div>
+      <div class="sum-day-list">${days.map(dayCardHtml).join('')}</div>
+    </div>`;
+  };
+
+  const html = monthKeys.map(mk => {
+    const [yy, mm] = mk.split('-');
+    const weeks = monthGroups[mk].slice().sort().reverse();
+    return `<div class="sum-month-group">
+      <div class="sum-month-label">${yy} 年 ${Number(mm)} 月</div>
+      ${weeks.map(weekBlockHtml).join('')}
+    </div>`;
+  }).join('');
+
   body.innerHTML = `
     <div class="memory-date">摘要時間軸</div>
     <div class="summary-timeline-list">${html || '<div class="drawer-empty">還沒有任何摘要。</div>'}</div>
@@ -1297,11 +1336,10 @@ function weekGroupedRowsHtml(dates) {
   return out.join('');
 }
 
-function toggleDayBody(el) {
-  const body = el.closest('.memory-date-row').nextElementSibling.classList.contains('day-digest')
-    ? el.closest('.memory-date-row').nextElementSibling.nextElementSibling
-    : el.closest('.memory-date-row').nextElementSibling;
-  const collapsed = body.classList.toggle('collapsed');
+// +/- 控制的是「本日摘要」本身的收合，不是整天的日記內容
+function toggleDayDigest(el) {
+  const digestBox = el.closest('.memory-date-row').nextElementSibling;
+  const collapsed = digestBox.classList.toggle('collapsed');
   el.className = 'ti memory-date-toggle ' + (collapsed ? 'ti-plus' : 'ti-minus');
 }
 
@@ -1331,11 +1369,12 @@ async function selectReviewDay(d, opts) {
     const diary = day.diary || [];
     const [y, m, day2] = d.split('-').map(Number);
     const entriesHtml = diary.map(e => reviewEntryHtml(e, ownerLog, visitorLog)).join('');
-    const digestHtml = day.digest ? `<div class="day-digest" onclick="this.classList.toggle('collapsed')"><i class="ti ti-sparkles"></i><span class="day-digest-text">${escapeHtml(day.digest)}</span><span class="day-digest-collapsed-label">摘要（點一下展開）</span></div>` : '';
+    const digestHtml = day.digest ? `<div class="day-digest"><i class="ti ti-sparkles"></i><span class="day-digest-text">${escapeHtml(day.digest)}</span><span class="day-digest-collapsed-label">摘要（點一下展開）</span></div>` : '';
+    const toggleHtml = day.digest ? `<i class="ti ti-minus memory-date-toggle" onclick="toggleDayDigest(this)" title="收合／展開摘要"></i>` : '';
     body.innerHTML = `
       <div class="memory-date-row">
         <span class="memory-date">${y} 年 ${m} 月 ${day2} 日</span>
-        <i class="ti ti-minus memory-date-toggle" onclick="toggleDayBody(this)" title="收合／展開這天"></i>
+        ${toggleHtml}
       </div>
       ${digestHtml}
       <div class="memory-day-body">
