@@ -534,12 +534,20 @@ function weekStartKeyOf(dateKey) {
   return dateKeyOf(date);
 }
 
-const WEEK_SUMMARY_FILE = path.join(LOGS_DIR, 'week-summaries.json');
+const WEEK_SUMMARY_FILE = path.join(DATA_DIR, 'week-summaries.json');
+const LEGACY_WEEK_SUMMARY_FILE = path.join(LOGS_DIR, 'week-summaries.json');
 function loadWeekSummaries() {
   try {
     return JSON.parse(fs.readFileSync(WEEK_SUMMARY_FILE, 'utf8'));
   } catch (e) {
-    return {};
+    try {
+      const legacy = JSON.parse(fs.readFileSync(LEGACY_WEEK_SUMMARY_FILE, 'utf8'));
+      fs.writeFileSync(WEEK_SUMMARY_FILE, JSON.stringify(legacy, null, 2));
+      fs.unlinkSync(LEGACY_WEEK_SUMMARY_FILE);
+      return legacy;
+    } catch (e2) {
+      return {};
+    }
   }
 }
 function saveWeekSummaries(data) {
@@ -810,7 +818,7 @@ function appendToDay(dateKey, section, entries) {
 function listDateKeys() {
   ensureLogsDir();
   return fs.readdirSync(LOGS_DIR)
-    .filter(f => f.endsWith('.json'))
+    .filter(f => /^\d{4}-\d{2}-\d{2}\.json$/.test(f))
     .map(f => f.replace('.json', ''))
     .sort();
 }
