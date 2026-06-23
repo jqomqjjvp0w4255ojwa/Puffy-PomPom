@@ -374,14 +374,31 @@ async function fetchWeather() {
 
 // ===== Gemini（電視頻道專用，獨立於主世界的 Claude 呼叫）=====
 // 玩家主動點頻道才觸發，回傳一段短文字，不改世界數值、不佔 tick 預算。
-// gemini-2.5-flash 在免費層有自己的配額；把 thinking 關掉避免思考吃光 token 回空白。
-const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+// 預設用 gemini-2.5-flash、關閉 thinking（避免小請求被思考吃光 token 回空白）；
+// 兩者都可在 content-lab 的「API 設定」分頁切換，存在 balance.json 的 geminiModel/geminiThinking。
+
+// 只是「今天打了幾次、幾次出錯」的觀察用計數器，重啟伺服器會清空（不是 API 官方額度，但能看出是否頻繁撞 429）。
+let geminiStats = { date: '', calls: 0, errors: 0, lastError: null, lastErrorAt: null };
+function recordGeminiResult(result) {
+  const today = getTodayKey();
+  if (geminiStats.date !== today) geminiStats = { date: today, calls: 0, errors: 0, lastError: null, lastErrorAt: null };
+  geminiStats.calls++;
+  if (result.error) {
+    geminiStats.errors++;
+    geminiStats.lastError = `${result.error}${result.detail ? '：' + result.detail.slice(0, 120) : ''}`;
+    geminiStats.lastErrorAt = new Date().toISOString();
+  }
+}
 
 async function callGemini(prompt, maxTokens = 400) {
   const key = process.env.GEMINI_API_KEY;
   if (!key) return { error: 'no_key' };
+  let result;
   try {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${key}`;
+    const bal = loadBalance();
+    const geminiModel = bal.geminiModel || 'gemini-2.5-flash';
+    const thinkingBudget = bal.geminiThinking ? -1 : 0; // -1 = 讓模型自行決定思考預算
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${key}`;
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 20000);
     const res = await fetch(url, {
@@ -389,7 +406,7 @@ async function callGemini(prompt, maxTokens = 400) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 1.0, maxOutputTokens: maxTokens, thinkingConfig: { thinkingBudget: 0 } }
+        generationConfig: { temperature: 1.0, maxOutputTokens: maxTokens, thinkingConfig: { thinkingBudget } }
       }),
       signal: controller.signal
     });
@@ -397,21 +414,25 @@ async function callGemini(prompt, maxTokens = 400) {
     if (!res.ok) {
       const detail = await res.text().catch(() => '');
       console.error(`Gemini 回應錯誤 ${res.status}：${detail.slice(0, 300)}`);
-      return { error: `http_${res.status}`, detail: detail.slice(0, 300) };
+      result = { error: `http_${res.status}`, detail: detail.slice(0, 300) };
+    } else {
+      const data = await res.json();
+      const cand = data?.candidates?.[0];
+      const text = cand?.content?.parts?.map(p => p.text).filter(Boolean).join('').trim();
+      if (!text) {
+        const reason = cand?.finishReason || data?.promptFeedback?.blockReason || 'unknown';
+        console.error(`Gemini 空回應，finishReason=${reason}：`, JSON.stringify(data).slice(0, 300));
+        result = { error: 'empty', detail: `finishReason=${reason}` };
+      } else {
+        result = { text };
+      }
     }
-    const data = await res.json();
-    const cand = data?.candidates?.[0];
-    const text = cand?.content?.parts?.map(p => p.text).filter(Boolean).join('').trim();
-    if (!text) {
-      const reason = cand?.finishReason || data?.promptFeedback?.blockReason || 'unknown';
-      console.error(`Gemini 空回應，finishReason=${reason}：`, JSON.stringify(data).slice(0, 300));
-      return { error: 'empty', detail: `finishReason=${reason}` };
-    }
-    return { text };
   } catch (e) {
     console.error('Gemini 呼叫失敗：', e.message);
-    return { error: 'exception', detail: e.message };
+    result = { error: 'exception', detail: e.message };
   }
+  recordGeminiResult(result);
+  return result;
 }
 
 // 把目前世界狀態整理成電視頻道要用的上下文。
@@ -501,6 +522,86 @@ function dateKeyOf(date) {
 
 function getTodayKey() {
   return dateKeyOf(getTaipeiNow());
+}
+
+// 把某一天歸到「週一為起點」的那一週，回傳該週週一的 dateKey，當週摘要的索引鍵。
+function weekStartKeyOf(dateKey) {
+  const [y, m, d] = dateKey.split('-').map(Number);
+  const date = new Date(y, m - 1, d);
+  const dow = date.getDay(); // 0=日...6=六
+  const diffToMonday = dow === 0 ? 6 : dow - 1;
+  date.setDate(date.getDate() - diffToMonday);
+  return dateKeyOf(date);
+}
+
+const WEEK_SUMMARY_FILE = path.join(LOGS_DIR, 'week-summaries.json');
+function loadWeekSummaries() {
+  try {
+    return JSON.parse(fs.readFileSync(WEEK_SUMMARY_FILE, 'utf8'));
+  } catch (e) {
+    return {};
+  }
+}
+function saveWeekSummaries(data) {
+  ensureLogsDir();
+  fs.writeFileSync(WEEK_SUMMARY_FILE, JSON.stringify(data, null, 2));
+}
+
+// 每日摘要：用免費的 Gemini 把那一天的零散 tick 紀錄濃縮成幾句話的密度文字，
+// 一來給回顧頁當天頂部的「今日摘要」，二來餵回主世界AI當「近期記憶」，
+// 避免每次都塞5段幾乎重複的原文進prompt卻沒帶來新資訊。
+async function ensureDailyDigest(dateKey) {
+  if (!dateKey || dateKey === getTodayKey()) return null; // 當天還沒結束，先不做
+  const day = readDay(dateKey);
+  if (day.digest) return day.digest;
+  const scenes = (day.diary || []).map(e => e.scene).filter(Boolean);
+  if (scenes.length === 0) return null;
+  const tv = loadTvConfig();
+  const digestCfg = tv.digest || {};
+  const settingRef = buildLoreInput(scenes.join(' '));
+  const instruction = digestCfg.dailyInstruction || '請把這一天濃縮成2~3句話的摘要，抓住「真正發生變化、有意義」的部分，重複瑣碎的日常細節可以省略或合併成一句帶過，不要逐條複述。';
+  const prompt = `${settingRef}以下是白糰糰這一天（${dateKey}）依時間順序發生的動態紀錄片段：\n` +
+    scenes.map((s, i) => `${i + 1}. ${s}`).join('\n') +
+    `\n\n${instruction}繁體中文，只輸出摘要本身，不要加標題或前言。`;
+  const result = await callGemini(prompt, 260);
+  if (result.error || !result.text) return null;
+  const digest = cleanTvText(result.text);
+  day.digest = digest;
+  writeDay(dateKey, day);
+  return digest;
+}
+
+// 每週摘要：以週一為起點，彙整一週7天（優先用各天已產生的每日摘要，沒有就退回掃diary原文）濃縮成一段。
+async function ensureWeeklyDigest(weekStart) {
+  if (!weekStart || weekStartKeyOf(getTodayKey()) === weekStart) return null; // 本週還沒結束
+  const summaries = loadWeekSummaries();
+  if (summaries[weekStart]) return summaries[weekStart];
+
+  const [y, m, d] = weekStart.split('-').map(Number);
+  const startDate = new Date(y, m - 1, d);
+  const dayTexts = [];
+  for (let i = 0; i < 7; i++) {
+    const cur = new Date(startDate);
+    cur.setDate(startDate.getDate() + i);
+    const key = dateKeyOf(cur);
+    const day = readDay(key);
+    const text = day.digest || (day.diary || []).map(e => e.scene).filter(Boolean).slice(0, 3).join('；');
+    if (text) dayTexts.push(`${key}：${text}`);
+  }
+  if (dayTexts.length === 0) return null;
+
+  const tv = loadTvConfig();
+  const digestCfg = tv.digest || {};
+  const settingRef = buildLoreInput(dayTexts.join(' '));
+  const instruction = digestCfg.weeklyInstruction || '請把這一週濃縮成3~4句話的回顧，抓住這週真正的變化與重點（不是逐天複述），可以點出這週的主旋律或印象深刻的片段。';
+  const prompt = `${settingRef}以下是白糰糰這一週（${weekStart} 起的7天）每天的摘要：\n${dayTexts.join('\n')}\n\n` +
+    `${instruction}繁體中文，只輸出摘要本身，不要加標題或前言。`;
+  const result = await callGemini(prompt, 320);
+  if (result.error || !result.text) return null;
+  const digest = cleanTvText(result.text);
+  summaries[weekStart] = digest;
+  saveWeekSummaries(summaries);
+  return digest;
 }
 
 // "display" 是沒有年份的 "M/D HH:MM" 字串，靠跟現在時間比較推回年份
@@ -894,6 +995,7 @@ const server = http.createServer((req, res) => {
         return {
           date: d,
           preview,
+          digest: day.digest || '',
           visitorCount: visitorLog.length,
           visitorPreview: visitorLog.length ? visitorLog[0].message.slice(0, 24) : '',
           ownerCount: ownerLog.length,
@@ -902,6 +1004,19 @@ const server = http.createServer((req, res) => {
       });
       res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
       res.end(JSON.stringify({ summaries }));
+    } catch (e) {
+      res.writeHead(500);
+      res.end('error');
+    }
+
+  } else if (req.url.startsWith('/api/week-summary')) {
+    // 回顧用：取某週起始日（週一）的 AI 摘要，沒有則回傳空字串（代表還沒生成，通常是本週進行中）。
+    try {
+      const url = new URL(req.url, 'http://localhost');
+      const weekStart = url.searchParams.get('start') || '';
+      const summaries = loadWeekSummaries();
+      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ weekStart, digest: summaries[weekStart] || '' }));
     } catch (e) {
       res.writeHead(500);
       res.end('error');
@@ -944,6 +1059,53 @@ const server = http.createServer((req, res) => {
       res.end(JSON.stringify({ weather: null }));
     });
 
+  } else if (req.url.startsWith('/api/gemini-status')) {
+    // 給後台看：今天打了幾次 Gemini、幾次出錯、最近一次錯誤是什麼（重啟伺服器會清零，不是官方額度查詢）。
+    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+    res.end(JSON.stringify(geminiStats));
+
+  } else if (req.url.startsWith('/api/backfill-digests')) {
+    // 補產生「目前還沒有摘要」的舊日子／舊週的回顧摘要（tick()平常只會往前補昨天，
+    // 上線前已存在的歷史天數不會自動補，這個端點讓你手動一次補齊）。冪等，已存在的不會重打。
+    (async () => {
+      try {
+        const todayKey = getTodayKey();
+        const dates = listDateKeys().filter(d => d !== todayKey);
+        const dayResults = {};
+        for (const d of dates) {
+          dayResults[d] = await ensureDailyDigest(d);
+        }
+        const weekStarts = [...new Set(dates.map(weekStartKeyOf))].filter(w => w !== weekStartKeyOf(todayKey));
+        const weekResults = {};
+        for (const w of weekStarts) {
+          weekResults[w] = await ensureWeeklyDigest(w);
+        }
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({
+          ok: true,
+          daysFilled: Object.values(dayResults).filter(Boolean).length,
+          weeksFilled: Object.values(weekResults).filter(Boolean).length
+        }));
+      } catch (e) {
+        res.writeHead(500);
+        res.end('error');
+      }
+    })();
+
+  } else if (req.url.startsWith('/api/tv-channels')) {
+    // 遙控器用：頻道清單完全來自 data/tv.json，後台增減頻道不用改前端程式碼。
+    try {
+      const tv = loadTvConfig();
+      const channels = Object.entries(tv.channels || {}).map(([key, ch]) => ({
+        key, label: ch.label || key, icon: ch.icon || 'ti-broadcast'
+      }));
+      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ channels }));
+    } catch (e) {
+      res.writeHead(500);
+      res.end('error');
+    }
+
   } else if (req.url.startsWith('/api/tv')) {
     // 電視頻道：玩家點頻道時即時呼叫 Gemini 回一段短文字，不改世界狀態。
     const body = [];
@@ -951,7 +1113,9 @@ const server = http.createServer((req, res) => {
     req.on('end', async () => {
       try {
         const data = JSON.parse(Buffer.concat(body).toString() || '{}');
-        const channel = ['nature', 'news', 'shopping'].includes(data.channel) ? data.channel : 'nature';
+        const tv = loadTvConfig();
+        const validKeys = Object.keys(tv.channels || {});
+        const channel = validKeys.includes(data.channel) ? data.channel : (validKeys[0] || 'nature');
         const ctx = buildTvContext();
         const result = await callGemini(buildTvPrompt(channel, ctx), 280);
         res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
@@ -1407,6 +1571,15 @@ async function tick() {
     ? `\n小黑影現在從陰影裡出沒了（${roomDirty ? '房間髒亂' : ''}${roomDirty && isDark ? '又' : ''}${isDark ? '光線昏暗' : ''}，正是牠浮現的時機）。牠是躲在影子裡的另一個主角，不是背景。白糰糰一見到牠就會故意去招惹、找碴、跟牠摩擦——撲牠、踩牠、跟牠搶地盤或對峙，鬧出一段有來有往的小衝突。請把這段互動寫進敘述裡。`
     : '';
 
+  const todayKey = getTodayKey();
+  const yesterdayKey = dateKeyOf(new Date(getTaipeiNow().getTime() - 24 * 60 * 60 * 1000));
+  const yesterdayDigest = await ensureDailyDigest(yesterdayKey).catch(() => null);
+  if (weekStartKeyOf(todayKey) !== weekStartKeyOf(yesterdayKey)) {
+    ensureWeeklyDigest(weekStartKeyOf(yesterdayKey)).catch(() => {});
+  }
+  const recentRaw = (bt.memory || []).slice(-2).join(' / ') || '無';
+  const memoryLine = yesterdayDigest ? `昨日摘要：${yesterdayDigest}｜最近動態：${recentRaw}` : recentRaw;
+
   const prompt = `當前時間：${display}
 白糰糰目前狀態：${vitalLine} · 毛況:${bt.fur || '正常'} · 位置:${bt.location}
 小黑影：${shadowShouldAppear ? '活躍' : '潛伏'} 位置:${world.characters.shadow.location} 灰塵:${world.characters.shadow.dust_count}
@@ -1414,7 +1587,7 @@ async function tick() {
 窗戶：${world.room.window_open ? '開' : '關'} 冷氣：${acLabel} 燈：${world.room.light_on ? '開' : '關'} 廁所門：${world.room.toilet_open ? '開' : '關'}
 巨怪對房間環境的描述：${world.room.env_desc || '無'}
 今天已發生：${world.room.events_today.join('，') || '無'}
-近期記憶：${(bt.memory || []).slice(-5).join(' / ') || '無'}（這只是延續性參考，不要被它的安靜基調綁住——白糰糰本來就靈動古怪、有自己的事要做，沒人理牠時也會主動找事做，不是發呆等待）${weatherInput}${climateInput}${shadowInput}${actionInput}${ownerInput}${awayInput}${visitorInput}${eventInput}${pendingNotesInput}${hiddenInput}${loreInput}
+近期記憶：${memoryLine}（這只是延續性參考，不要被它的安靜基調綁住——白糰糰本來就靈動古怪、有自己的事要做，沒人理牠時也會主動找事做，不是發呆等待）${weatherInput}${climateInput}${shadowInput}${actionInput}${ownerInput}${awayInput}${visitorInput}${eventInput}${pendingNotesInput}${hiddenInput}${loreInput}
 
 生成這段時間白糰糰的動態。`;
 

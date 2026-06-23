@@ -76,7 +76,7 @@
 
 <!-- 回顧：生活觀察日誌的回憶檔案館，不是 Dashboard。時間軸當左側導覽列，中間只放當天的完整內文，不使用 Modal。 -->
 <div class="notebook page-pane" data-page="review">
-  <div class="review-reading-back" id="review-reading-back" onclick="selectDrawerTab('review')"><i class="ti ti-arrow-left"></i> 時間軸</div>
+  <div class="review-reading-back" id="review-reading-back" onclick="selectDrawerTab('review')"><i class="ti ti-arrow-left"></i></div>
   <div class="review-reading-body" id="review-reading-body"><div class="drawer-empty">點選左側時間軸的日期，翻開那天的紀錄。</div></div>
 </div>
 
@@ -307,11 +307,7 @@
   <div class="tv-screen" id="tv-screen">
     <div class="tv-screen-static" id="tv-static">— 選一個頻道 —</div>
   </div>
-  <div class="tv-channels">
-    <button class="tv-channel-btn" data-channel="nature" onclick="playChannel('nature')"><i class="ti ti-paw"></i><span>生物頻道</span></button>
-    <button class="tv-channel-btn" data-channel="news" onclick="playChannel('news')"><i class="ti ti-broadcast"></i><span>新聞頻道</span></button>
-    <button class="tv-channel-btn" data-channel="shopping" onclick="playChannel('shopping')"><i class="ti ti-shopping-cart"></i><span>購物頻道</span></button>
-  </div>
+  <div class="tv-channels" id="tv-channels"></div>
 </div>
 
 <div class="pause-overlay" id="pause-overlay" style="display:none;">
