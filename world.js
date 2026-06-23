@@ -454,24 +454,34 @@ function buildLoreSnippetForTv(ctx) {
   return parts.length ? '\n' + parts.join('\n') : '';
 }
 
+// 電視台頻道設定：在 content-lab 編輯、上傳覆蓋 data/tv.json。
+function loadTvConfig() {
+  try {
+    const data = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'tv.json'), 'utf8'));
+    return data && data.channels ? data : { lengthRule: '', settingNote: '', channels: {} };
+  } catch (err) {
+    return { lengthRule: '', settingNote: '', channels: {} };
+  }
+}
+
 function buildTvPrompt(channel, ctx) {
+  const tv = loadTvConfig();
+  const ch = tv.channels[channel] || tv.channels.nature || { label: '頻道', persona: '' };
+
   const stateLine = `白糰糰目前狀態：飽食${ctx.food}、健康${ctx.hp}、心情「${ctx.mood}」、位置「${ctx.location}」、毛況「${ctx.fur}」。\n` +
     `房間：清潔度${ctx.cleanliness}（${ctx.envDesc || '無特別描述'}）、窗戶${ctx.windowOpen ? '開' : '關'}、燈${ctx.lightOn ? '開' : '關'}、空調${ctx.acOn ? '開' : '關'}、小黑影${ctx.shadowActive ? '出沒中' : '潛伏'}。\n` +
     (ctx.weather ? `戶外天氣：${ctx.weather}。\n` : '') +
     (ctx.eventsToday ? `今天已發生：${ctx.eventsToday}。\n` : '') +
     `白糰糰最近的動態紀錄（由舊到新）：\n${(ctx.recentMemory && ctx.recentMemory.length ? ctx.recentMemory : [ctx.recentScene]).map((m, i) => `${i + 1}. ${m}`).join('\n')}`;
 
-  const lengthRule = '篇幅維持在約 120 字左右即可，不用硬性規定字數，偶爾超過沒關係；只能根據上面提供的資訊發揮，不要編造與設定矛盾的內容。';
-  const lorePrefix = `${SYSTEM_PROMPT}\n\n———\n以上是角色設定，務必遵守白糰糰的身體構造（沒有耳朵、鼻子，靠觸感與顏色感知世界）與小黑影的設定。${buildLoreSnippetForTv(ctx)}\n\n`;
+  const lengthRule = tv.lengthRule || '篇幅維持在約120字左右即可。';
+  const settingRef = `${tv.settingNote || ''}${buildLoreSnippetForTv(ctx)}`;
 
-  if (channel === 'nature') {
-    return `${lorePrefix}${stateLine}\n\n你是 DISCOVERY 生態紀錄片的旁白。請以科學旁觀又俏皮詼諧的科普語氣，把白糰糰「當下這一刻」的行為包裝成一段野生觀察紀錄（例如開場「在零下八度的清晨，一隻野生白糰糰……」）。${lengthRule}繁體中文、只輸出旁白本身，不要加標題或前言。`;
-  }
-  if (channel === 'news') {
-    return `${lorePrefix}${stateLine}\n\n你是地方新聞台的主播，正在報導「白糰糰房間」這條荒誕又一本正經的即時新聞。根據上面的房間與狀態，用煞有介事的播報腔調寫一則短新聞報導。${lengthRule}繁體中文、只輸出播報內容，開頭可用「插播一則最新消息——」。`;
-  }
-  // shopping
-  return `${lorePrefix}${stateLine}\n\n你是深夜購物頻道的主持人，正在向觀眾推銷一件「白糰糰現在最需要」的商品（依他目前的飽食、心情、房間狀況挑選，例如餓了就賣零食、冷了就賣暖窩）。用浮誇熱情的購物台語氣介紹，可吹捧賣點、報出限時優惠價、製造搶購感，但這只是節目演出、實際還不能下單。${lengthRule}繁體中文，結尾自然帶一句「錢包功能即將上線，敬請期待」。只輸出主持人的口播。`;
+  // 角色人設當主指令放在最前面，世界設定只當補充參考放在中段，
+  // 避免把整份主世界 SYSTEM_PROMPT 整段塞進去淹沒小模型、造成輸出跑題或亂碼。
+  return `${ch.persona}\n\n${stateLine}\n\n` +
+    (settingRef.trim() ? `世界設定參考（請遵守，但不要逐字唸出）：${settingRef}\n\n` : '') +
+    `${lengthRule}繁體中文，只輸出${ch.label}本身的播報內容，不要加標題、前言或角色標籤。`;
 }
 
 // Gemini 偶爾會夾帶 markdown 符號、程式碼框、把設定提示或分隔線回吐進輸出，這裡清乾淨只留純播報文字。
@@ -1179,7 +1189,7 @@ const server = http.createServer((req, res) => {
     // 給 content-lab 讀目前線上的 data/*.json，方便手機開頁面時帶出最新內容。
     try {
       const name = req.url.split('/')[3].split('?')[0];
-      const allow = { 'system-prompt': 'system-prompt.json', 'fragments': 'fragments.json', 'events': 'events.json', 'balance': 'balance.json', 'hidden-stats': 'hidden-stats.json', 'lorebook': 'lorebook.json', 'actions': 'actions.json' };
+      const allow = { 'system-prompt': 'system-prompt.json', 'fragments': 'fragments.json', 'events': 'events.json', 'balance': 'balance.json', 'hidden-stats': 'hidden-stats.json', 'lorebook': 'lorebook.json', 'actions': 'actions.json', 'tv': 'tv.json' };
       if (!allow[name]) { res.writeHead(404); res.end('not found'); return; }
       const content = fs.readFileSync(path.join(__dirname, 'data', allow[name]), 'utf8');
       res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
