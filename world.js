@@ -376,9 +376,24 @@ async function fetchWeather() {
 // 玩家主動點頻道才觸發，回傳一段短文字，不改世界數值、不佔 tick 預算。
 // 預設用 gemini-2.5-flash、關閉 thinking（避免小請求被思考吃光 token 回空白）；
 // 兩者都可在 content-lab 的「API 設定」分頁切換，存在 balance.json 的 geminiModel/geminiThinking。
+
+// 只是「今天打了幾次、幾次出錯」的觀察用計數器，重啟伺服器會清空（不是 API 官方額度，但能看出是否頻繁撞 429）。
+let geminiStats = { date: '', calls: 0, errors: 0, lastError: null, lastErrorAt: null };
+function recordGeminiResult(result) {
+  const today = getTodayKey();
+  if (geminiStats.date !== today) geminiStats = { date: today, calls: 0, errors: 0, lastError: null, lastErrorAt: null };
+  geminiStats.calls++;
+  if (result.error) {
+    geminiStats.errors++;
+    geminiStats.lastError = `${result.error}${result.detail ? '：' + result.detail.slice(0, 120) : ''}`;
+    geminiStats.lastErrorAt = new Date().toISOString();
+  }
+}
+
 async function callGemini(prompt, maxTokens = 400) {
   const key = process.env.GEMINI_API_KEY;
   if (!key) return { error: 'no_key' };
+  let result;
   try {
     const bal = loadBalance();
     const geminiModel = bal.geminiModel || 'gemini-2.5-flash';
@@ -399,21 +414,25 @@ async function callGemini(prompt, maxTokens = 400) {
     if (!res.ok) {
       const detail = await res.text().catch(() => '');
       console.error(`Gemini 回應錯誤 ${res.status}：${detail.slice(0, 300)}`);
-      return { error: `http_${res.status}`, detail: detail.slice(0, 300) };
+      result = { error: `http_${res.status}`, detail: detail.slice(0, 300) };
+    } else {
+      const data = await res.json();
+      const cand = data?.candidates?.[0];
+      const text = cand?.content?.parts?.map(p => p.text).filter(Boolean).join('').trim();
+      if (!text) {
+        const reason = cand?.finishReason || data?.promptFeedback?.blockReason || 'unknown';
+        console.error(`Gemini 空回應，finishReason=${reason}：`, JSON.stringify(data).slice(0, 300));
+        result = { error: 'empty', detail: `finishReason=${reason}` };
+      } else {
+        result = { text };
+      }
     }
-    const data = await res.json();
-    const cand = data?.candidates?.[0];
-    const text = cand?.content?.parts?.map(p => p.text).filter(Boolean).join('').trim();
-    if (!text) {
-      const reason = cand?.finishReason || data?.promptFeedback?.blockReason || 'unknown';
-      console.error(`Gemini 空回應，finishReason=${reason}：`, JSON.stringify(data).slice(0, 300));
-      return { error: 'empty', detail: `finishReason=${reason}` };
-    }
-    return { text };
   } catch (e) {
     console.error('Gemini 呼叫失敗：', e.message);
-    return { error: 'exception', detail: e.message };
+    result = { error: 'exception', detail: e.message };
   }
+  recordGeminiResult(result);
+  return result;
 }
 
 // 把目前世界狀態整理成電視頻道要用的上下文。
@@ -537,9 +556,13 @@ async function ensureDailyDigest(dateKey) {
   if (day.digest) return day.digest;
   const scenes = (day.diary || []).map(e => e.scene).filter(Boolean);
   if (scenes.length === 0) return null;
-  const prompt = `以下是白糰糰這一天（${dateKey}）依時間順序發生的動態紀錄片段：\n` +
+  const tv = loadTvConfig();
+  const digestCfg = tv.digest || {};
+  const settingRef = tv.settingNote ? `世界設定參考（請遵守，不要逐字唸出，只是幫你理解這些片段裡的角色與名詞）：${tv.settingNote}\n\n` : '';
+  const instruction = digestCfg.dailyInstruction || '請把這一天濃縮成2~3句話的摘要，抓住「真正發生變化、有意義」的部分，重複瑣碎的日常細節可以省略或合併成一句帶過，不要逐條複述。';
+  const prompt = `${settingRef}以下是白糰糰這一天（${dateKey}）依時間順序發生的動態紀錄片段：\n` +
     scenes.map((s, i) => `${i + 1}. ${s}`).join('\n') +
-    `\n\n請把這一天濃縮成2~3句話的摘要，抓住「真正發生變化、有意義」的部分（心情轉折、跟訪客或飼主的互動、跟小黑影的衝突、特殊事件），重複瑣碎的日常細節（吃飯、理毛等沒有特別事件）可以省略或合併成一句帶過，不要逐條複述。繁體中文，只輸出摘要本身，不要加標題或前言。`;
+    `\n\n${instruction}繁體中文，只輸出摘要本身，不要加標題或前言。`;
   const result = await callGemini(prompt, 260);
   if (result.error || !result.text) return null;
   const digest = cleanTvText(result.text);
@@ -567,8 +590,12 @@ async function ensureWeeklyDigest(weekStart) {
   }
   if (dayTexts.length === 0) return null;
 
-  const prompt = `以下是白糰糰這一週（${weekStart} 起的7天）每天的摘要：\n${dayTexts.join('\n')}\n\n` +
-    `請把這一週濃縮成3~4句話的回顧，抓住這週真正的變化與重點（不是逐天複述），可以點出這週的主旋律或印象深刻的片段。繁體中文，只輸出摘要本身，不要加標題或前言。`;
+  const tv = loadTvConfig();
+  const digestCfg = tv.digest || {};
+  const settingRef = tv.settingNote ? `世界設定參考（請遵守，不要逐字唸出，只是幫你理解這些片段裡的角色與名詞）：${tv.settingNote}\n\n` : '';
+  const instruction = digestCfg.weeklyInstruction || '請把這一週濃縮成3~4句話的回顧，抓住這週真正的變化與重點（不是逐天複述），可以點出這週的主旋律或印象深刻的片段。';
+  const prompt = `${settingRef}以下是白糰糰這一週（${weekStart} 起的7天）每天的摘要：\n${dayTexts.join('\n')}\n\n` +
+    `${instruction}繁體中文，只輸出摘要本身，不要加標題或前言。`;
   const result = await callGemini(prompt, 320);
   if (result.error || !result.text) return null;
   const digest = cleanTvText(result.text);
@@ -1031,6 +1058,11 @@ const server = http.createServer((req, res) => {
       res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
       res.end(JSON.stringify({ weather: null }));
     });
+
+  } else if (req.url.startsWith('/api/gemini-status')) {
+    // 給後台看：今天打了幾次 Gemini、幾次出錯、最近一次錯誤是什麼（重啟伺服器會清零，不是官方額度查詢）。
+    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+    res.end(JSON.stringify(geminiStats));
 
   } else if (req.url.startsWith('/api/backfill-digests')) {
     // 補產生「目前還沒有摘要」的舊日子／舊週的回顧摘要（tick()平常只會往前補昨天，

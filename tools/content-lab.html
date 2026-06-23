@@ -439,11 +439,31 @@
     </div>
     <div id="tv-channel-list"></div>
     <div class="status-line off" id="tv-status"></div>
+
+    <div class="panel-head" style="margin-top:18px;">
+      <div class="desc">每日／每週回顧摘要（也是 Gemini 生成）：之前只讀了當天的場景片段，沒讀「世界設定」，所以容易寫得很怪。現在會自動帶上方的「共用設定」當背景參考，這裡可以再調整摘要本身要抓什麼重點。</div>
+    </div>
+    <div class="mini-tile">
+      <div class="tile-header"><span class="tile-title">每日摘要指令</span><span class="tile-desc">餵給Gemini的場景片段清單後面接的指令句</span></div>
+      <textarea id="tv-digest-daily" rows="3" style="width:100%;font-size:13px;padding:6px;border:1px solid #e8c8b0;border-radius:4px;font-family:inherit;resize:vertical;"></textarea>
+    </div>
+    <div class="mini-tile">
+      <div class="tile-header"><span class="tile-title">每週摘要指令</span><span class="tile-desc">餵給Gemini的每日摘要清單後面接的指令句</span></div>
+      <textarea id="tv-digest-weekly" rows="3" style="width:100%;font-size:13px;padding:6px;border:1px solid #e8c8b0;border-radius:4px;font-family:inherit;resize:vertical;"></textarea>
+    </div>
+
     <div class="mini-tile">
       <div class="tile-header"><span class="tile-title">回顧摘要補產生</span><span class="tile-desc">tick()平常只會往前補昨天，上線前已存在的舊天數不會自動生成摘要；按一次補齊所有缺摘要的舊日子/舊週（已存在的不會重打，可放心重複按）</span></div>
       <div class="tile-adjust">
         <button class="primary" onclick="backfillDigests()">補產生回顧摘要</button>
         <span id="backfill-status" style="font-size:12px;color:#8a7a65;"></span>
+      </div>
+    </div>
+    <div class="mini-tile">
+      <div class="tile-header"><span class="tile-title">Gemini 使用狀況</span><span class="tile-desc">今天呼叫了幾次、幾次出錯（重啟伺服器會清零，不是官方額度查詢，但連續出現429代表撞到免費層速率限制了）</span></div>
+      <div class="tile-adjust">
+        <button class="ghost" onclick="refreshGeminiStatus()">↻ 重新查詢</button>
+        <span id="gemini-status-line" style="font-size:12px;color:#8a7a65;"></span>
       </div>
     </div>
   </div>
@@ -1524,14 +1544,18 @@ function renderLorebook() {
 
 // ===================== 電視台（Gemini 頻道） =====================
 // 結構：{ lengthRule, settingNote, channels: { <key>: { label, persona } } }
-let tvData = { lengthRule: '', settingNote: '', channels: {} };
+let tvData = { lengthRule: '', settingNote: '', digest: { dailyInstruction: '', weeklyInstruction: '' }, channels: {} };
 function applyTvData(data) {
-  tvData = (data && data.channels) ? data : { lengthRule: '', settingNote: '', channels: {} };
+  tvData = (data && data.channels) ? data : { lengthRule: '', settingNote: '', digest: { dailyInstruction: '', weeklyInstruction: '' }, channels: {} };
+  if (!tvData.digest) tvData.digest = { dailyInstruction: '', weeklyInstruction: '' };
   renderTv();
 }
 function collectTvData() {
   tvData.lengthRule = document.getElementById('tv-lengthRule').value;
   tvData.settingNote = document.getElementById('tv-settingNote').value;
+  if (!tvData.digest) tvData.digest = {};
+  tvData.digest.dailyInstruction = document.getElementById('tv-digest-daily').value;
+  tvData.digest.weeklyInstruction = document.getElementById('tv-digest-weekly').value;
   document.querySelectorAll('#tv-channel-list [data-channel]').forEach(card => {
     const key = card.dataset.channel;
     if (!tvData.channels[key]) tvData.channels[key] = {};
@@ -1560,6 +1584,8 @@ function removeTvChannel(key) {
 function renderTv() {
   document.getElementById('tv-settingNote').value = tvData.settingNote || '';
   document.getElementById('tv-lengthRule').value = tvData.lengthRule || '';
+  document.getElementById('tv-digest-daily').value = (tvData.digest && tvData.digest.dailyInstruction) || '';
+  document.getElementById('tv-digest-weekly').value = (tvData.digest && tvData.digest.weeklyInstruction) || '';
   const list = document.getElementById('tv-channel-list');
   list.innerHTML = '';
   Object.entries(tvData.channels || {}).forEach(([key, ch]) => {
@@ -1782,6 +1808,19 @@ async function backfillDigests() {
     status.textContent = data.ok ? `完成：補了 ${data.daysFilled} 天、${data.weeksFilled} 週的摘要。` : '失敗，可能還沒部署或不在遊戲網域下開啟。';
   } catch (e) {
     status.textContent = '失敗，可能還沒部署或不在遊戲網域下開啟。';
+  }
+}
+
+async function refreshGeminiStatus() {
+  const line = document.getElementById('gemini-status-line');
+  line.textContent = '查詢中…';
+  try {
+    const res = await fetch('/api/gemini-status?t=' + Date.now());
+    const s = await res.json();
+    const errPart = s.lastError ? `　最近錯誤：${s.lastError}（${new Date(s.lastErrorAt).toLocaleTimeString()}）` : '';
+    line.textContent = `${s.date || '—'}：呼叫 ${s.calls || 0} 次，出錯 ${s.errors || 0} 次${errPart}`;
+  } catch (e) {
+    line.textContent = '查詢失敗，可能還沒部署或不在遊戲網域下開啟。';
   }
 }
 
