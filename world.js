@@ -1411,24 +1411,27 @@ async function tick() {
   const delay = getNextDelay();
   const tickHour = getRealTime().hour;
   const isNightTick = tickHour >= 22 || tickHour < 6;
+  const bal = loadBalance();
+  const model = bal.model || 'claude-sonnet-4-6';
+  const useCache = !!bal.cacheEnabled && !isNightTick;
 
   try {
-    const response = isNightTick
+    const response = useCache
       ? await client.messages.create({
-          model: 'claude-sonnet-4-6',
-          max_tokens: 1400,
-          temperature: 0.95,
-          messages: [{ role: 'user', content: prompt }],
-          system: SYSTEM_PROMPT
-        })
-      : await client.messages.create({
-          model: 'claude-sonnet-4-6',
+          model,
           max_tokens: 1400,
           temperature: 0.95,
           messages: [{ role: 'user', content: prompt }],
           system: [{ type: 'text', text: SYSTEM_PROMPT, cache_control: { type: 'ephemeral', ttl: '1h' } }]
         }, {
           headers: { 'anthropic-beta': 'extended-cache-ttl-2025-04-11' }
+        })
+      : await client.messages.create({
+          model,
+          max_tokens: 1400,
+          temperature: 0.95,
+          messages: [{ role: 'user', content: prompt }],
+          system: SYSTEM_PROMPT
         });
 
     let text = response.content[0].text.trim();

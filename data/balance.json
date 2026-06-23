@@ -28,5 +28,7 @@
   "tickDayMinMin": 25,
   "tickDayMaxMin": 55,
   "tickNightMinMin": 180,
-  "tickNightMaxMin": 360
+  "tickNightMaxMin": 360,
+  "cacheEnabled": true,
+  "model": "claude-sonnet-4-6"
 }
