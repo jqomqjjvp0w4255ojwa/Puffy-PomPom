@@ -1416,7 +1416,9 @@ async function tick() {
       max_tokens: 1400,
       temperature: 0.95,
       messages: [{ role: 'user', content: prompt }],
-      system: SYSTEM_PROMPT
+      system: [{ type: 'text', text: SYSTEM_PROMPT, cache_control: { type: 'ephemeral', ttl: '1h' } }]
+    }, {
+      headers: { 'anthropic-beta': 'extended-cache-ttl-2025-04-11' }
     });
 
     let text = response.content[0].text.trim();
