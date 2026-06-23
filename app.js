@@ -203,6 +203,7 @@ async function loadTvChannels() {
   } catch (e) { /* 拿不到頻道清單就維持空白，下次開電視再試一次 */ }
 }
 
+let tvPowerOn = false;
 function openTv() {
   document.getElementById('tv-overlay').classList.add('open');
   document.getElementById('tv-remote').classList.add('open');
@@ -211,6 +212,16 @@ function openTv() {
 function closeTv() {
   document.getElementById('tv-overlay').classList.remove('open');
   document.getElementById('tv-remote').classList.remove('open');
+}
+
+function toggleTvPower() {
+  tvPowerOn = !tvPowerOn;
+  document.getElementById('tv-power-switch').classList.toggle('on', tvPowerOn);
+  fetch('/api/room', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ tv_on: tvPowerOn })
+  }).catch(() => {});
 }
 
 async function playChannel(channel) {
@@ -234,6 +245,13 @@ async function playChannel(channel) {
     const data = await res.json();
     if (data.ok) {
       screen.innerHTML = `<div class="tv-program">${data.text.replace(/</g, '&lt;')}</div>`;
+      tvPowerOn = true;
+      document.getElementById('tv-power-switch').classList.add('on');
+      fetch('/api/room', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tv_on: true, tv_channel: channel })
+      }).catch(() => {});
     } else {
       let msg = '訊號不穩，稍後再轉台看看…';
       if (data.error === 'no_key') msg = '訊號中斷（電視台還沒設定）';
@@ -277,6 +295,7 @@ async function loadStereoChannels() {
   } catch (e) { /* 拿不到頻道清單就維持空白，下次開音響再試一次 */ }
 }
 
+let stereoPowerOn = false;
 function openStereo() {
   document.getElementById('stereo-overlay').classList.add('open');
   document.getElementById('stereo-remote').classList.add('open');
@@ -285,6 +304,16 @@ function openStereo() {
 function closeStereo() {
   document.getElementById('stereo-overlay').classList.remove('open');
   document.getElementById('stereo-remote').classList.remove('open');
+}
+
+function toggleStereoPower() {
+  stereoPowerOn = !stereoPowerOn;
+  document.getElementById('stereo-power-switch').classList.toggle('on', stereoPowerOn);
+  fetch('/api/room', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ stereo_on: stereoPowerOn })
+  }).catch(() => {});
 }
 
 async function playStereoChannel(channel) {
@@ -308,6 +337,13 @@ async function playStereoChannel(channel) {
     const data = await res.json();
     if (data.ok) {
       screen.innerHTML = `<div class="tv-program">${data.text.replace(/</g, '&lt;')}</div>`;
+      stereoPowerOn = true;
+      document.getElementById('stereo-power-switch').classList.add('on');
+      fetch('/api/room', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ stereo_on: true, stereo_channel: channel })
+      }).catch(() => {});
     } else {
       let msg = '訊號不穩，稍後再轉台看看…';
       if (data.error === 'no_key') msg = '訊號中斷（音響台還沒設定）';
@@ -1022,6 +1058,10 @@ async function load() {
     roomState.toilet_open = world.room.toilet_open || false;
     roomState.fridge_open = world.room.fridge_open || false;
     roomState.cleanliness = world.room.cleanliness;
+    tvPowerOn = !!world.room.tv_on;
+    document.getElementById('tv-power-switch').classList.toggle('on', tvPowerOn);
+    stereoPowerOn = !!world.room.stereo_on;
+    document.getElementById('stereo-power-switch').classList.toggle('on', stereoPowerOn);
     updateAllToggles();
     if (document.getElementById('ac-remote').classList.contains('open')) renderAcRemote();
     updateCleanUI();
