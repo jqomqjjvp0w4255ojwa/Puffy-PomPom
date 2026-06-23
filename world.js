@@ -558,7 +558,7 @@ async function ensureDailyDigest(dateKey) {
   if (scenes.length === 0) return null;
   const tv = loadTvConfig();
   const digestCfg = tv.digest || {};
-  const settingRef = tv.settingNote ? `世界設定參考（請遵守，不要逐字唸出，只是幫你理解這些片段裡的角色與名詞）：${tv.settingNote}\n\n` : '';
+  const settingRef = buildLoreInput(scenes.join(' '));
   const instruction = digestCfg.dailyInstruction || '請把這一天濃縮成2~3句話的摘要，抓住「真正發生變化、有意義」的部分，重複瑣碎的日常細節可以省略或合併成一句帶過，不要逐條複述。';
   const prompt = `${settingRef}以下是白糰糰這一天（${dateKey}）依時間順序發生的動態紀錄片段：\n` +
     scenes.map((s, i) => `${i + 1}. ${s}`).join('\n') +
@@ -592,7 +592,7 @@ async function ensureWeeklyDigest(weekStart) {
 
   const tv = loadTvConfig();
   const digestCfg = tv.digest || {};
-  const settingRef = tv.settingNote ? `世界設定參考（請遵守，不要逐字唸出，只是幫你理解這些片段裡的角色與名詞）：${tv.settingNote}\n\n` : '';
+  const settingRef = buildLoreInput(dayTexts.join(' '));
   const instruction = digestCfg.weeklyInstruction || '請把這一週濃縮成3~4句話的回顧，抓住這週真正的變化與重點（不是逐天複述），可以點出這週的主旋律或印象深刻的片段。';
   const prompt = `${settingRef}以下是白糰糰這一週（${weekStart} 起的7天）每天的摘要：\n${dayTexts.join('\n')}\n\n` +
     `${instruction}繁體中文，只輸出摘要本身，不要加標題或前言。`;

@@ -220,6 +220,7 @@
     <button class="tab-btn" data-tab="lore" onclick="switchTab('lore')">世界書</button>
     <button class="tab-btn" data-tab="action" onclick="switchTab('action')">行為籤庫</button>
     <button class="tab-btn" data-tab="tv" onclick="switchTab('tv')">電視台</button>
+    <button class="tab-btn" data-tab="digest" onclick="switchTab('digest')">回顧摘要</button>
     <button class="tab-btn" data-tab="event" onclick="switchTab('event')">特殊事件</button>
     <button class="tab-btn" data-tab="dev" onclick="switchTab('dev')">開發者專區</button>
   </div>
@@ -439,9 +440,16 @@
     </div>
     <div id="tv-channel-list"></div>
     <div class="status-line off" id="tv-status"></div>
+  </div>
 
-    <div class="panel-head" style="margin-top:18px;">
-      <div class="desc">每日／每週回顧摘要（也是 Gemini 生成）：之前只讀了當天的場景片段，沒讀「世界設定」，所以容易寫得很怪。現在會自動帶上方的「共用設定」當背景參考，這裡可以再調整摘要本身要抓什麼重點。</div>
+  <!-- ============ 回顧摘要（每日/每週，Gemini） ============ -->
+  <div class="tab-panel" id="panel-digest">
+    <div class="panel-head">
+      <div class="desc">回顧頁的每日/每週摘要，也是用免費的 Gemini 生成，跟電視台是分開的兩件事（電視台是即時播報，這裡是把整天/整週的紀錄濃縮成幾句話）。摘要會自動帶上「世界書」裡符合那天內容關鍵字的條目當背景參考（例如身體地圖、設定條目），不會整段塞系統prompt，所以世界書內容越完整，摘要越不容易寫得文不對題。</div>
+      <div class="actions">
+        <button class="ghost" onclick="loadFromServer('tv', applyTvData)">↻ 拉取最新</button>
+        <button class="primary" onclick="uploadJSON('data/tv.json', collectTvData(), 'tv-status')">上傳</button>
+      </div>
     </div>
     <div class="mini-tile">
       <div class="tile-header"><span class="tile-title">每日摘要指令</span><span class="tile-desc">餵給Gemini的場景片段清單後面接的指令句</span></div>
@@ -451,6 +459,7 @@
       <div class="tile-header"><span class="tile-title">每週摘要指令</span><span class="tile-desc">餵給Gemini的每日摘要清單後面接的指令句</span></div>
       <textarea id="tv-digest-weekly" rows="3" style="width:100%;font-size:13px;padding:6px;border:1px solid #e8c8b0;border-radius:4px;font-family:inherit;resize:vertical;"></textarea>
     </div>
+    <div class="status-line off" id="digest-status"></div>
 
     <div class="mini-tile">
       <div class="tile-header"><span class="tile-title">回顧摘要補產生</span><span class="tile-desc">tick()平常只會往前補昨天，上線前已存在的舊天數不會自動生成摘要；按一次補齊所有缺摘要的舊日子/舊週（已存在的不會重打，可放心重複按）</span></div>
