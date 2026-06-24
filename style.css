@@ -303,9 +303,11 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
 .switch-tile:hover { background: #f7f3ec; }
 .ac-tile:has(.switch.on) {
   grid-column: span 2;
-  justify-content: flex-start;
-  gap: 4px;
-  min-width: 0;
+  display: flex;          /* 統一使用 flex */
+  align-items: center;    /* 垂直置中 */
+  gap: 6px;               /* 與音響邏輯對齊 */
+  min-width: 0;           /* 關鍵：防止內容撐破格子 */
+  width: 100%;            /* 確保填滿空間 */
 }
 .ac-tile-header { display: contents; }
 .ac-tile:has(.switch.on) .ac-tile-header { display: flex; flex-shrink: 0; }
