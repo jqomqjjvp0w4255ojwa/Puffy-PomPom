@@ -347,8 +347,10 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
 }
 
 /* 冷氣的標籤可以換行，不再露出被截斷的半顆標籤 */
+/* 冷氣狀態保持一組並水平置中 */
 .ac-tile:not(.media-tile):has(.switch.on) .ac-tile-pills {
-  flex-wrap: wrap;
+  justify-content: center;
+  flex-wrap: nowrap;
   overflow: visible;
 }
 
