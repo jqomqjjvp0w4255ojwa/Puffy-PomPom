@@ -428,6 +428,7 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
   background: #1c1a18;
   border-radius: 12px;
   height: 260px;
+  max-height: 40vh;
   margin: 0.9rem 0;
   padding: 14px 15px;
   display: flex;
@@ -497,6 +498,10 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
   transform: translate(-50%, -48%) scale(0.96);
   width: 280px;
   max-width: calc(100vw - 2rem);
+  max-height: calc(100vh - 2rem);
+  max-height: calc(100dvh - 2rem);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   background: #f3ece0;
   border-radius: 20px;
   box-shadow: 0 14px 40px rgba(0,0,0,0.3);
