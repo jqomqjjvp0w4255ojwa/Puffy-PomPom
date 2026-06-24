@@ -864,6 +864,36 @@ function appendToDay(dateKey, section, entries) {
   writeDay(dateKey, day);
 }
 
+function latestObservationVersion() {
+  const dateKey = getTodayKey();
+  const day = readDay(dateKey);
+  const diary = day.diary || [];
+  const latest = diary[diary.length - 1];
+  if (!latest) return `${dateKey}:no-observation`;
+  return `${dateKey}:${latest.time || ''}:${String(latest.scene || '').slice(0, 80)}`;
+}
+
+const observationMediaCache = {
+  tv: {},
+  stereo: {}
+};
+
+function observationMediaCacheKey(channel) {
+  return `${channel}:${latestObservationVersion()}`;
+}
+
+function getObservationMediaCache(kind, channel) {
+  const bucket = observationMediaCache[kind] || {};
+  return bucket[observationMediaCacheKey(channel)] || null;
+}
+
+function setObservationMediaCache(kind, channel, text) {
+  const bucket = observationMediaCache[kind] || (observationMediaCache[kind] = {});
+  bucket[observationMediaCacheKey(channel)] = text;
+  const keys = Object.keys(bucket);
+  if (keys.length > 80) delete bucket[keys[0]];
+}
+
 function listDateKeys() {
   ensureLogsDir();
   return fs.readdirSync(LOGS_DIR)
@@ -1192,12 +1222,18 @@ const server = http.createServer((req, res) => {
           return;
         }
         const ctx = buildTvContext();
+        const cached = channel === 'nature' ? getObservationMediaCache('tv', channel) : null;
+        if (cached) {
+          res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+          res.end(JSON.stringify({ ok: true, channel, text: cached, cached: true }));
+          return;
+        }
         const result = await callGemini(buildTvPrompt(channel, ctx), 280);
         if (result.error) {
           res.end(JSON.stringify({ ok: false, error: result.error, detail: result.detail || '' }));
         } else {
           const text = cleanTvText(result.text);
-          channelCache.tv[channel] = { stamp, text };
+          if (channel === 'nature') setObservationMediaCache('tv', channel, text);
           res.end(JSON.stringify({ ok: true, channel, text }));
         }
       } catch (e) {
@@ -1238,12 +1274,18 @@ const server = http.createServer((req, res) => {
           return;
         }
         const ctx = buildTvContext();
+        const cached = channel === 'lofi' ? getObservationMediaCache('stereo', channel) : null;
+        if (cached) {
+          res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+          res.end(JSON.stringify({ ok: true, channel, text: cached, cached: true }));
+          return;
+        }
         const result = await callGemini(buildStereoPrompt(channel, ctx), 200);
         if (result.error) {
           res.end(JSON.stringify({ ok: false, error: result.error, detail: result.detail || '' }));
         } else {
           const text = cleanTvText(result.text);
-          channelCache.stereo[channel] = { stamp, text };
+          if (channel === 'lofi') setObservationMediaCache('stereo', channel, text);
           res.end(JSON.stringify({ ok: true, channel, text }));
         }
       } catch (e) {
