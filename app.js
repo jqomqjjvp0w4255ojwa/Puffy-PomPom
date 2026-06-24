@@ -288,6 +288,7 @@ async function playChannel(channel) {
     b.classList.toggle('active', b.dataset.channel === channel));
   screen.innerHTML = `<div class="tv-screen-static">${TV_CHANNEL_LABEL[channel]}・訊號接收中…</div>`;
   try {
+    // 後端已依時段/最新紀錄做快取，這裡一律只「抓」，由後端決定要不要重新生成。
     const res = await fetch('/api/tv', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -309,6 +310,8 @@ async function playChannel(channel) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ tv_on: true, tv_channel: channel })
       }).catch(() => {});
+      // 只有真的重新生成才上冷卻；抓快取的不限制，方便快速轉台。
+      if (!data.cached) tvCooldownUntil = Date.now() + TV_COOLDOWN_MS;
     } else {
       let msg = '訊號不穩，稍後再轉台看看…';
       if (data.error === 'no_key') msg = '訊號中斷（電視台還沒設定）';
@@ -320,7 +323,6 @@ async function playChannel(channel) {
     screen.innerHTML = `<div class="tv-screen-static">收訊失敗，雪花一片…</div>`;
   } finally {
     tvLoading = false;
-    tvCooldownUntil = Date.now() + TV_COOLDOWN_MS;
   }
 }
 
@@ -425,6 +427,7 @@ async function playStereoChannel(channel) {
     b.classList.toggle('active', b.dataset.channel === channel));
   screen.innerHTML = `<div class="tv-screen-static">${STEREO_CHANNEL_LABEL[channel]}・播放中…</div>`;
   try {
+    // 後端已依時段/最新紀錄做快取，這裡一律只「抓」，由後端決定要不要重新生成。
     const res = await fetch('/api/stereo', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -446,6 +449,7 @@ async function playStereoChannel(channel) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ stereo_on: true, stereo_channel: channel })
       }).catch(() => {});
+      if (!data.cached) stereoCooldownUntil = Date.now() + STEREO_COOLDOWN_MS;
     } else {
       let msg = '訊號不穩，稍後再轉台看看…';
       if (data.error === 'no_key') msg = '訊號中斷（音響台還沒設定）';
@@ -457,7 +461,6 @@ async function playStereoChannel(channel) {
     screen.innerHTML = `<div class="tv-screen-static">收訊失敗，沙沙聲…</div>`;
   } finally {
     stereoLoading = false;
-    stereoCooldownUntil = Date.now() + STEREO_COOLDOWN_MS;
   }
 }
 
