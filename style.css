@@ -301,17 +301,32 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
   transition: background 0.2s;
 }
 .switch-tile:hover { background: #f7f3ec; }
-.ac-tile:has(.switch.on) {
-  grid-column: span 2;
-  display: flex;          /* 統一使用 flex */
-  align-items: center;    /* 垂直置中 */
-  gap: 6px;               /* 與音響邏輯對齊 */
-  min-width: 0;           /* 關鍵：防止內容撐破格子 */
-  width: 100%;            /* 確保填滿空間 */
+/* 只有冷氣開啟時獨占整列；排除電視、音響 */
+.ac-tile:not(.media-tile):has(.switch.on) {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
 }
-.ac-tile-header { display: contents; }
-.ac-tile:has(.switch.on) .ac-tile-header { display: flex; flex-shrink: 0; }
-.ac-tile:has(.switch.on) .switch-icon-label { flex-direction: row; gap: 6px; }
+
+.ac-tile-header {
+  display: contents;
+}
+
+.ac-tile:has(.switch.on) .ac-tile-header {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.ac-tile:has(.switch.on) .switch-icon-label {
+  flex-direction: row;
+  gap: 6px;
+}
+
 .ac-tile-pills {
   display: none;
   align-items: center;
@@ -322,11 +337,37 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
   cursor: pointer;
   scrollbar-width: none;
 }
-.ac-tile-pills::-webkit-scrollbar { display: none; }
-.ac-tile:has(.switch.on) .ac-tile-pills { display: flex; }
-.media-tile:has(.switch.on) { grid-column: span 2; gap: 6px; }
-.media-tile .ac-tile-pills { flex: 0 1 auto; justify-content: center; }
-.media-tile .ac-pill { justify-content: center; min-width: 64px; }
+
+.ac-tile-pills::-webkit-scrollbar {
+  display: none;
+}
+
+.ac-tile:has(.switch.on) .ac-tile-pills {
+  display: flex;
+}
+
+/* 冷氣的標籤可以換行，不再露出被截斷的半顆標籤 */
+.ac-tile:not(.media-tile):has(.switch.on) .ac-tile-pills {
+  flex-wrap: wrap;
+  overflow: visible;
+}
+
+/* 電視與音響維持原本兩格寬的 flex 排版 */
+.media-tile:has(.switch.on) {
+  grid-column: span 2;
+  gap: 6px;
+}
+
+.media-tile .ac-tile-pills {
+  flex: 0 1 auto;
+  justify-content: center;
+}
+
+.media-tile .ac-pill {
+  justify-content: center;
+  min-width: 64px;
+}
+
 .ac-pill {
   display: flex;
   align-items: center;
@@ -338,8 +379,22 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
   padding: 4px 9px;
   white-space: normal;
 }
-.ac-pill.active { background: #cfe3f0; color: #3a6a8a; }
-.ac-pill i { font-size: 11px; }
+
+/* 只有冷氣標籤內部文字不換行，整顆標籤會換到下一行 */
+.ac-tile:not(.media-tile):has(.switch.on) .ac-pill {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.ac-pill.active {
+  background: #cfe3f0;
+  color: #3a6a8a;
+}
+
+.ac-pill i {
+  font-size: 11px;
+}
+
 .switch-icon-label {
   display: flex;
   flex-direction: column;
