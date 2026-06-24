@@ -181,7 +181,6 @@ let tvChannelsLoaded = false;
 let tvLoading = false;
 const TV_COOLDOWN_MS = 8000; // 轉台冷卻：免費層有每分鐘請求上限，連點容易撞到 429
 let tvCooldownUntil = 0;
-let tvChannelCache = {}; // 頻道內容快取（除了生物頻道）
 
 async function loadTvChannels() {
   if (tvChannelsLoaded) return;
@@ -251,28 +250,12 @@ async function playChannel(channel) {
     screen.innerHTML = `<div class="tv-screen-static">轉台太快了，再等 ${wait} 秒…</div>`;
     return;
   }
-
-  // 非生物頻道且有快取，直接顯示快取
-  if (channel !== 'nature' && tvChannelCache[channel]) {
-    document.querySelectorAll('.tv-channel-btn').forEach(b =>
-      b.classList.toggle('active', b.dataset.channel === channel));
-    screen.innerHTML = `<div class="tv-program">${tvChannelCache[channel]}</div>`;
-    tvPowerOn = true;
-    tvLastChannel = channel;
-    updateTvPowerUI();
-    fetch('/api/room', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ tv_on: true, tv_channel: channel })
-    }).catch(() => {});
-    return;
-  }
-
   tvLoading = true;
   document.querySelectorAll('.tv-channel-btn').forEach(b =>
     b.classList.toggle('active', b.dataset.channel === channel));
   screen.innerHTML = `<div class="tv-screen-static">${TV_CHANNEL_LABEL[channel]}・訊號接收中…</div>`;
   try {
+    // 後端已依時段/最新紀錄做快取，這裡一律只「抓」，由後端決定要不要重新生成。
     const res = await fetch('/api/tv', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -280,12 +263,7 @@ async function playChannel(channel) {
     });
     const data = await res.json();
     if (data.ok) {
-      const contentHtml = data.text.replace(/</g, '&lt;');
-      screen.innerHTML = `<div class="tv-program">${contentHtml}</div>`;
-      // 非生物頻道才快取
-      if (channel !== 'nature') {
-        tvChannelCache[channel] = contentHtml;
-      }
+      screen.innerHTML = `<div class="tv-program">${data.text.replace(/</g, '&lt;')}</div>`;
       tvPowerOn = true;
       tvLastChannel = channel;
       updateTvPowerUI();
@@ -294,6 +272,8 @@ async function playChannel(channel) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ tv_on: true, tv_channel: channel })
       }).catch(() => {});
+      // 只有真的重新生成才上冷卻；抓快取的不限制，方便快速轉台。
+      if (!data.cached) tvCooldownUntil = Date.now() + TV_COOLDOWN_MS;
     } else {
       let msg = '訊號不穩，稍後再轉台看看…';
       if (data.error === 'no_key') msg = '訊號中斷（電視台還沒設定）';
@@ -305,7 +285,6 @@ async function playChannel(channel) {
     screen.innerHTML = `<div class="tv-screen-static">收訊失敗，雪花一片…</div>`;
   } finally {
     tvLoading = false;
-    tvCooldownUntil = Date.now() + TV_COOLDOWN_MS;
   }
 }
 
@@ -315,7 +294,6 @@ let stereoChannelsLoaded = false;
 let stereoLoading = false;
 const STEREO_COOLDOWN_MS = 8000;
 let stereoCooldownUntil = 0;
-let stereoChannelCache = {}; // 頻道內容快取（除了生物頻道）
 
 async function loadStereoChannels() {
   if (stereoChannelsLoaded) return;
@@ -386,27 +364,12 @@ async function playStereoChannel(channel) {
     return;
   }
 
-  // 非lofi頻道且有快取，直接顯示快取
-  if (channel !== 'lofi' && stereoChannelCache[channel]) {
-    document.querySelectorAll('#stereo-channels .tv-channel-btn').forEach(b =>
-      b.classList.toggle('active', b.dataset.channel === channel));
-    screen.innerHTML = `<div class="tv-program">${stereoChannelCache[channel]}</div>`;
-    stereoPowerOn = true;
-    stereoLastChannel = channel;
-    updateStereoPowerUI();
-    fetch('/api/room', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ stereo_on: true, stereo_channel: channel })
-    }).catch(() => {});
-    return;
-  }
-
   stereoLoading = true;
   document.querySelectorAll('#stereo-channels .tv-channel-btn').forEach(b =>
     b.classList.toggle('active', b.dataset.channel === channel));
   screen.innerHTML = `<div class="tv-screen-static">${STEREO_CHANNEL_LABEL[channel]}・播放中…</div>`;
   try {
+    // 後端已依時段/最新紀錄做快取，這裡一律只「抓」，由後端決定要不要重新生成。
     const res = await fetch('/api/stereo', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -414,12 +377,7 @@ async function playStereoChannel(channel) {
     });
     const data = await res.json();
     if (data.ok) {
-      const contentHtml = data.text.replace(/</g, '&lt;');
-      screen.innerHTML = `<div class="tv-program">${contentHtml}</div>`;
-      // 非lofi頻道才快取
-      if (channel !== 'lofi') {
-        stereoChannelCache[channel] = contentHtml;
-      }
+      screen.innerHTML = `<div class="tv-program">${data.text.replace(/</g, '&lt;')}</div>`;
       stereoPowerOn = true;
       stereoLastChannel = channel;
       updateStereoPowerUI();
@@ -428,6 +386,7 @@ async function playStereoChannel(channel) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ stereo_on: true, stereo_channel: channel })
       }).catch(() => {});
+      if (!data.cached) stereoCooldownUntil = Date.now() + STEREO_COOLDOWN_MS;
     } else {
       let msg = '訊號不穩，稍後再轉台看看…';
       if (data.error === 'no_key') msg = '訊號中斷（音響台還沒設定）';
@@ -439,7 +398,6 @@ async function playStereoChannel(channel) {
     screen.innerHTML = `<div class="tv-screen-static">收訊失敗，沙沙聲…</div>`;
   } finally {
     stereoLoading = false;
-    stereoCooldownUntil = Date.now() + STEREO_COOLDOWN_MS;
   }
 }
 

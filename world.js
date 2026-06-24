@@ -462,6 +462,28 @@ function buildTvContext() {
   };
 }
 
+// ===== 頻道內容快取（後端）=====
+// 點頻道只「抓」已生成的內容，不是每次點都呼叫 Gemini（避免連點撞到免費層上限）。
+// - 一般頻道：依時段快取（每 4 小時一段），同一時段內重複點直接回快取。
+// - 生態(nature)/lofi 頻道：跟著「最新紀錄」走，每產生一筆新動態才會重新生成一次。
+const channelCache = { tv: {}, stereo: {} };
+const TV_LIVE_CHANNELS = new Set(['nature']);
+const STEREO_LIVE_CHANNELS = new Set(['lofi']);
+
+function currentSlotId() {
+  return `${getTodayKey()}#${Math.floor(getRealTime().hour / 4)}`;
+}
+function latestRecordStamp() {
+  try {
+    const world = JSON.parse(fs.readFileSync(WORLD_FILE, 'utf8'));
+    return String((world.tokenUsage && world.tokenUsage.calls) || 0);
+  } catch (e) { return '0'; }
+}
+function channelStamp(kind, channel) {
+  const live = kind === 'tv' ? TV_LIVE_CHANNELS : STEREO_LIVE_CHANNELS;
+  return live.has(channel) ? 'rec:' + latestRecordStamp() : 'slot:' + currentSlotId();
+}
+
 // 給電視台用的世界觀補充：抽幾張小黑影紙片當背景知識＋符合目前情境的世界書條目，
 // 讓 Gemini 也認識他的調性（免費模型，多讀點資料無妨）。
 function buildLoreSnippetForTv(ctx) {
@@ -1161,13 +1183,22 @@ const server = http.createServer((req, res) => {
         const tv = loadTvConfig();
         const validKeys = Object.keys(tv.channels || {});
         const channel = validKeys.includes(data.channel) ? data.channel : (validKeys[0] || 'nature');
+        const stamp = channelStamp('tv', channel);
+        const cached = channelCache.tv[channel];
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+        if (cached && cached.stamp === stamp) {
+          // 同時段（或同一筆紀錄）已生成過，直接回快取，不呼叫 Gemini。
+          res.end(JSON.stringify({ ok: true, channel, text: cached.text, cached: true }));
+          return;
+        }
         const ctx = buildTvContext();
         const result = await callGemini(buildTvPrompt(channel, ctx), 280);
-        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
         if (result.error) {
           res.end(JSON.stringify({ ok: false, error: result.error, detail: result.detail || '' }));
         } else {
-          res.end(JSON.stringify({ ok: true, channel, text: cleanTvText(result.text) }));
+          const text = cleanTvText(result.text);
+          channelCache.tv[channel] = { stamp, text };
+          res.end(JSON.stringify({ ok: true, channel, text }));
         }
       } catch (e) {
         res.writeHead(500);
@@ -1199,13 +1230,21 @@ const server = http.createServer((req, res) => {
         const stereo = loadStereoConfig();
         const validKeys = Object.keys(stereo.channels || {});
         const channel = validKeys.includes(data.channel) ? data.channel : (validKeys[0] || 'lofi');
+        const stamp = channelStamp('stereo', channel);
+        const cached = channelCache.stereo[channel];
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+        if (cached && cached.stamp === stamp) {
+          res.end(JSON.stringify({ ok: true, channel, text: cached.text, cached: true }));
+          return;
+        }
         const ctx = buildTvContext();
         const result = await callGemini(buildStereoPrompt(channel, ctx), 200);
-        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
         if (result.error) {
           res.end(JSON.stringify({ ok: false, error: result.error, detail: result.detail || '' }));
         } else {
-          res.end(JSON.stringify({ ok: true, channel, text: cleanTvText(result.text) }));
+          const text = cleanTvText(result.text);
+          channelCache.stereo[channel] = { stamp, text };
+          res.end(JSON.stringify({ ok: true, channel, text }));
         }
       } catch (e) {
         res.writeHead(500);
@@ -1779,6 +1818,15 @@ async function tick() {
       },
       room: { ...world.room, ...result.room }
     };
+
+    // events_today 防膨脹：跨日清空、單日也只保留最近 8 筆。
+    // 否則它每個 tick 都整份塞進 prompt、又被 AI 原樣加長吐回，會無限累積把成本撐大。
+    {
+      const evRaw = Array.isArray(newWorld.room.events_today) ? newWorld.room.events_today : [];
+      const sameDay = world.room.events_day === todayKey;
+      newWorld.room.events_today = (sameDay ? evRaw : evRaw.slice(-1)).slice(-8);
+      newWorld.room.events_day = todayKey;
+    }
 
     if (triggeredEvent === 'farewell') {
       newWorld.farewell = { ...(world.farewell || {}), pending: true };
