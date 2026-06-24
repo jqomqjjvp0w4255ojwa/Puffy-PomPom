@@ -336,7 +336,7 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
   background: #eee7db;
   border-radius: 999px;
   padding: 4px 9px;
-  white-space: nowrap;
+  white-space: normal;
 }
 .ac-pill.active { background: #cfe3f0; color: #3a6a8a; }
 .ac-pill i { font-size: 11px; }
