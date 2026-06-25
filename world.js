@@ -1849,7 +1849,6 @@ async function tick() {
       }
     }
 
-    const todayKey = getTodayKey();
 
     if (ownerActionUnread) {
       appendToDay(todayKey, 'ownerLog', [{
