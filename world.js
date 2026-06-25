@@ -345,16 +345,19 @@ function weatherDesc(code) {
   return '—';
 }
 
-// 抓台北即時天氣（Open-Meteo，免金鑰）。失敗回 null，不影響 tick；失敗時重試一次，避免單次網路抖動就整段漏記天氣。
+// 抓新竹即時天氣（Open-Meteo，免金鑰）。失敗回 null，不影響 tick；失敗時重試一次，避免單次網路抖動就整段漏記天氣。
 async function fetchWeatherOnce() {
-  const url = 'https://api.open-meteo.com/v1/forecast?latitude=25.033&longitude=121.565&current=temperature_2m,relative_humidity_2m,weather_code&timezone=Asia%2FTaipei';
+  const url = 'https://api.open-meteo.com/v1/forecast?latitude=24.8138&longitude=120.9675&current=temperature_2m,relative_humidity_2m,weather_code&timezone=Asia%2FTaipei';
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 8000);
+
   try {
     const res = await fetch(url, { signal: controller.signal });
     if (!res.ok) return null;
+
     const data = await res.json();
     const c = data.current;
+
     return {
       temp: Math.round(c.temperature_2m),
       humidity: Math.round(c.relative_humidity_2m),
