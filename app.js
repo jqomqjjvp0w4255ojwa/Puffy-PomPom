@@ -1917,10 +1917,6 @@ function renderNotes() {
     </div>`;
     notesIndex = left;
   }
-  if (notesIndex !== 0) {
-    // 手機固定在左上角；桌面已經把［<］接在書頁篇名左邊了（見 renderSinglePage），這裡只給手機用。
-    html += `<button class="book-back-fixed" onclick="notesIndex=0;renderNotes()" title="回到目錄">&lt;</button>`;
-  }
   box.innerHTML = html;
   attachSwipe(box);
   renderNotesShelf();

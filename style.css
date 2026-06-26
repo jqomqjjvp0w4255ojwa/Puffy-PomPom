@@ -1442,22 +1442,15 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
   cursor: pointer; margin-right: 4px; color: #c0a888; font-weight: 700;
 }
 .book-back-arrow:hover { color: #c08050; }
-/* 手機只用左上角固定的那顆［<］（見 .book-back-fixed），這裡先預設隱藏避免重複 */
+/* 桌面預設隱藏，偶數頁（右頁）不需要再放一次；奇數頁（左頁）才顯示 */
 .book-back-arrow { display: none; }
 @media (min-width: 760px) {
-  /* 桌面奇數頁（左頁）才顯示接在篇名左邊的［<］，偶數頁（右頁）不需要再放一次 */
   .book-back-arrow.left { display: inline; }
 }
-/* 回到目錄：手機固定在左上角漢堡選單鈕「右邊」（左上角被選單鈕佔住了，疊一起會被蓋掉看不到），
-   桌面已經有上面那個接在篇名左邊的［<］了，這裡隱藏。 */
-.book-back-fixed {
-  position: fixed; left: 68px; top: 24px; z-index: 260;
-  border: none; background: transparent; color: #b89878;
-  cursor: pointer; font-size: 22px; font-weight: 700; line-height: 1; padding: 4px 8px;
-}
-.book-back-fixed:hover { color: #c08050; }
-@media (min-width: 760px) {
-  .book-back-fixed { display: none; }
+/* 手機一次只顯示一頁，那一頁就是當前唯一頁面，直接統一顯示同一個接在篇名左邊的［<］，
+   不需要再額外浮一顆固定按鈕 */
+@media (max-width: 759px) {
+  .book-back-arrow { display: inline; }
 }
 .book-page-num {
   position: absolute; bottom: 10px; font-size: 11px; color: #c0b0a0;
