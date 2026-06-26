@@ -732,6 +732,10 @@ function refreshDevStatsWithWorld(est) {
   document.getElementById('dev-cost-table').innerHTML = c.join('');
 
   // ④ 實際累計用量
+  // 上面②③的估算只抓了記憶／房間描述／事件／訪客留言，沒算進世界書命中、天氣、氣候、
+  // 小黑影、主人動作、離家、待簽便條紙、隱藏數值這些每次也會送進 user prompt 的內容，
+  // 所以②③只能當「相對比較」（例如比較切換模型的省幅），不能當實際月費看。
+  // 這裡改用 /api/usage 累計下來的真實花費反推月費，才是目前最準的數字。
   fetch('/api/usage').then(r => r.json()).then(d => {
     const u = d.usage || { inputTokens: 0, outputTokens: 0, calls: 0 };
     const realCost = u.inputTokens / 1e6 * priceIn + u.outputTokens / 1e6 * priceOut;
@@ -740,6 +744,14 @@ function refreshDevStatsWithWorld(est) {
     a.push(`<tr><td>累計 input / output</td><td class="num">${u.inputTokens.toLocaleString()} / ${u.outputTokens.toLocaleString()}</td></tr>`);
     if (u.calls > 0) a.push(`<tr><td>實際平均每次 input / output</td><td class="num">${Math.round(u.inputTokens/u.calls)} / ${Math.round(u.outputTokens/u.calls)}</td></tr>`);
     a.push(`<tr class="total"><td>累計實際花費</td><td class="num">$${realCost.toFixed(4)}</td></tr>`);
+    if (u.calls >= 10) {
+      const costPerCall = realCost / u.calls;
+      const projectedMonthly = costPerCall * ticksPerDay * 30;
+      a.push(`<tr class="total" style="background:#ffe8c2"><td>依目前真實平均推算月費</td><td class="num">$${projectedMonthly.toFixed(2)}</td></tr>`);
+      a.push(`<tr><td colspan="2" style="font-size:12px;color:#6a4a2a">＝平均每次實際花費 $${costPerCall.toFixed(4)} × 每天約${ticksPerDay.toFixed(1)}次 × 30天。累計次數越多這個數字越準，建議以這個為主，上面②③的估算僅供切換模型時的相對比較。</td></tr>`);
+    } else {
+      a.push(`<tr><td colspan="2" style="font-size:12px;color:#6a4a2a">累計次數還太少（&lt;10次），先看上面②③估算當參考；累積到10次以上會顯示「依真實平均推算月費」。</td></tr>`);
+    }
     document.getElementById('dev-actual-table').innerHTML = a.join('');
   }).catch(() => {
     document.getElementById('dev-actual-table').innerHTML = `<tr><td>尚無資料（伺服器未啟動或還沒跑過更新）</td></tr>`;
