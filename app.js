@@ -1846,8 +1846,10 @@ function pageInnerHtml(page) {
 function renderSinglePage(page, pageNum) {
   const { running, body } = pageInnerHtml(page);
   const numSide = pageNum != null ? (pageNum % 2 === 1 ? 'left' : 'right') : '';
+  // 桌面：［<回到目錄］直接接在篇名左邊；手機另外固定在左上角（見 .book-back-fixed）。
+  const backArrow = running ? `<span class="book-back-arrow" onclick="event.stopPropagation();notesIndex=0;renderNotes()" title="回到目錄">&lt;</span>` : '';
   return `<div class="book-page">
-    ${running ? `<div class="book-running-title ${numSide}">${escapeHtml(running)}</div>` : ''}
+    ${running ? `<div class="book-running-title ${numSide}">${backArrow}${escapeHtml(running)}</div>` : ''}
     <div class="book-page-body">${body}</div>
     ${pageNum != null ? `<div class="book-page-num ${numSide}">${pageNum}</div>` : ''}
     <div class="book-tap-zone left" onclick="flipNotes(-1)"></div>
@@ -1872,7 +1874,8 @@ function renderNotes() {
     notesIndex = left;
   }
   if (notesIndex !== 0) {
-    html += `<button class="book-toc-btn" onclick="notesIndex=0;renderNotes()" title="回到目錄"><i class="ti ti-list"></i></button>`;
+    // 手機固定在左上角；桌面已經把［<］接在書頁篇名左邊了（見 renderSinglePage），這裡只給手機用。
+    html += `<button class="book-back-fixed" onclick="notesIndex=0;renderNotes()" title="回到目錄">&lt;</button>`;
   }
   box.innerHTML = html;
   attachSwipe(box);
