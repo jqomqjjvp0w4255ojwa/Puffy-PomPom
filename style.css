@@ -892,7 +892,7 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
   margin-top: 4px;
 }
 .sticky-note-textarea::placeholder { color: rgba(0,0,0,0.3); }
-.note-location-picker { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 6px; }
+.note-location-picker { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .note-loc-label { font-size: 11px; color: rgba(0,0,0,0.5); }
 .note-loc-select {
   font-family: 'Noto Serif TC', serif; font-size: 11.5px; color: rgba(0,0,0,0.7);
@@ -972,7 +972,8 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
 .note-stamp-hand { color: #a88a5e; }
 .note-stamp-fur { color: #c2a98a; }
 
-.sticky-note-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 6px; }
+.sticky-note-actions { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 6px; }
+.sticky-note-actions-icons { display: flex; gap: 10px; }
 .sticky-note-actions i { font-size: 20px; color: rgba(0,0,0,0.5); cursor: pointer; }
 .sticky-note-actions i:hover { color: rgba(0,0,0,0.75); }
 
@@ -1425,7 +1426,7 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
 .book-spread:not(.single) .book-page:last-child { border-radius: 2px 8px 8px 2px; }
 .book-page.blank { background: #f7f4ee; }
 .book-running-title {
-  position: absolute; top: 10px;
+  position: absolute; top: 10px; z-index: 2;
   font-size: 10.5px; color: #c0a888; letter-spacing: 0.05em;
 }
 .book-running-title.left { left: 14px; }
@@ -1435,6 +1436,12 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
   cursor: pointer; margin-right: 4px; color: #c0a888; font-weight: 700;
 }
 .book-back-arrow:hover { color: #c08050; }
+/* 手機只用左上角固定的那顆［<］（見 .book-back-fixed），這裡先預設隱藏避免重複 */
+.book-back-arrow { display: none; }
+@media (min-width: 760px) {
+  /* 桌面奇數頁（左頁）才顯示接在篇名左邊的［<］，偶數頁（右頁）不需要再放一次 */
+  .book-back-arrow.left { display: inline; }
+}
 /* 回到目錄：手機固定在左上角（桌面已經有上面那個［<］了，這裡隱藏） */
 .book-back-fixed {
   position: fixed; left: 0.8rem; top: 0.8rem; z-index: 110;
@@ -1503,7 +1510,7 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
 }
 
 .book-tap-zone {
-  position: absolute; top: 0; bottom: 0; width: 30%; cursor: pointer;
+  position: absolute; top: 0; bottom: 0; width: 30%; cursor: pointer; z-index: 1;
   -webkit-tap-highlight-color: transparent;
 }
 .book-tap-zone.left { left: 0; }
