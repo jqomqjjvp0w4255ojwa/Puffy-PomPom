@@ -35,6 +35,16 @@
     "action": "將收集來的寶貝在暗處一字排開，收起來，再排開"
   },
   {
+    "id": "action-seed-h2",
+    "type": "hoard",
+    "action": "挪開一塊寶貝，重新比對位置，確認沒有比剛剛更好的擺法"
+  },
+  {
+    "id": "action-seed-h3",
+    "type": "hoard",
+    "action": "把最近收進來的東西跟舊寶貝放在一起，反覆端詳兩者搭不搭"
+  },
+  {
     "id": "action-1782133909003",
     "type": "collect",
     "action": "翻找垃圾桶邊緣，挑選了一顆大小剛好的彩色紙片"
@@ -140,6 +150,16 @@
     "action": "繞著房間邊界巡一圈，確認沒有東西被動過"
   },
   {
+    "id": "action-seed-1b",
+    "type": "patrol",
+    "action": "停在門邊縫隙前探頭望了望外面，又縮回來"
+  },
+  {
+    "id": "action-seed-1c",
+    "type": "patrol",
+    "action": "沿著家具底部巡一圈，檢查有沒有新出現的小東西"
+  },
+  {
     "id": "action-seed-2",
     "type": "nest",
     "action": "在某個角落重新理一次窩，把棉布或碎屑挪位"
@@ -150,9 +170,29 @@
     "action": "翻找地上或縫隙裡有沒有露水、冰塊、碎屑可吃"
   },
   {
+    "id": "action-seed-3b",
+    "type": "forage",
+    "action": "鑽到家具底下摸了一圈，看有沒有漏掉的食物碎屑"
+  },
+  {
+    "id": "action-seed-3c",
+    "type": "forage",
+    "action": "對著空碗發呆一陣，又用小手撥了撥碗底確認真的空了"
+  },
+  {
     "id": "action-seed-4",
     "type": "weapon",
     "action": "檢查竹籤或細針還夠不夠尖，試著刺一下紙張或軟物"
+  },
+  {
+    "id": "action-seed-4b",
+    "type": "weapon",
+    "action": "把竹籤舉起來對著光看了看，像在確認有沒有缺角"
+  },
+  {
+    "id": "action-seed-4c",
+    "type": "weapon",
+    "action": "練習幾次拔籤的速度，動作一次比一次更乾淨"
   },
   {
     "id": "action-seed-5",
@@ -160,9 +200,29 @@
     "action": "找東西磨牙，啃一下竹籤、家具邊角"
   },
   {
+    "id": "action-seed-5b",
+    "type": "grind",
+    "action": "用門牙啃了啃一塊硬殼狀的小垂物，啃完滿意地放下"
+  },
+  {
+    "id": "action-seed-5c",
+    "type": "grind",
+    "action": "對著紙板邊緣磨牙，磨出一個小小的弧形缺口"
+  },
+  {
     "id": "action-seed-6",
     "type": "climb",
     "action": "貼著牆面或家具邊緣，無聲攀爬一段"
+  },
+  {
+    "id": "action-seed-6b",
+    "type": "climb",
+    "action": "試著爬上一個比身體高一點的小台階，站穩後回頭看了看高度"
+  },
+  {
+    "id": "action-seed-6c",
+    "type": "climb",
+    "action": "沿著垂掛的布料一路往上攀，到一半又慢慢滑下來"
   },
   {
     "id": "action-seed-7",
@@ -170,9 +230,29 @@
     "action": "鑽進一個狹窄縫隙，試試看能不能擠過去"
   },
   {
+    "id": "action-seed-7b",
+    "type": "squeeze",
+    "action": "把身體壓扁塞進家具底下的窄縫，再慢慢把自己擠出來"
+  },
+  {
+    "id": "action-seed-7c",
+    "type": "squeeze",
+    "action": "試了好幾個角度想擠過一道縫，卡住一下後找到方法通過"
+  },
+  {
     "id": "action-seed-8",
     "type": "scratch",
     "action": "在粗糙表面磨蹭身體，理一理毛"
+  },
+  {
+    "id": "action-seed-8b",
+    "type": "scratch",
+    "action": "靠著牆角來回蹭了幾下，蹭完抖了抖身體把毛理順"
+  },
+  {
+    "id": "action-seed-8c",
+    "type": "scratch",
+    "action": "用小手在身上某處反覆撥弄，像是有根毛卡住了"
   },
   {
     "id": "action-seed-9",
@@ -180,9 +260,29 @@
     "action": "把垃圾或雜物堆疊排列，自認在發明糰式文明"
   },
   {
+    "id": "action-seed-9b",
+    "type": "invent",
+    "action": "把幾個小物件拼成一個奇怪的形狀，滿意地端詳了一陣"
+  },
+  {
+    "id": "action-seed-9c",
+    "type": "invent",
+    "action": "推倒自己剛搭好的小堆疊，又重新搭了一次，姿勢稍微不同"
+  },
+  {
     "id": "action-seed-10",
     "type": "water",
     "action": "跑去廁所或水邊碰一下水，小心別被沖走"
+  },
+  {
+    "id": "action-seed-10b",
+    "type": "water",
+    "action": "用小手點了點積水，觀察水面的波紋散開"
+  },
+  {
+    "id": "action-seed-10c",
+    "type": "water",
+    "action": "靠近水邊聞了聞，猶豫了一下還是沒有靠太近"
   },
   {
     "id": "action-seed-11",
@@ -190,8 +290,28 @@
     "action": "找一塊有光的地方靠著，留意溫度別太高"
   },
   {
+    "id": "action-seed-11b",
+    "type": "sun",
+    "action": "躺進一塊光斑裡攤平身體，曬了一會兒又翻了個面"
+  },
+  {
+    "id": "action-seed-11c",
+    "type": "sun",
+    "action": "跟著光斑慢慢移動位置，一路挪到光斑邊緣才停下"
+  },
+  {
     "id": "action-seed-12",
     "type": "stare",
     "action": "盯著一個固定的小東西不動，像在判斷它算不算數"
+  },
+  {
+    "id": "action-seed-12b",
+    "type": "stare",
+    "action": "盯著天花板上的一個小污點看了很久，動也不動"
+  },
+  {
+    "id": "action-seed-12c",
+    "type": "stare",
+    "action": "歪著身體換角度盯著某個東西看，像在重新評估它"
   }
 ]
