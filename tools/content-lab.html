@@ -690,8 +690,17 @@ function refreshDevStatsWithWorld(est) {
   const b = balanceData || {};
   const avgDay = ((Number(b.tickDayMinMin)||15) + (Number(b.tickDayMaxMin)||60)) / 2;
   const avgNight = ((Number(b.tickNightMinMin)||180) + (Number(b.tickNightMaxMin)||360)) / 2;
-  const ticksDay = avgDay > 0 ? (16 * 60 / avgDay) : 0;     // 06:00~22:00
-  const ticksNight = avgNight > 0 ? (8 * 60 / avgNight) : 0; // 22:00~06:00
+  const quietHoursEnabled = !!b.quietHoursEnabled;
+  const quietStartHour = Number.isFinite(Number(b.quietStartHour)) ? Number(b.quietStartHour) : 22;
+  const quietEndHour = Number.isFinite(Number(b.quietEndHour)) ? Number(b.quietEndHour) : 8;
+  // 安靜時段開啟時，該時段內完全不呼叫API（0次），其餘時間都用白天間隔；
+  // 關閉時沿用舊行為：固定22:00-06:00用夜間間隔，其餘16小時用白天間隔。
+  const quietHours = quietHoursEnabled
+    ? (quietStartHour < quietEndHour ? (quietEndHour - quietStartHour) : (24 - quietStartHour + quietEndHour))
+    : 8;
+  const activeHours = 24 - quietHours;
+  const ticksDay = avgDay > 0 ? (activeHours * 60 / avgDay) : 0;
+  const ticksNight = quietHoursEnabled ? 0 : (avgNight > 0 ? (quietHours * 60 / avgNight) : 0);
   const ticksPerDay = ticksDay + ticksNight;
   const MODEL_PRICES = {
     'claude-sonnet-4-6': { in: 3, out: 15 },
@@ -723,8 +732,8 @@ function refreshDevStatsWithWorld(est) {
   const c = [`<tr><th>項目</th><th>數值</th></tr>`];
   c.push(`<tr><td>模型</td><td class="num">${b.model || 'claude-sonnet-4-6'}（input $${modelPrice.in}／output $${modelPrice.out} 每M token）</td></tr>`);
   c.push(`<tr><td>白天快取</td><td class="num">${cacheEnabled ? `開啟（${avgDay <= 60 ? '間隔在TTL內，大多命中' : '間隔超過TTL，幾乎都是寫入無折扣'}）` : '關閉'}</td></tr>`);
-  c.push(`<tr><td>白天每天約</td><td class="num">${ticksDay.toFixed(1)} 次（間隔均值 ${avgDay} 分）</td></tr>`);
-  c.push(`<tr><td>夜間每天約</td><td class="num">${ticksNight.toFixed(1)} 次（間隔均值 ${avgNight} 分，不套用快取）</td></tr>`);
+  c.push(`<tr><td>${quietHoursEnabled ? '安靜時段' : '夜間時段'}</td><td class="num">${quietHoursEnabled ? `${quietStartHour}:00-${quietEndHour}:00 完全不呼叫API` : `每天約${ticksNight.toFixed(1)}次（間隔均值${avgNight}分，不套用快取）`}</td></tr>`);
+  c.push(`<tr><td>生成時段每天約</td><td class="num">${ticksDay.toFixed(1)} 次（間隔均值 ${avgDay} 分，共${activeHours}小時）</td></tr>`);
   c.push(`<tr class="total"><td>每天總更新</td><td class="num">${ticksPerDay.toFixed(1)} 次</td></tr>`);
   c.push(`<tr><td>每天 input / output</td><td class="num">${Math.round(dailyIn).toLocaleString()} / ${Math.round(dailyOut).toLocaleString()} tokens</td></tr>`);
   c.push(`<tr class="total"><td>每天估算花費</td><td class="num">$${dailyCost.toFixed(3)}</td></tr>`);
@@ -1006,12 +1015,15 @@ const BALANCE_API_GROUPS = [
     title: '回覆頻率',
     desc: '每次更新的間隔分鐘',
     fields: [
-      { key: 'tickDayMinMin', label: '白天最短(分)・06:00-22:00', desc: '下限', step: 1 },
-      { key: 'tickDayMaxMin', label: '白天最長(分)・06:00-22:00', desc: '上限，建議搭配快取開關時設在60分以內，間隔超過60分快取會失效、反而多付寫入費', step: 1 },
-      { key: 'tickNightMinMin', label: '夜間最短(分)・22:00-06:00', desc: '下限', step: 1 },
-      { key: 'tickNightMaxMin', label: '夜間最長(分)・22:00-06:00', desc: '上限，夜間間隔通常遠超1小時，系統會自動不套用快取', step: 1 }
+      { key: 'quietHoursEnabled', label: '安靜時段（完全不生成）', desc: '開啟時，下面設定的時段內完全跳過、不呼叫API，是最省錢的選項；關閉時改用「夜間最短/最長」的間隔繼續低頻生成', type: 'bool' },
+      { key: 'quietStartHour', label: '安靜時段開始(0-23時)', desc: '例如22代表晚上10點開始安靜', step: 1 },
+      { key: 'quietEndHour', label: '安靜時段結束(0-23時)', desc: '例如8代表早上8點恢復生成，可自行調整成你想要的起床時間', step: 1 },
+      { key: 'tickDayMinMin', label: '白天最短(分)', desc: '安靜時段以外的更新下限', step: 1 },
+      { key: 'tickDayMaxMin', label: '白天最長(分)', desc: '安靜時段以外的更新上限，建議搭配快取開關時設在60分以內，間隔超過60分快取會失效、反而多付寫入費', step: 1 },
+      { key: 'tickNightMinMin', label: '夜間最短(分)（安靜時段關閉時才用）', desc: '下限', step: 1 },
+      { key: 'tickNightMaxMin', label: '夜間最長(分)（安靜時段關閉時才用）', desc: '上限，安靜時段關閉時這段間隔取代完全跳過，夜間通常遠超1小時，系統會自動不套用快取', step: 1 }
     ],
-    note: '白天＝06:00-22:00，夜間＝22:00-06:00（系統依此判斷要不要套用快取）。間隔均值越短，每天更新次數越多、發文量越多，但呼叫次數也越多。白天目前建議落在25-60分之間（一天約16-24次），可兼顧快取效益與發文量；夜間建議維持3-6小時（一天約1.5-2次），半夜沒人看，拉長間隔最省錢。'
+    note: '開啟「安靜時段」最省錢：時段內完全不呼叫API，醒來那一刻準時恢復。間隔均值越短，每天更新次數越多、發文量越多，但呼叫次數也越多。白天目前建議落在25-55分之間，可兼顧快取效益與發文量。'
   },
   {
     title: 'API 設定',
@@ -1024,7 +1036,7 @@ const BALANCE_API_GROUPS = [
         { value: 'claude-haiku-4-5-20251001', label: 'Haiku 4.5（input $1/output $5 每M token，約省70%，但敘事品質會明顯下降）' }
       ] }
     ],
-    note: '以目前白天25-55分、夜間180-360分的設定估算：用 Sonnet 系列、開快取，一個月大約 $8-9；若改用 Haiku，月費可降到約 $2-3，但建議先試跑幾天觀察文字品質再決定要不要長期用。'
+    note: '這裡的價格只是模型單價，不是月費估算——準確的月費請看「開發者專區」分頁的「依目前真實平均推算月費」，那是用實際呼叫紀錄反推的，比這裡的粗算準很多。'
   },
   {
     title: 'Gemini 設定（電視台／回顧摘要）',
