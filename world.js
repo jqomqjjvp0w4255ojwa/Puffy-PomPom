@@ -480,7 +480,6 @@ function buildTvContext() {
   const room = world.room || {};
   const recentMemory = (bt.memory || []).slice(-5);
   const recentScene = recentMemory.slice(-1)[0] || '（暫無最新動態）';
-  const moodColor = getMoodColorFor(typeof bt.mood === 'number' ? bt.mood : 0);
   return {
     recentScene,
     recentMemory,
@@ -488,7 +487,7 @@ function buildTvContext() {
     food: bt.food,
     hp: bt.hp,
     location: bt.location || '',
-    mood: moodColor ? moodColor.name : '平靜',
+    mood: simpleMoodWord(typeof bt.mood === 'number' ? bt.mood : 0),
     cleanliness: room.cleanliness,
     envDesc: room.env_desc || '',
     weather: world.weather ? `${world.weather.desc} ${world.weather.temp}℃` : '',
@@ -790,6 +789,16 @@ function getMoodColorFor(moodValue) {
   const bands = stats.moodBands || [];
   const band = bands.find(b => moodValue >= b.min && moodValue <= b.max);
   return band || null;
+}
+
+// 給電視/音響台用的簡單心情詞，純看數字判斷，不吃 hidden-stats.json 裡 moodBands 的造詞名稱，
+// 避免那些創意詞（例如「未完成磁斑」）被當成口播台詞逐字唸出。
+function simpleMoodWord(moodValue) {
+  const v = typeof moodValue === 'number' ? moodValue : 0;
+  if (v <= -50) return '不安';
+  if (v < 0) return '寂寞';
+  if (v < 50) return '平靜';
+  return '快樂';
 }
 
 function clampStat(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
