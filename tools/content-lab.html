@@ -68,6 +68,9 @@
   .field-title { flex: 1; font-size: 13px; font-weight: 500; color: #6a4a2a; padding: 4px 6px; border: 1px solid #e6dfd5; border-radius: 4px; background: #faf9f6; }
   .field-group { font-size: 12px; padding: 4px 6px; border: 1px solid #e6dfd5; border-radius: 4px; background: #fff; color: #6a4a2a; }
   .field-del { font-size: 11px; color: #a05a4a; padding: 4px 8px; }
+  .field-enable { display: flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 400; margin: 0; white-space: nowrap; color: #6a4a2a; }
+  .field-disabled .field-title, .field-disabled textarea { opacity: 0.45; }
+  .field-disabled .field-head::after { content: '（已停用，不會送進prompt）'; font-size: 11px; color: #a05a4a; }
   textarea {
     width: 100%; font-family: inherit; font-size: 14px;
     line-height: 1.8; border: 1px solid #e8c8b0; border-radius: 8px; padding: 12px 14px;
@@ -113,6 +116,8 @@
   .frag-search-row button { white-space: nowrap; }
 
   .frag-card { background: #fff; border: 1px solid #e8c8b0; border-radius: 10px; margin-bottom: 8px; overflow: hidden; }
+  .frag-card.lore-disabled { opacity: 0.5; }
+  .frag-card.lore-disabled .preview { text-decoration: line-through; }
   .frag-summary {
     display: flex; align-items: center; gap: 8px; padding: 12px 14px; cursor: pointer; user-select: none;
   }
@@ -878,10 +883,12 @@ function buildPromptFields() {
   });
 }
 function renderPromptSection(sec) {
+  if (sec.enabled === undefined) sec.enabled = true;
   const div = document.createElement('div');
-  div.className = 'field';
+  div.className = 'field' + (sec.enabled ? '' : ' field-disabled');
   div.innerHTML =
     `<div class="field-head">` +
+      `<label class="field-enable" title="關閉後這段不會送進prompt，但設定保留，可隨時再打開比較效果"><input type="checkbox" class="field-enable-cb"${sec.enabled ? ' checked' : ''}> 啟用</label>` +
       `<input class="field-title" value="${escapeHtml(sec.title)}" placeholder="欄位名稱（會變成 prompt 段落標題）">` +
       `<select class="field-group"></select>` +
       `<button class="ghost field-del" type="button">刪除</button>` +
@@ -889,6 +896,7 @@ function renderPromptSection(sec) {
     `<textarea rows="6"></textarea>`;
   const titleInp = div.querySelector('.field-title');
   const groupSel = div.querySelector('.field-group');
+  const enableCb = div.querySelector('.field-enable-cb');
   PROMPT_GROUP_DEFS.forEach(g => {
     const o = document.createElement('option');
     o.value = g.key; o.textContent = g.label;
@@ -900,6 +908,7 @@ function renderPromptSection(sec) {
   titleInp.oninput = () => { sec.title = titleInp.value; saveLocal(); };
   ta.oninput = () => { promptData[sec.id] = ta.value; saveLocal(); };
   groupSel.onchange = () => { sec.group = groupSel.value; buildPromptFields(); saveLocal(); };
+  enableCb.onchange = () => { sec.enabled = enableCb.checked; div.classList.toggle('field-disabled', !sec.enabled); saveLocal(); };
   div.querySelector('.field-del').onclick = () => {
     if (!confirm(`刪除欄位「${sec.title || '（未命名）'}」？這只刪這個欄位的設定，不影響其他欄位。`)) return;
     promptSections = promptSections.filter(s => s !== sec);
@@ -910,29 +919,29 @@ function renderPromptSection(sec) {
 }
 function addPromptSection(group) {
   const id = 'sec_' + Date.now().toString(36) + Math.floor(Math.random() * 1000);
-  promptSections.push({ id, title: '新欄位', group });
+  promptSections.push({ id, title: '新欄位', group, enabled: true });
   promptData[id] = '';
   buildPromptFields(); saveLocal();
 }
 function applyPromptData(data) {
   data = data || {};
   if (Array.isArray(data.sections)) {
-    promptSections = data.sections.map(s => ({ id: s.id, title: s.title || '', group: s.group || 'basic' }));
+    promptSections = data.sections.map(s => ({ id: s.id, title: s.title || '', group: s.group || 'basic', enabled: s.enabled !== false }));
     promptData = {};
     data.sections.forEach(s => { promptData[s.id] = s.body || ''; });
   } else {
     // 舊版扁平 key：用預設分組還原，未知 key 補成 basic 欄位，statBands 已搬到象限故略過
     promptData = { ...data };
-    promptSections = DEFAULT_PROMPT_SECTIONS.map(s => ({ ...s }));
+    promptSections = DEFAULT_PROMPT_SECTIONS.map(s => ({ ...s, enabled: true }));
     const known = new Set(DEFAULT_PROMPT_SECTIONS.map(s => s.id));
     Object.keys(data).forEach(k => {
-      if (!known.has(k) && k !== 'statBands') promptSections.push({ id: k, title: k, group: 'basic' });
+      if (!known.has(k) && k !== 'statBands') promptSections.push({ id: k, title: k, group: 'basic', enabled: true });
     });
   }
   buildPromptFields();
 }
 function collectPromptData() {
-  return { sections: promptSections.map(s => ({ id: s.id, title: s.title, group: s.group, body: promptData[s.id] || '' })) };
+  return { sections: promptSections.map(s => ({ id: s.id, title: s.title, group: s.group, enabled: s.enabled !== false, body: promptData[s.id] || '' })) };
 }
 
 // ===================== 數值平衡 =====================
@@ -1545,12 +1554,12 @@ let loreData = [];
 let loreExpanded = new Set();
 function addLoreEntry() {
   const id = 'lore-' + Date.now();
-  loreData.unshift({ id, title: '', keywords: [], content: '' });
+  loreData.unshift({ id, title: '', keywords: [], content: '', enabled: true });
   loreExpanded.add(id);
   renderLorebook();
 }
 function applyLoreData(data) {
-  loreData = Array.isArray(data) ? data : [];
+  loreData = (Array.isArray(data) ? data : []).map(e => ({ ...e, enabled: e.enabled !== false }));
   loreExpanded = new Set();
   renderLorebook();
 }
@@ -1563,10 +1572,12 @@ function renderLorebook() {
     const hay = `${e.title} ${(e.keywords||[]).join(',')} ${e.content}`.toLowerCase();
     if (q && !hay.includes(q)) return;
     const isOpen = loreExpanded.has(e.id);
+    if (e.enabled === undefined) e.enabled = true;
     const card = document.createElement('div');
-    card.className = 'frag-card' + (isOpen ? ' expanded' : '');
+    card.className = 'frag-card' + (isOpen ? ' expanded' : '') + (e.enabled ? '' : ' lore-disabled');
     card.innerHTML = `
       <div class="frag-summary">
+        <label class="field-enable" title="關閉後這條不會被觸發送進prompt，但設定保留"><input type="checkbox" class="lore-enable-cb"${e.enabled ? ' checked' : ''}> 啟用</label>
         <span class="idx">#${idx + 1}</span>
         <span class="preview">${e.content ? '' : '（草稿，未送出）｜'}<span class="src">${esc(e.title || '未命名')}</span> ｜ ${esc(e.content || '（內容空白）')}</span>
         <span class="chevron">▶</span>
@@ -1582,6 +1593,13 @@ function renderLorebook() {
     card.querySelector('.frag-summary').onclick = () => {
       if (isOpen) loreExpanded.delete(e.id); else loreExpanded.add(e.id);
       renderLorebook();
+    };
+    const enableCb = card.querySelector('.lore-enable-cb');
+    enableCb.onclick = ev => ev.stopPropagation();
+    enableCb.onchange = () => {
+      loreData[idx].enabled = enableCb.checked;
+      card.classList.toggle('lore-disabled', !enableCb.checked);
+      saveLocal();
     };
     card.querySelectorAll('[data-k]').forEach(el => {
       el.onclick = ev => ev.stopPropagation();
@@ -1605,7 +1623,9 @@ function renderLorebook() {
     list.appendChild(card);
   });
   const status = document.getElementById('lore-status');
-  status.textContent = `共 ${loreData.length} 條（${loreData.filter(e => e.content && e.content.trim()).length} 條已填內容會送出）`;
+  const activeCount = loreData.filter(e => e.enabled !== false && e.content && e.content.trim()).length;
+  const disabledCount = loreData.filter(e => e.enabled === false).length;
+  status.textContent = `共 ${loreData.length} 條（${activeCount} 條已填內容且啟用會送出${disabledCount ? `，${disabledCount} 條已停用` : ''}）`;
 }
 
 // ===================== 電視台（Gemini 頻道） =====================

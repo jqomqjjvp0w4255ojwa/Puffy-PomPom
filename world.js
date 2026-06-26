@@ -66,7 +66,7 @@ function buildSystemPrompt() {
   let bodyBlock;
   if (Array.isArray(s.sections)) {
     bodyBlock = s.sections
-      .filter(sec => sec && (sec.title || sec.body))
+      .filter(sec => sec && sec.enabled !== false && (sec.title || sec.body))
       .map(sec => `${sec.title || ''}：\n${sec.body || ''}`)
       .join('\n\n');
   } else {
@@ -184,6 +184,7 @@ function loadLorebook() {
 function matchLorebook(text) {
   const hay = text || '';
   return loadLorebook().filter(e =>
+    e.enabled !== false &&
     e.content && e.content.trim() &&
     Array.isArray(e.keywords) && e.keywords.some(k => k && hay.includes(k))
   );
