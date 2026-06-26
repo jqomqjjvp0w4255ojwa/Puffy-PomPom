@@ -316,11 +316,35 @@ function getRandomMinutes(min, max) {
   return Math.floor(Math.random() * (max - min + 1) + min);
 }
 
+// 安靜時段：hour 落在 [start, end) 內視為安靜（start>end 代表跨午夜，例如22點到次日8點）。
+function isInQuietHours(hour, start, end) {
+  if (start === end) return false;
+  return start < end ? (hour >= start && hour < end) : (hour >= start || hour < end);
+}
+
+// 從 now 算到下一個 targetHour（今天還沒到就算今天，已經過了就算明天）還有幾毫秒。
+function msUntilHour(now, targetHour) {
+  const target = new Date(now);
+  target.setHours(targetHour, 0, 0, 0);
+  if (target <= now) target.setDate(target.getDate() + 1);
+  return target.getTime() - now.getTime();
+}
+
 function getNextDelay() {
   const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Taipei' }));
   const hour = now.getHours();
-  const isNight = hour >= 22 || hour < 6;
   const bal = loadBalance();
+  if (bal.quietHoursEnabled) {
+    // 安靜時段完全不生成、不呼叫API，直接算到時段結束的時間點再醒來。
+    const qs = Number.isFinite(bal.quietStartHour) ? bal.quietStartHour : 22;
+    const qe = Number.isFinite(bal.quietEndHour) ? bal.quietEndHour : 8;
+    if (isInQuietHours(hour, qs, qe)) {
+      return msUntilHour(now, qe);
+    }
+    return getRandomMinutes(bal.tickDayMinMin, bal.tickDayMaxMin) * 60 * 1000;
+  }
+  // 安靜時段關閉時沿用舊行為：固定22:00-06:00用較長的夜間間隔，而非完全不生成。
+  const isNight = hour >= 22 || hour < 6;
   if (isNight) {
     return getRandomMinutes(bal.tickNightMinMin, bal.tickNightMaxMin) * 60 * 1000;
   } else {
@@ -971,7 +995,10 @@ const BALANCE_BUILTIN = {
   tickNightMinMin: 180,
   tickNightMaxMin: 360,
   tickDayMinMin: 15,
-  tickDayMaxMin: 60
+  tickDayMaxMin: 60,
+  quietHoursEnabled: true,
+  quietStartHour: 22,
+  quietEndHour: 8
 };
 function loadBalance() {
   try {
@@ -1594,6 +1621,20 @@ async function tick() {
     console.log(`時間停止中，跳過這次更新。下次檢查：${Math.round(delay/60000)} 分鐘後`);
     setTimeout(tick, delay);
     return;
+  }
+
+  {
+    const bal0 = loadBalance();
+    if (bal0.quietHoursEnabled) {
+      const qs = Number.isFinite(bal0.quietStartHour) ? bal0.quietStartHour : 22;
+      const qe = Number.isFinite(bal0.quietEndHour) ? bal0.quietEndHour : 8;
+      if (isInQuietHours(getRealTime().hour, qs, qe)) {
+        const delay = getNextDelay();
+        console.log(`安靜時段中(${qs}:00-${qe}:00)，跳過這次更新、不呼叫API。下次更新：${Math.round(delay/60000)} 分鐘後（約 ${qe}:00）`);
+        setTimeout(tick, delay);
+        return;
+      }
+    }
   }
 
   if (world.farewell && world.farewell.pending) {
