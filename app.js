@@ -1503,13 +1503,14 @@ function renderDateTimeline() {
   }).join('');
 }
 
-// dates 是新到舊排序；每當往下捲跨入新的一週（週一為起點），插入一張「本週回顧」卡。
+// dates 是新到舊排序；每當往下捲跨入新的一週（週一為起點），插入一張「本週回顧」卡，
+// 摘要的是「卡片下方、即將進入」的那一週（通常已經結束、有摘要），不是上方剛看完、可能還沒結束的那一週。
 function weekGroupedRowsHtml(dates) {
   const out = [];
   let prevWeek = null;
   dates.forEach(d => {
     const wk = weekStartKeyOf(d);
-    if (prevWeek !== null && wk !== prevWeek) out.push(weekCardHtml(prevWeek));
+    if (prevWeek !== null && wk !== prevWeek) out.push(weekCardHtml(wk));
     out.push(dayRowHtml(d));
     prevWeek = wk;
   });
