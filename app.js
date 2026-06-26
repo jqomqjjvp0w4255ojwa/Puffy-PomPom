@@ -34,6 +34,7 @@ async function openPanel() {
       const data = await res.json();
       if (!data.ok) { alert('密碼錯誤'); return; }
       sessionStorage.setItem('ownerPanelAuthed', '1');
+      refreshNoteAiOption();
     } catch (e) {
       alert('驗證失敗，請再試一次。');
       return;
@@ -42,6 +43,40 @@ async function openPanel() {
   document.getElementById('side-panel').classList.add('open');
   document.getElementById('overlay').classList.add('open');
   document.getElementById('room-action-input').placeholder = randomPlaceholder();
+  load();
+}
+
+// 「給AI」便利貼地點只在飼主面板驗證過密碼後才出現在選單裡。
+function refreshNoteAiOption() {
+  const opt = document.getElementById('note-loc-ai-option');
+  if (opt) opt.style.display = sessionStorage.getItem('ownerPanelAuthed') === '1' ? '' : 'none';
+}
+
+// 同居人面板裡列出目前累積的「給AI矯正備忘」，密碼驗證過才看得到，可以逐條刪除。
+function renderAiCorrections(list) {
+  const section = document.getElementById('ai-corrections-section');
+  if (!section) return;
+  if (sessionStorage.getItem('ownerPanelAuthed') !== '1' || !list || list.length === 0) {
+    section.style.display = 'none';
+    return;
+  }
+  section.style.display = 'block';
+  const box = document.getElementById('ai-corrections-list');
+  box.innerHTML = list.map(n => `
+    <div class="ai-correction-item">
+      <span class="ai-correction-text">${escapeHtml(n.text)}</span>
+      <i class="ti ti-x ai-correction-del" onclick="deleteAiCorrection('${n.id}')" title="刪除"></i>
+    </div>
+  `).join('');
+}
+
+async function deleteAiCorrection(id) {
+  await fetch('/api/ai-note/delete', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id })
+  });
+  load();
 }
 function closePanel() {
   document.getElementById('side-panel').classList.remove('open');
@@ -685,6 +720,8 @@ function onNoteLocSelect(v) {
   } else {
     setNoteLocation(v);
   }
+  // 「給AI」用特殊色提醒這不是糰糰看的便條，跟其他選項區隔；切走再切回一般色。
+  document.getElementById('sticky-note').dataset.color = v === 'ai' ? 'ai' : noteState.color;
 }
 
 function onNoteLocCustomInput(v) {
@@ -706,6 +743,7 @@ function renderNoteLocTag(loc, label) {
 }
 
 function toggleNote() {
+  refreshNoteAiOption();
   const open = document.getElementById('sticky-note').classList.toggle('open');
   document.getElementById('note-overlay').classList.toggle('open', open);
   document.getElementById('note-menu-dropdown').classList.remove('open');
@@ -772,6 +810,7 @@ function renderNoteDraft() {
   document.getElementById('sticky-note-textarea').style.display = 'block';
   document.getElementById('note-location-picker').style.display = 'flex';
   setNoteLocation('floor');
+  document.getElementById('sticky-note').dataset.color = noteState.color;
   document.getElementById('sticky-note-saved').style.display = 'none';
   document.getElementById('note-saved-loc').style.display = 'none';
   document.getElementById('note-confirm-btn').style.display = 'inline';
@@ -827,6 +866,18 @@ async function confirmNote() {
   const message = document.getElementById('sticky-note-textarea').value.trim();
   if (!message) return;
   const location = noteState.location || 'floor';
+  // 「給AI」是飼主對設定的場外矯正，不是糰糰能感知的留言：另外送到 /api/ai-note，
+  // 不進已存/已讀/印子的便條紙循環，送出後直接清空回到空白稿。
+  if (location === 'ai') {
+    await fetch('/api/ai-note', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: message })
+    });
+    document.getElementById('sticky-note-textarea').value = '';
+    alert('已記錄給AI的矯正備忘，下次生成會優先參考。');
+    return;
+  }
   const locationLabel = location === 'custom' ? (noteState.locationLabel || '').trim() : '';
   const res = await fetch('/api/visitor', {
     method: 'POST',
@@ -1074,6 +1125,7 @@ async function load() {
     // 糰糰對巨怪的稱呼（隨熟悉度/好感度變化）：顯示在「我的動態」卡片的名字位置，取代固定寫死的「巨怪」
     document.getElementById('profile-name').textContent = bt.nickname || '巨怪';
     document.getElementById('shadow-tag').textContent = world.characters.shadow.active ? '⚠ 小黑影出沒中' : '';
+    renderAiCorrections(world.ai_corrections);
 
     const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Taipei' }));
     document.getElementById('cover-date').textContent = (now.getMonth()+1) + ' 月 ' + now.getDate() + ' 日';

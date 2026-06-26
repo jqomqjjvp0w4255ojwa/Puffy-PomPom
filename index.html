@@ -271,6 +271,11 @@
         <span>……</span>
       </div>
     </div>
+
+    <div class="ai-corrections-section" id="ai-corrections-section" style="display:none;">
+      <div class="section-label">給AI的矯正備忘</div>
+      <div class="ai-corrections-list" id="ai-corrections-list"></div>
+    </div>
   </div>
 
 </div>
@@ -384,6 +389,7 @@
       <option value="fridge_bottom">冰箱下方</option>
       <option value="wall">牆上</option>
       <option value="computer">電腦</option>
+      <option value="ai" id="note-loc-ai-option" style="display:none;">給AI</option>
       <option value="__custom__">其他…</option>
     </select>
     <input type="text" class="note-loc-custom" id="note-loc-custom" maxlength="12" placeholder="貼在哪裡？" style="display:none;" oninput="onNoteLocCustomInput(this.value)">

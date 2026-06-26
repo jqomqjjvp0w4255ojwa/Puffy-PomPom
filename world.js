@@ -188,6 +188,15 @@ function matchLorebook(text) {
     Array.isArray(e.keywords) && e.keywords.some(k => k && hay.includes(k))
   );
 }
+// 飼主給AI的暫時矯正備忘錄：發現設定生成錯了（糰糰長骨頭、被寫成有小黑影特徵等）時的緊急止血，
+// 不是世界書，糰糰不會「感知」到——固定附加在每次生成的 prompt 最前面，優先度最高，直到飼主自己刪除。
+function buildAiCorrectionsInput(world) {
+  const list = (world && world.ai_corrections) || [];
+  if (list.length === 0) return '';
+  return '\n飼主對設定的緊急更正（務必遵守，優先於其他描述，之後不要再犯）：\n' +
+    list.map(n => `- ${n.text}`).join('\n') + '\n';
+}
+
 function buildLoreInput(text) {
   const hits = matchLorebook(text).slice(0, 4);
   if (hits.length === 0) return '';
@@ -522,10 +531,12 @@ function buildTvPrompt(channel, ctx) {
 
   const lengthRule = tv.lengthRule || '篇幅維持在約120字左右即可。';
   const settingRef = `${tv.settingNote || ''}${buildLoreSnippetForTv(ctx)}`;
+  let aiCorrections = '';
+  try { aiCorrections = buildAiCorrectionsInput(JSON.parse(fs.readFileSync(WORLD_FILE, 'utf8'))); } catch (e) {}
 
   // 角色人設當主指令放在最前面，世界設定只當補充參考放在中段，
   // 避免把整份主世界 SYSTEM_PROMPT 整段塞進去淹沒小模型、造成輸出跑題或亂碼。
-  return `${ch.persona}\n\n${stateLine}\n\n` +
+  return `${aiCorrections}${ch.persona}\n\n${stateLine}\n\n` +
     (settingRef.trim() ? `世界設定參考（請遵守，但不要逐字唸出）：${settingRef}\n\n` : '') +
     `${lengthRule}繁體中文，只輸出${ch.label}本身的播報內容，不要加標題、前言或角色標籤。`;
 }
@@ -562,8 +573,10 @@ function buildStereoPrompt(channel, ctx) {
 
   const lengthRule = stereo.lengthRule || '篇幅維持在約80字左右即可。';
   const settingRef = `${stereo.settingNote || ''}${buildLoreSnippetForTv(ctx)}`;
+  let aiCorrections = '';
+  try { aiCorrections = buildAiCorrectionsInput(JSON.parse(fs.readFileSync(WORLD_FILE, 'utf8'))); } catch (e) {}
 
-  return `${ch.persona}\n\n${stateLine}\n\n` +
+  return `${aiCorrections}${ch.persona}\n\n${stateLine}\n\n` +
     (settingRef.trim() ? `世界設定參考（請遵守，但不要逐字唸出）：${settingRef}\n\n` : '') +
     `${lengthRule}繁體中文，只輸出${ch.label}本身的播放內容描述，不要加標題、前言或角色標籤。`;
 }
@@ -620,7 +633,9 @@ async function ensureDailyDigest(dateKey) {
   const digestCfg = tv.digest || {};
   const settingRef = buildLoreInput(scenes.join(' '));
   const instruction = digestCfg.dailyInstruction || '請把這一天濃縮成2~3句話的摘要，抓住「真正發生變化、有意義」的部分，重複瑣碎的日常細節可以省略或合併成一句帶過，不要逐條複述。';
-  const prompt = `${settingRef}以下是白糰糰這一天（${dateKey}）依時間順序發生的動態紀錄片段：\n` +
+  let aiCorrections = '';
+  try { aiCorrections = buildAiCorrectionsInput(JSON.parse(fs.readFileSync(WORLD_FILE, 'utf8'))); } catch (e) {}
+  const prompt = `${aiCorrections}${settingRef}以下是白糰糰這一天（${dateKey}）依時間順序發生的動態紀錄片段：\n` +
     scenes.map((s, i) => `${i + 1}. ${s}`).join('\n') +
     `\n\n${instruction}繁體中文，只輸出摘要本身，不要加標題或前言。`;
   const result = await callGemini(prompt, 260);
@@ -654,7 +669,9 @@ async function ensureWeeklyDigest(weekStart) {
   const digestCfg = tv.digest || {};
   const settingRef = buildLoreInput(dayTexts.join(' '));
   const instruction = digestCfg.weeklyInstruction || '請把這一週濃縮成3~4句話的回顧，抓住這週真正的變化與重點（不是逐天複述），可以點出這週的主旋律或印象深刻的片段。';
-  const prompt = `${settingRef}以下是白糰糰這一週（${weekStart} 起的7天）每天的摘要：\n${dayTexts.join('\n')}\n\n` +
+  let aiCorrections = '';
+  try { aiCorrections = buildAiCorrectionsInput(JSON.parse(fs.readFileSync(WORLD_FILE, 'utf8'))); } catch (e) {}
+  const prompt = `${aiCorrections}${settingRef}以下是白糰糰這一週（${weekStart} 起的7天）每天的摘要：\n${dayTexts.join('\n')}\n\n` +
     `${instruction}繁體中文，只輸出摘要本身，不要加標題或前言。`;
   const result = await callGemini(prompt, 320);
   if (result.error || !result.text) return null;
@@ -1458,6 +1475,51 @@ const server = http.createServer((req, res) => {
       res.end('error');
     }
 
+  } else if (req.url.startsWith('/api/ai-note/delete')) {
+    try {
+      const body = [];
+      req.on('data', chunk => body.push(chunk));
+      req.on('end', () => {
+        const data = JSON.parse(Buffer.concat(body).toString());
+        const world = JSON.parse(fs.readFileSync(WORLD_FILE, 'utf8'));
+        world.ai_corrections = (world.ai_corrections || []).filter(n => n.id !== data.id);
+        writeWorldFile(world);
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ ok: true }));
+      });
+    } catch (e) {
+      res.writeHead(500);
+      res.end('error');
+    }
+
+  } else if (req.url.startsWith('/api/ai-note')) {
+    // 給 AI 的暫時備忘錄：飼主發現設定被生成錯（例如糰糰長出骨頭、被寫成有小黑影特徵）時的緊急矯正，
+    // 不進世界敘事（糰糰不會「感知」到這張），會固定附加進每次生成的 prompt，直到飼主自己刪除為止。
+    try {
+      const body = [];
+      req.on('data', chunk => body.push(chunk));
+      req.on('end', () => {
+        const data = JSON.parse(Buffer.concat(body).toString());
+        const text = (data.text || '').trim().slice(0, 200);
+        if (!text) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ ok: false, error: 'empty text' }));
+          return;
+        }
+        const world = JSON.parse(fs.readFileSync(WORLD_FILE, 'utf8'));
+        const id = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+        const list = [...(world.ai_corrections || []), { id, text, time: getRealTime().display }];
+        const AI_CORRECTIONS_CAP = 10;
+        world.ai_corrections = list.length > AI_CORRECTIONS_CAP ? list.slice(-AI_CORRECTIONS_CAP) : list;
+        writeWorldFile(world);
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ ok: true, id }));
+      });
+    } catch (e) {
+      res.writeHead(500);
+      res.end('error');
+    }
+
   } else if (req.url === '/api/reset' && req.method === 'POST') {
     try {
       const archivedTo = archiveAndResetWorld();
@@ -1738,7 +1800,7 @@ async function tick() {
   const recentRaw = (bt.memory || []).slice(-2).join(' / ') || '無';
   const memoryLine = yesterdayDigest ? `昨日摘要：${yesterdayDigest}｜最近動態：${recentRaw}` : recentRaw;
 
-  const prompt = `當前時間：${display}
+  const prompt = `${buildAiCorrectionsInput(world)}當前時間：${display}
 白糰糰目前狀態：${vitalLine} · 毛況:${bt.fur || '正常'} · 位置:${bt.location}
 小黑影：${shadowShouldAppear ? '活躍' : '潛伏'} 位置:${world.characters.shadow.location} 灰塵:${world.characters.shadow.dust_count}
 房間清潔度：${world.room.cleanliness}
