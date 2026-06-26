@@ -243,6 +243,43 @@ function pickActionTag(recentTypes, recentActions) {
   return pool[Math.floor(Math.random() * pool.length)];
 }
 
+// 外部小事件庫：跟行為籤庫不同——行為籤是「糰糰自己做什麼」，這個是「世界主動對他發生了什麼」，
+// 帶來他無法預期、被動接收的意外感，跟4個大事件（飛升等）之間的中間層級。
+// 純機率roll（balance.externalEventChance），不靠數值門檻，可在 /content-lab「外部小事件庫」分頁編輯、
+// 上傳覆蓋 data/external-events.json。
+const DEFAULT_EXTERNAL_EVENT_POOL = [
+  { type: 'sound', action: '牆角傳來一聲細微的滴水聲，不知道從哪裡漏出來的' },
+  { type: 'sound', action: '遠處傳來模糊的人聲或車聲，聽起來很遙遠又很陌生' },
+  { type: 'light', action: '燈光忽然閃了一下又恢復正常，亮度有那麼一瞬間的落差' },
+  { type: 'wind', action: '一陣強風從門窗縫鑽進來，吹得桌上小東西滑了一截' },
+  { type: 'object', action: '某個遠處的東西忽然倒下，發出一聲清脆又突然的聲音' },
+  { type: 'outside', action: '窗外飄進一張形狀奇怪的紙片，貼在窗邊抖動了幾下' },
+  { type: 'outside', action: '一隻不知名的小蟲貼著玻璃停了一下，又忽然飛走' },
+  { type: 'smell', action: '空氣裡忽然飄來一股說不出來源的陌生氣味，停留了一陣又散去' },
+  { type: 'fungal', action: '牆角悄悄冒出一小撮新的菌絲，顏色跟糰糰自己的毛有點像，卻不是他的' },
+  { type: 'fungal', action: '空氣裡飄來一股遙遠的孢子訊號，像是別的菌種正在哪裡開會、串聯地盤' },
+  { type: 'fungal', action: '某處傳來微弱的菌絲震動，像是江湖上有別的真菌幫派剛打完一場小衝突' },
+];
+function loadExternalEventPool() {
+  try {
+    const data = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'external-events.json'), 'utf8'));
+    const pool = Array.isArray(data) ? data.filter(a => a && a.action && a.action.trim()) : [];
+    return pool.length > 0 ? pool : DEFAULT_EXTERNAL_EVENT_POOL;
+  } catch (err) {
+    return DEFAULT_EXTERNAL_EVENT_POOL;
+  }
+}
+// 跟 pickActionTag 同樣的雙重去重邏輯，避開最近用過的類型與逐字重複的事件文字。
+function pickExternalEvent(recentTypes, recentActions) {
+  const recentT = recentTypes || [];
+  const recentA = recentActions || [];
+  const allEvents = loadExternalEventPool();
+  let pool = allEvents.filter(a => !recentT.includes(a.type) && !recentA.includes(a.action));
+  if (pool.length === 0) pool = allEvents.filter(a => !recentA.includes(a.action));
+  if (pool.length === 0) pool = allEvents;
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
 // 死亡（健康＋飽食歸零）改由 tick 內的死亡狀態機處理（要管重生倒數與小黑影好感），
 // 這裡只負責偵測飛升與觀察兩種即時事件。
 function detectTriggeredEvent(world, bt, combinedPlayerText) {
@@ -1011,7 +1048,8 @@ const BALANCE_BUILTIN = {
   tickDayMaxMin: 60,
   quietHoursEnabled: true,
   quietStartHour: 22,
-  quietEndHour: 8
+  quietEndHour: 8,
+  externalEventChance: 0.15
 };
 function loadBalance() {
   try {
@@ -1587,7 +1625,7 @@ const server = http.createServer((req, res) => {
     // 給 content-lab 讀目前線上的 data/*.json，方便手機開頁面時帶出最新內容。
     try {
       const name = req.url.split('/')[3].split('?')[0];
-      const allow = { 'system-prompt': 'system-prompt.json', 'fragments': 'fragments.json', 'events': 'events.json', 'balance': 'balance.json', 'hidden-stats': 'hidden-stats.json', 'lorebook': 'lorebook.json', 'actions': 'actions.json', 'tv': 'tv.json', 'stereo': 'stereo.json' };
+      const allow = { 'system-prompt': 'system-prompt.json', 'fragments': 'fragments.json', 'events': 'events.json', 'balance': 'balance.json', 'hidden-stats': 'hidden-stats.json', 'lorebook': 'lorebook.json', 'actions': 'actions.json', 'external-events': 'external-events.json', 'tv': 'tv.json', 'stereo': 'stereo.json' };
       if (!allow[name]) { res.writeHead(404); res.end('not found'); return; }
       const content = fs.readFileSync(path.join(__dirname, 'data', allow[name]), 'utf8');
       res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
@@ -1826,6 +1864,19 @@ async function tick() {
   const recentActionTexts = (bt.actionTextLog || []).slice(-7);
   const actionTag = pickActionTag(recentActionTypes, recentActionTexts);
   const actionInput = `\n行為參考籤（僅供靈感、不是必須照寫，只是「牠做什麼」，不要直接套用情緒詞如「寂寞地」「開心地」，情緒讓場景自然帶出）：${actionTag.action}`;
+
+  // 外部小事件：跟行為籤不同視角，是「世界主動發生」而非「他自己做什麼」，純機率roll，
+  // 有大事件（triggeredEvent）或死亡狀態時不疊加，避免敘事焦點被分散。
+  const extEventChance = typeof balance.externalEventChance === 'number' ? balance.externalEventChance : 0.15;
+  const rollExtEvent = !triggeredEvent && !world.death.active && Math.random() < extEventChance;
+  let extEventTag = null;
+  let extEventInput = '';
+  if (rollExtEvent) {
+    const recentExtTypes = (bt.extEventLog || []).slice(-3);
+    const recentExtTexts = (bt.extEventTextLog || []).slice(-7);
+    extEventTag = pickExternalEvent(recentExtTypes, recentExtTexts);
+    extEventInput = `\n外部小插曲（這次世界主動發生的小事，不是糰糰自己做的，順勢自然帶進場景，不用大書特書）：${extEventTag.action}`;
+  }
   const acLabel = acNow.on
     ? `${acNow.broken ? '故障' : { cool: '冷氣', heat: '暖氣', fan: '送風', dry: '除濕' }[acNow.mode] || '冷氣'}${acNow.mode === 'fan' ? '' : acNow.temp + '℃'}`
     : '關';
@@ -1865,7 +1916,7 @@ async function tick() {
 電視：${tvOnLabel} 音響：${stereoOnLabel}${(world.room.tv_on || world.room.stereo_on) ? '（房間裡有聲音，白糰糰會聽到並做出反應）' : ''}
 巨怪對房間環境的描述：${world.room.env_desc || '無'}
 今天已發生：${world.room.events_today.join('，') || '無'}
-近期記憶：${memoryLine}（這只是延續性參考，不要被它的安靜基調綁住——白糰糰本來就靈動古怪、有自己的事要做，沒人理牠時也會主動找事做，不是發呆等待）${weatherInput}${climateInput}${shadowInput}${actionInput}${ownerInput}${awayInput}${visitorInput}${eventInput}${pendingNotesInput}${hiddenInput}${loreInput}
+近期記憶：${memoryLine}（這只是延續性參考，不要被它的安靜基調綁住——白糰糰本來就靈動古怪、有自己的事要做，沒人理牠時也會主動找事做，不是發呆等待）${weatherInput}${climateInput}${shadowInput}${actionInput}${extEventInput}${ownerInput}${awayInput}${visitorInput}${eventInput}${pendingNotesInput}${hiddenInput}${loreInput}
 
 生成這段時間白糰糰的動態。`;
 
@@ -1950,7 +2001,12 @@ async function tick() {
           memory: [...(bt.memory || []).slice(-10), result.scene],
           // 記下這輪用過的行為籤類型/具體文字，下一輪挑籤時避開最近重複的類型與逐字重複。
           actionLog: [...(bt.actionLog || []).slice(-4), actionTag.type],
-          actionTextLog: [...(bt.actionTextLog || []).slice(-7), actionTag.action]
+          actionTextLog: [...(bt.actionTextLog || []).slice(-7), actionTag.action],
+          // 只有這輪真的roll到外部小事件才記錄，沒roll到就維持原樣，不會洗掉舊紀錄。
+          ...(extEventTag ? {
+            extEventLog: [...(bt.extEventLog || []).slice(-2), extEventTag.type],
+            extEventTextLog: [...(bt.extEventTextLog || []).slice(-6), extEventTag.action]
+          } : {})
         },
         // 小黑影是躲在影子裡的另一個主角，出沒與否由環境決定，不交給 AI 自由設定：
         // 房間髒（清潔度低）或暗（關燈／深夜）牠就會從陰影裡浮現；死亡復仇期間必然活躍。
