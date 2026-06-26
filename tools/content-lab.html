@@ -689,9 +689,8 @@ function refreshDevStatsWithWorld(est) {
   const ticksPerDay = ticksDay + ticksNight;
   const MODEL_PRICES = {
     'claude-sonnet-4-6': { in: 3, out: 15 },
-    'claude-sonnet-4-5': { in: 3, out: 15 },
-    'claude-3-5-sonnet-latest': { in: 3, out: 15 },
-    'claude-haiku-4-5': { in: 1, out: 5 }
+    'claude-sonnet-4-5-20250929': { in: 3, out: 15 },
+    'claude-haiku-4-5-20251001': { in: 1, out: 5 }
   };
   const modelPrice = MODEL_PRICES[b.model] || { in: 3, out: 15 };
   const priceInEl = document.getElementById('dev-price-in');
@@ -1001,11 +1000,10 @@ const BALANCE_API_GROUPS = [
     desc: '模型與快取，直接影響月費',
     fields: [
       { key: 'cacheEnabled', label: '白天快取開關', desc: '開啟時白天更新會用1小時prompt快取（system prompt部分），命中時省約35-50%輸入費；間隔若超過1小時沒被讀到，那次反而多付約1.25-2倍寫入費。建議：白天間隔上限設在60分以內才開', type: 'bool' },
-      { key: 'model', label: '模型', desc: '選擇呼叫的Claude模型，價格差異大，請依預算調整', type: 'select', options: [
+      { key: 'model', label: '模型', desc: '選擇呼叫的Claude模型，價格差異大，請依預算調整（Sonnet 3.5/3.7已下架，選單只列目前還能用的版本）', type: 'select', options: [
         { value: 'claude-sonnet-4-6', label: 'Sonnet 4.6（預設，input $3/output $15 每M token）' },
-        { value: 'claude-sonnet-4-5', label: 'Sonnet 4.5（同價位，較舊版本）' },
-        { value: 'claude-3-5-sonnet-latest', label: 'Sonnet 3.5（同價位，最舊）' },
-        { value: 'claude-haiku-4-5', label: 'Haiku 4.5（input $1/output $5 每M token，約省70%，但敘事品質會明顯下降）' }
+        { value: 'claude-sonnet-4-5-20250929', label: 'Sonnet 4.5（同價位，較舊版本）' },
+        { value: 'claude-haiku-4-5-20251001', label: 'Haiku 4.5（input $1/output $5 每M token，約省70%，但敘事品質會明顯下降）' }
       ] }
     ],
     note: '以目前白天25-55分、夜間180-360分的設定估算：用 Sonnet 系列、開快取，一個月大約 $8-9；若改用 Haiku，月費可降到約 $2-3，但建議先試跑幾天觀察文字品質再決定要不要長期用。'
