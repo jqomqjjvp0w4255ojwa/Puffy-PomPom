@@ -195,7 +195,7 @@ function buildAiCorrectionsInput(world) {
   const list = (world && world.ai_corrections) || [];
   if (list.length === 0) return '';
   return '\n飼主對設定的緊急更正（務必遵守，優先於其他描述，之後不要再犯）：\n' +
-    list.map(n => `- ${n.text}`).join('\n') + '\n';
+    list.map(n => `- ${n.message}`).join('\n') + '\n';
 }
 
 function buildLoreInput(text) {
@@ -1487,23 +1487,24 @@ const server = http.createServer((req, res) => {
     }
 
   } else if (req.url.startsWith('/api/ai-note')) {
-    // 給 AI 的暫時備忘錄：飼主發現設定被生成錯（例如糰糰長出骨頭、被寫成有小黑影特徵）時的緊急矯正，
+    // 給 AI 的暫時備忘錄：跟便利貼留言同一套「寫→存→等讀取→已讀」邏輯，只是送到不同的後台位置——
     // 不進世界敘事（糰糰不會「感知」到這張），只附加進下一次主世界 tick 的 prompt 一次，
-    // 讀過後就移進 ai_corrections_log 純記錄存檔，不再進prompt。
+    // 讀過後就移進 ai_corrections_log 純記錄存檔，不再進prompt。在被讀走以前可以隨時刪除重寫。
     try {
       const body = [];
       req.on('data', chunk => body.push(chunk));
       req.on('end', () => {
         const data = JSON.parse(Buffer.concat(body).toString());
-        const text = (data.text || '').trim().slice(0, 200);
-        if (!text) {
+        const message = (data.message || '').trim().slice(0, 50);
+        if (!message) {
           res.writeHead(400, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ ok: false, error: 'empty text' }));
+          res.end(JSON.stringify({ ok: false, error: 'empty message' }));
           return;
         }
         const world = JSON.parse(fs.readFileSync(WORLD_FILE, 'utf8'));
+        const { display } = getRealTime();
         const id = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-        const list = [...(world.ai_corrections || []), { id, text, time: getRealTime().display }];
+        const list = [...(world.ai_corrections || []), { id, message, time: display, color: 'ai', location: 'ai' }];
         const AI_CORRECTIONS_CAP = 10;
         world.ai_corrections = list.length > AI_CORRECTIONS_CAP ? list.slice(-AI_CORRECTIONS_CAP) : list;
         writeWorldFile(world);
@@ -1959,6 +1960,13 @@ async function tick() {
         ...world.ai_corrections.map(n => ({ ...n, readAt }))
       ];
       newWorld.ai_corrections = [];
+      // 跟 last_visitor_note 同樣道理：前端重新整理/換裝置後也要能補回「已讀」畫面。
+      const lastCorrection = world.ai_corrections[world.ai_corrections.length - 1];
+      newWorld.last_ai_correction = {
+        message: lastCorrection.message,
+        color: 'ai',
+        location: 'ai'
+      };
     }
 
     writeWorldFile(newWorld);

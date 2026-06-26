@@ -1904,7 +1904,7 @@ function refreshLiveStats() {
 function aiCorrectionRowHtml(n, read) {
   const tag = read ? `已讀取 @ ${n.readAt || ''}` : `待讀取 @ ${n.time || ''}`;
   return `<div class="dev-note" style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;border-bottom:1px solid #eee;padding:6px 0">
-    <span><b>${tag}</b>　${(n.text || '').replace(/</g, '&lt;')}</span>
+    <span><b>${tag}</b>　${(n.message || '').replace(/</g, '&lt;')}</span>
     <button class="ghost" onclick="deleteAiCorrection('${n.id}')">刪除</button>
   </div>`;
 }

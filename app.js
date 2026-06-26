@@ -645,12 +645,13 @@ function nestQuote(str) {
   return String(str || '').replace(/「/g, '『').replace(/」/g, '』');
 }
 
-let noteState = { mode: 'draft', color: 'yellow', savedId: null, location: 'floor', locationLabel: '' };
-const NOTE_LOCATION_LABELS = { desk_leg: '桌腳', fridge_bottom: '冰箱下方', wall: '牆上', floor: '地板', computer: '電腦' };
+let noteState = { mode: 'draft', color: 'yellow', savedId: null, location: 'floor', locationLabel: '', kind: 'visitor' };
+const NOTE_LOCATION_LABELS = { desk_leg: '桌腳', fridge_bottom: '冰箱下方', wall: '牆上', floor: '地板', computer: '電腦', ai: 'AI' };
 // 高度決定留下什麼印子：地上＝腳印，低處（桌腳／冰箱下方）＝手印，隨機（牆上／電腦／自填，碰不碰得到不確定）＝毛印。
 function noteMarkType(loc) {
   if (loc === 'floor') return 'footprint';
   if (loc === 'desk_leg' || loc === 'fridge_bottom') return 'hand';
+  if (loc === 'ai') return null; // 給AI的備忘不是糰糰能碰到的東西，不留印子
   return 'fur';
 }
 const NOTE_MARK_IDS = { footprint: 'note-mark-footprint', hand: 'note-mark-hand', fur: 'note-mark-fur' };
@@ -706,6 +707,11 @@ setNoteLocation('floor');
 
 function renderNoteLocTag(loc, label) {
   const el = document.getElementById('note-saved-loc');
+  if (loc === 'ai') {
+    el.textContent = '送給AI';
+    el.style.display = 'block';
+    return;
+  }
   const text = noteLocText(loc, label);
   if (text) {
     el.textContent = `貼在${text}`;
@@ -737,6 +743,7 @@ function setNoteColor(color) {
 function renderNoteSaved(note) {
   noteState.mode = 'saved';
   noteState.savedId = note.id;
+  noteState.kind = note.kind || (note.location === 'ai' ? 'ai' : 'visitor');
   document.getElementById('sticky-note').dataset.color = note.color || 'yellow';
   document.getElementById('sticky-note-textarea').style.display = 'none';
   document.getElementById('note-location-picker').style.display = 'none';
@@ -753,6 +760,7 @@ function renderNoteSaved(note) {
 function renderNoteRead(note) {
   noteState.mode = 'read';
   noteState.savedId = null;
+  noteState.kind = note.kind || (note.location === 'ai' ? 'ai' : 'visitor');
   document.getElementById('sticky-note').dataset.color = note.color || 'yellow';
   document.getElementById('sticky-note-textarea').style.display = 'none';
   document.getElementById('note-location-picker').style.display = 'none';
@@ -800,8 +808,13 @@ function startNewNote() {
   renderNoteDraft();
 }
 
-function refreshNoteWidget(pending, lastReadFromServer) {
-  const latest = pending.length > 0 ? pending[pending.length - 1] : null;
+// 便利貼留言、給AI備忘共用同一個widget：把兩邊待讀清單依id（時間戳開頭）合併，取最新的一筆顯示。
+function refreshNoteWidget(visitorPending, aiPending, lastVisitorRead, lastAiRead) {
+  const merged = [
+    ...(visitorPending || []).map(n => ({ ...n, kind: 'visitor' })),
+    ...(aiPending || []).map(n => ({ ...n, kind: 'ai' }))
+  ].sort((a, b) => (a.id || '').localeCompare(b.id || ''));
+  const latest = merged.length > 0 ? merged[merged.length - 1] : null;
   if (latest) {
     noteDismissedRead = false;
     if (noteState.mode !== 'saved' || noteState.savedId !== latest.id) {
@@ -812,20 +825,24 @@ function refreshNoteWidget(pending, lastReadFromServer) {
   if (noteDismissedRead) return;
   // 沒有待讀留言
   if (noteState.mode === 'saved') {
-    // 剛被 tick 讀走 → 標記為已讀，留下印子
+    // 剛被 tick 讀走 → 標記為已讀，留下印子（給AI的備忘沒有印子）
     const readNote = {
       message: document.getElementById('sticky-note-saved').textContent,
       color: document.getElementById('sticky-note').dataset.color,
       location: noteState.location,
       locationLabel: noteState.locationLabel,
+      kind: noteState.kind,
     };
-    localStorage.setItem('lastReadNote', JSON.stringify(readNote));
+    if (noteState.kind !== 'ai') localStorage.setItem('lastReadNote', JSON.stringify(readNote));
     renderNoteRead(readNote);
   } else if (noteState.mode === 'draft') {
     // 重新整理頁面/換裝置時，把上一張被讀過的便利貼還原：優先用後端記的（不怕清快取或換裝置），
-    // 沒有才退回 localStorage。
-    if (lastReadFromServer && lastReadFromServer.message) {
-      renderNoteRead(lastReadFromServer);
+    // 沒有才退回 localStorage。哪張比較新就還原哪張（用 time 字串粗略比較，沒時間的退回visitor）。
+    const lastRead = (lastAiRead && lastAiRead.message && (!lastVisitorRead || !lastVisitorRead.message))
+      ? { ...lastAiRead, kind: 'ai' }
+      : (lastVisitorRead && lastVisitorRead.message ? { ...lastVisitorRead, kind: 'visitor' } : null);
+    if (lastRead) {
+      renderNoteRead(lastRead);
     } else {
       const stored = localStorage.getItem('lastReadNote');
       if (stored) {
@@ -839,16 +856,17 @@ async function confirmNote() {
   const message = document.getElementById('sticky-note-textarea').value.trim();
   if (!message) return;
   const location = noteState.location || 'floor';
-  // 「給AI」是飼主對設定的場外矯正，不是糰糰能感知的留言：另外送到 /api/ai-note，
-  // 不進已存/已讀/印子的便條紙循環，送出後直接清空回到空白稿。
+  // 「給AI」跟一般便利貼留言同一套寫→存→等讀取→已讀的邏輯，只是送到不同的後台位置
+  // （/api/ai-note，不進世界敘事、糰糰不會「感知」到），在被下一次tick讀走以前都還能刪除重寫。
   if (location === 'ai') {
-    await fetch('/api/ai-note', {
+    const res = await fetch('/api/ai-note', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text: message })
+      body: JSON.stringify({ message })
     });
+    const data = await res.json();
     document.getElementById('sticky-note-textarea').value = '';
-    alert('已記錄給AI的矯正備忘，下次生成會優先參考。');
+    renderNoteSaved({ id: data.id, message, color: 'ai', location: 'ai', kind: 'ai' });
     return;
   }
   const locationLabel = location === 'custom' ? (noteState.locationLabel || '').trim() : '';
@@ -859,12 +877,13 @@ async function confirmNote() {
   });
   const data = await res.json();
   document.getElementById('sticky-note-textarea').value = '';
-  renderNoteSaved({ id: data.id, message, color: noteState.color, location, locationLabel });
+  renderNoteSaved({ id: data.id, message, color: noteState.color, location, locationLabel, kind: 'visitor' });
 }
 
 async function deleteNote() {
   if (!noteState.savedId) return;
-  await fetch('/api/visitor/delete', {
+  const url = noteState.kind === 'ai' ? '/api/ai-note/delete' : '/api/visitor/delete';
+  await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ id: noteState.savedId })
@@ -1052,7 +1071,7 @@ function renderActivityFeed(ownerAction, pendingNotes) {
 
 async function refreshTodayPanels(world) {
   renderActivityFeed(world.owner_action || '', world.pending_notes || []);
-  refreshNoteWidget(world.visitor_messages || [], world.last_visitor_note || null);
+  refreshNoteWidget(world.visitor_messages || [], world.ai_corrections || [], world.last_visitor_note || null, world.last_ai_correction || null);
 }
 
 async function logPendingNote(text) {
