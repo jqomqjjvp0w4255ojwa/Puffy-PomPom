@@ -231,13 +231,16 @@ function loadActionPool() {
     return DEFAULT_ACTION_POOL;
   }
 }
-// 選一支籤：避開最近 3 次已經用過的類型，降低重複感；全部都用過就退回完整籤庫。
-function pickActionTag(recentTypes) {
-  const recent = recentTypes || [];
+// 選一支籤：避開最近 3 次用過的類型、也避開最近用過的具體動作文字（同類型只有1-2條時，
+// 否則冷卻一過就會逐字重複同一句），雙重篩選都篩到空了才逐步放寬退回完整籤庫。
+function pickActionTag(recentTypes, recentActions) {
+  const recentT = recentTypes || [];
+  const recentA = recentActions || [];
   const allActions = loadActionPool();
-  const pool = allActions.filter(a => !recent.includes(a.type));
-  const usePool = pool.length > 0 ? pool : allActions;
-  return usePool[Math.floor(Math.random() * usePool.length)];
+  let pool = allActions.filter(a => !recentT.includes(a.type) && !recentA.includes(a.action));
+  if (pool.length === 0) pool = allActions.filter(a => !recentA.includes(a.action));
+  if (pool.length === 0) pool = allActions;
+  return pool[Math.floor(Math.random() * pool.length)];
 }
 
 // 死亡（健康＋飽食歸零）改由 tick 內的死亡狀態機處理（要管重生倒數與小黑影好感），
@@ -1820,7 +1823,8 @@ async function tick() {
 
   // 行為籤：給一點具體靈感，避開最近用過的類型，不寫情緒，情緒交給 AI 自己從脈絡長出來。
   const recentActionTypes = (bt.actionLog || []).slice(-3);
-  const actionTag = pickActionTag(recentActionTypes);
+  const recentActionTexts = (bt.actionTextLog || []).slice(-7);
+  const actionTag = pickActionTag(recentActionTypes, recentActionTexts);
   const actionInput = `\n行為參考籤（僅供靈感、不是必須照寫，只是「牠做什麼」，不要直接套用情緒詞如「寂寞地」「開心地」，情緒讓場景自然帶出）：${actionTag.action}`;
   const acLabel = acNow.on
     ? `${acNow.broken ? '故障' : { cool: '冷氣', heat: '暖氣', fan: '送風', dry: '除濕' }[acNow.mode] || '冷氣'}${acNow.mode === 'fan' ? '' : acNow.temp + '℃'}`
@@ -1944,8 +1948,9 @@ async function tick() {
           texture,
           mood_color: moodColor ? { name: moodColor.name, color: moodColor.color } : null,
           memory: [...(bt.memory || []).slice(-10), result.scene],
-          // 記下這輪用過的行為籤類型，下一輪挑籤時避開最近重複的類型。
-          actionLog: [...(bt.actionLog || []).slice(-4), actionTag.type]
+          // 記下這輪用過的行為籤類型/具體文字，下一輪挑籤時避開最近重複的類型與逐字重複。
+          actionLog: [...(bt.actionLog || []).slice(-4), actionTag.type],
+          actionTextLog: [...(bt.actionTextLog || []).slice(-7), actionTag.action]
         },
         // 小黑影是躲在影子裡的另一個主角，出沒與否由環境決定，不交給 AI 自由設定：
         // 房間髒（清潔度低）或暗（關燈／深夜）牠就會從陰影裡浮現；死亡復仇期間必然活躍。
