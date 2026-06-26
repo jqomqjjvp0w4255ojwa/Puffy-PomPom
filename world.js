@@ -1759,7 +1759,13 @@ async function tick() {
     world.room.ac = acNow;
   }
   const climateInput = '\n' + distillClimate(world.room, weather);
-  const loreInput = buildLoreInput([combinedPlayerText, ...(bt.memory || []).slice(-3)].join(' '));
+  const loreMatchText = [combinedPlayerText, ...(bt.memory || []).slice(-3)].join(' ');
+  const loreHits = matchLorebook(loreMatchText).slice(0, 4);
+  const loreInput = buildLoreInput(loreMatchText);
+  // Railway log 看得到這 tick 觸發了哪幾條世界書（lorebook），方便判斷關鍵字是否過於氾濫／從沒命中。
+  console.log(loreHits.length
+    ? `世界書命中(${loreHits.length}/4)：${loreHits.map(e => e.title).join('、')}`
+    : '世界書命中：無');
 
   // 行為籤：給一點具體靈感，避開最近用過的類型，不寫情緒，情緒交給 AI 自己從脈絡長出來。
   const recentActionTypes = (bt.actionLog || []).slice(-3);
@@ -1839,9 +1845,16 @@ async function tick() {
     const result = JSON.parse(text);
 
     const usage = response.usage || {};
+    // 世界書（system prompt）每個 tick 都要讀一次，但白天有開快取時它是用 cache_read 計費、
+    // 不會出現在 input_tokens 裡；深夜不快取時才整份落進 input_tokens。
+    // 所以要把三個欄位都加起來，世界書的讀取才算得到、數字也才不會白天/深夜忽高忽低。
+    const inNew = usage.input_tokens || 0;                     // 動態輸入（房間狀態＋記憶＋lore…）
+    const cacheRead = usage.cache_read_input_tokens || 0;      // 世界書：從快取讀回（便宜）
+    const cacheWrite = usage.cache_creation_input_tokens || 0; // 世界書：首次／TTL過期後重建快取
+    const inAll = inNew + cacheRead + cacheWrite;
     const prevUsage = world.tokenUsage || { inputTokens: 0, outputTokens: 0, calls: 0 };
     const tokenUsage = {
-      inputTokens: prevUsage.inputTokens + (usage.input_tokens || 0),
+      inputTokens: prevUsage.inputTokens + inAll,
       outputTokens: prevUsage.outputTokens + (usage.output_tokens || 0),
       calls: prevUsage.calls + 1
     };
@@ -1995,10 +2008,17 @@ async function tick() {
       eventKey: triggeredEvent || null,
       eventCard: eventCard || null,
       mechanismLog: triggeredEvent ? `特殊事件強制設值，不走一般機制` : mechanismLog,
-      tokens: { input: usage.input_tokens || 0, output: usage.output_tokens || 0 }
+      tokens: { input: inAll, output: usage.output_tokens || 0 }
     }]);
 
-    console.log(`【${display}】\n${result.scene}\n健康 ${finalBt.hp} · 飽食 ${finalBt.food}${furNote} · ${result.baituantuan.location}\n${result.shadow.active ? '⚠️ 小黑影出沒中' : ''}\n機制：${mechanismLog}\ntoken：本次input${usage.input_tokens || 0}/output${usage.output_tokens || 0} · 累計input${tokenUsage.inputTokens}/output${tokenUsage.outputTokens}（共${tokenUsage.calls}次）`);
+    // 世界書讀取狀況：白天命中快取＝便宜讀回(cacheRead)，剛重建＝cacheWrite，
+    // 深夜不快取時兩者皆 0、世界書併在動態輸入(inNew)裡用全價算。
+    const worldbookNote = cacheWrite
+      ? `世界書${cacheWrite}(剛重建快取)`
+      : cacheRead
+        ? `世界書${cacheRead}(快取讀回)`
+        : `世界書未快取(已含在動態${inNew}裡，深夜全價)`;
+    console.log(`【${display}】\n${result.scene}\n健康 ${finalBt.hp} · 飽食 ${finalBt.food}${furNote} · ${result.baituantuan.location}\n${result.shadow.active ? '⚠️ 小黑影出沒中' : ''}\n機制：${mechanismLog}\ntoken：本次輸入${inAll}（動態${inNew}＋${worldbookNote}）/輸出${usage.output_tokens || 0} · 累計input${tokenUsage.inputTokens}/output${tokenUsage.outputTokens}（共${tokenUsage.calls}次）`);
 
   } catch (e) {
     console.error('錯誤：', e.message);
