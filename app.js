@@ -34,6 +34,7 @@ async function openPanel() {
       const data = await res.json();
       if (!data.ok) { alert('密碼錯誤'); return; }
       sessionStorage.setItem('ownerPanelAuthed', '1');
+      refreshNoteAiOption();
     } catch (e) {
       alert('驗證失敗，請再試一次。');
       return;
@@ -43,6 +44,13 @@ async function openPanel() {
   document.getElementById('overlay').classList.add('open');
   document.getElementById('room-action-input').placeholder = randomPlaceholder();
 }
+
+// 「給AI」便利貼地點只在飼主面板驗證過密碼後才出現在選單裡。
+function refreshNoteAiOption() {
+  const opt = document.getElementById('note-loc-ai-option');
+  if (opt) opt.style.display = sessionStorage.getItem('ownerPanelAuthed') === '1' ? '' : 'none';
+}
+
 function closePanel() {
   document.getElementById('side-panel').classList.remove('open');
   document.getElementById('overlay').classList.remove('open');
@@ -637,12 +645,13 @@ function nestQuote(str) {
   return String(str || '').replace(/「/g, '『').replace(/」/g, '』');
 }
 
-let noteState = { mode: 'draft', color: 'yellow', savedId: null, location: 'floor', locationLabel: '' };
-const NOTE_LOCATION_LABELS = { desk_leg: '桌腳', fridge_bottom: '冰箱下方', wall: '牆上', floor: '地板', computer: '電腦' };
+let noteState = { mode: 'draft', color: 'yellow', savedId: null, location: 'floor', locationLabel: '', kind: 'visitor' };
+const NOTE_LOCATION_LABELS = { desk_leg: '桌腳', fridge_bottom: '冰箱下方', wall: '牆上', floor: '地板', computer: '電腦', ai: 'AI' };
 // 高度決定留下什麼印子：地上＝腳印，低處（桌腳／冰箱下方）＝手印，隨機（牆上／電腦／自填，碰不碰得到不確定）＝毛印。
 function noteMarkType(loc) {
   if (loc === 'floor') return 'footprint';
   if (loc === 'desk_leg' || loc === 'fridge_bottom') return 'hand';
+  if (loc === 'ai') return null; // 給AI的備忘不是糰糰能碰到的東西，不留印子
   return 'fur';
 }
 const NOTE_MARK_IDS = { footprint: 'note-mark-footprint', hand: 'note-mark-hand', fur: 'note-mark-fur' };
@@ -685,6 +694,8 @@ function onNoteLocSelect(v) {
   } else {
     setNoteLocation(v);
   }
+  // 「給AI」用特殊色提醒這不是糰糰看的便條，跟其他選項區隔；切走再切回一般色。
+  document.getElementById('sticky-note').dataset.color = v === 'ai' ? 'ai' : noteState.color;
 }
 
 function onNoteLocCustomInput(v) {
@@ -696,6 +707,11 @@ setNoteLocation('floor');
 
 function renderNoteLocTag(loc, label) {
   const el = document.getElementById('note-saved-loc');
+  if (loc === 'ai') {
+    el.textContent = '送給AI';
+    el.style.display = 'block';
+    return;
+  }
   const text = noteLocText(loc, label);
   if (text) {
     el.textContent = `貼在${text}`;
@@ -706,6 +722,7 @@ function renderNoteLocTag(loc, label) {
 }
 
 function toggleNote() {
+  refreshNoteAiOption();
   const open = document.getElementById('sticky-note').classList.toggle('open');
   document.getElementById('note-overlay').classList.toggle('open', open);
   document.getElementById('note-menu-dropdown').classList.remove('open');
@@ -726,6 +743,7 @@ function setNoteColor(color) {
 function renderNoteSaved(note) {
   noteState.mode = 'saved';
   noteState.savedId = note.id;
+  noteState.kind = note.kind || (note.location === 'ai' ? 'ai' : 'visitor');
   document.getElementById('sticky-note').dataset.color = note.color || 'yellow';
   document.getElementById('sticky-note-textarea').style.display = 'none';
   document.getElementById('note-location-picker').style.display = 'none';
@@ -742,6 +760,7 @@ function renderNoteSaved(note) {
 function renderNoteRead(note) {
   noteState.mode = 'read';
   noteState.savedId = null;
+  noteState.kind = note.kind || (note.location === 'ai' ? 'ai' : 'visitor');
   document.getElementById('sticky-note').dataset.color = note.color || 'yellow';
   document.getElementById('sticky-note-textarea').style.display = 'none';
   document.getElementById('note-location-picker').style.display = 'none';
@@ -772,6 +791,7 @@ function renderNoteDraft() {
   document.getElementById('sticky-note-textarea').style.display = 'block';
   document.getElementById('note-location-picker').style.display = 'flex';
   setNoteLocation('floor');
+  document.getElementById('sticky-note').dataset.color = noteState.color;
   document.getElementById('sticky-note-saved').style.display = 'none';
   document.getElementById('note-saved-loc').style.display = 'none';
   document.getElementById('note-confirm-btn').style.display = 'inline';
@@ -788,8 +808,13 @@ function startNewNote() {
   renderNoteDraft();
 }
 
-function refreshNoteWidget(pending, lastReadFromServer) {
-  const latest = pending.length > 0 ? pending[pending.length - 1] : null;
+// 便利貼留言、給AI備忘共用同一個widget：把兩邊待讀清單依id（時間戳開頭）合併，取最新的一筆顯示。
+function refreshNoteWidget(visitorPending, aiPending, lastVisitorRead, lastAiRead) {
+  const merged = [
+    ...(visitorPending || []).map(n => ({ ...n, kind: 'visitor' })),
+    ...(aiPending || []).map(n => ({ ...n, kind: 'ai' }))
+  ].sort((a, b) => (a.id || '').localeCompare(b.id || ''));
+  const latest = merged.length > 0 ? merged[merged.length - 1] : null;
   if (latest) {
     noteDismissedRead = false;
     if (noteState.mode !== 'saved' || noteState.savedId !== latest.id) {
@@ -800,20 +825,24 @@ function refreshNoteWidget(pending, lastReadFromServer) {
   if (noteDismissedRead) return;
   // 沒有待讀留言
   if (noteState.mode === 'saved') {
-    // 剛被 tick 讀走 → 標記為已讀，留下印子
+    // 剛被 tick 讀走 → 標記為已讀，留下印子（給AI的備忘沒有印子）
     const readNote = {
       message: document.getElementById('sticky-note-saved').textContent,
       color: document.getElementById('sticky-note').dataset.color,
       location: noteState.location,
       locationLabel: noteState.locationLabel,
+      kind: noteState.kind,
     };
-    localStorage.setItem('lastReadNote', JSON.stringify(readNote));
+    if (noteState.kind !== 'ai') localStorage.setItem('lastReadNote', JSON.stringify(readNote));
     renderNoteRead(readNote);
   } else if (noteState.mode === 'draft') {
     // 重新整理頁面/換裝置時，把上一張被讀過的便利貼還原：優先用後端記的（不怕清快取或換裝置），
-    // 沒有才退回 localStorage。
-    if (lastReadFromServer && lastReadFromServer.message) {
-      renderNoteRead(lastReadFromServer);
+    // 沒有才退回 localStorage。哪張比較新就還原哪張（用 time 字串粗略比較，沒時間的退回visitor）。
+    const lastRead = (lastAiRead && lastAiRead.message && (!lastVisitorRead || !lastVisitorRead.message))
+      ? { ...lastAiRead, kind: 'ai' }
+      : (lastVisitorRead && lastVisitorRead.message ? { ...lastVisitorRead, kind: 'visitor' } : null);
+    if (lastRead) {
+      renderNoteRead(lastRead);
     } else {
       const stored = localStorage.getItem('lastReadNote');
       if (stored) {
@@ -827,6 +856,19 @@ async function confirmNote() {
   const message = document.getElementById('sticky-note-textarea').value.trim();
   if (!message) return;
   const location = noteState.location || 'floor';
+  // 「給AI」跟一般便利貼留言同一套寫→存→等讀取→已讀的邏輯，只是送到不同的後台位置
+  // （/api/ai-note，不進世界敘事、糰糰不會「感知」到），在被下一次tick讀走以前都還能刪除重寫。
+  if (location === 'ai') {
+    const res = await fetch('/api/ai-note', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message })
+    });
+    const data = await res.json();
+    document.getElementById('sticky-note-textarea').value = '';
+    renderNoteSaved({ id: data.id, message, color: 'ai', location: 'ai', kind: 'ai' });
+    return;
+  }
   const locationLabel = location === 'custom' ? (noteState.locationLabel || '').trim() : '';
   const res = await fetch('/api/visitor', {
     method: 'POST',
@@ -835,12 +877,13 @@ async function confirmNote() {
   });
   const data = await res.json();
   document.getElementById('sticky-note-textarea').value = '';
-  renderNoteSaved({ id: data.id, message, color: noteState.color, location, locationLabel });
+  renderNoteSaved({ id: data.id, message, color: noteState.color, location, locationLabel, kind: 'visitor' });
 }
 
 async function deleteNote() {
   if (!noteState.savedId) return;
-  await fetch('/api/visitor/delete', {
+  const url = noteState.kind === 'ai' ? '/api/ai-note/delete' : '/api/visitor/delete';
+  await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ id: noteState.savedId })
@@ -1028,7 +1071,7 @@ function renderActivityFeed(ownerAction, pendingNotes) {
 
 async function refreshTodayPanels(world) {
   renderActivityFeed(world.owner_action || '', world.pending_notes || []);
-  refreshNoteWidget(world.visitor_messages || [], world.last_visitor_note || null);
+  refreshNoteWidget(world.visitor_messages || [], world.ai_corrections || [], world.last_visitor_note || null, world.last_ai_correction || null);
 }
 
 async function logPendingNote(text) {
@@ -1503,13 +1546,14 @@ function renderDateTimeline() {
   }).join('');
 }
 
-// dates 是新到舊排序；每當往下捲跨入新的一週（週一為起點），插入一張「本週回顧」卡。
+// dates 是新到舊排序；每當往下捲跨入新的一週（週一為起點），插入一張「本週回顧」卡，
+// 摘要的是「卡片下方、即將進入」的那一週（通常已經結束、有摘要），不是上方剛看完、可能還沒結束的那一週。
 function weekGroupedRowsHtml(dates) {
   const out = [];
   let prevWeek = null;
   dates.forEach(d => {
     const wk = weekStartKeyOf(d);
-    if (prevWeek !== null && wk !== prevWeek) out.push(weekCardHtml(prevWeek));
+    if (prevWeek !== null && wk !== prevWeek) out.push(weekCardHtml(wk));
     out.push(dayRowHtml(d));
     prevWeek = wk;
   });
@@ -1845,8 +1889,10 @@ function pageInnerHtml(page) {
 function renderSinglePage(page, pageNum) {
   const { running, body } = pageInnerHtml(page);
   const numSide = pageNum != null ? (pageNum % 2 === 1 ? 'left' : 'right') : '';
+  // 桌面：［<回到目錄］直接接在篇名左邊；手機另外固定在左上角（見 .book-back-fixed）。
+  const backArrow = running ? `<span class="book-back-arrow" onclick="event.stopPropagation();notesIndex=0;renderNotes()" title="回到目錄">&lt;</span>` : '';
   return `<div class="book-page">
-    ${running ? `<div class="book-running-title ${numSide}">${escapeHtml(running)}</div>` : ''}
+    ${running ? `<div class="book-running-title ${numSide}">${backArrow}${escapeHtml(running)}</div>` : ''}
     <div class="book-page-body">${body}</div>
     ${pageNum != null ? `<div class="book-page-num ${numSide}">${pageNum}</div>` : ''}
     <div class="book-tap-zone left" onclick="flipNotes(-1)"></div>
@@ -1871,7 +1917,8 @@ function renderNotes() {
     notesIndex = left;
   }
   if (notesIndex !== 0) {
-    html += `<button class="book-toc-btn" onclick="notesIndex=0;renderNotes()" title="回到目錄"><i class="ti ti-list"></i></button>`;
+    // 手機固定在左上角；桌面已經把［<］接在書頁篇名左邊了（見 renderSinglePage），這裡只給手機用。
+    html += `<button class="book-back-fixed" onclick="notesIndex=0;renderNotes()" title="回到目錄">&lt;</button>`;
   }
   box.innerHTML = html;
   attachSwipe(box);
