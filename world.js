@@ -189,7 +189,8 @@ function matchLorebook(text) {
   );
 }
 // 飼主給AI的暫時矯正備忘錄：發現設定生成錯了（糰糰長骨頭、被寫成有小黑影特徵等）時的緊急止血，
-// 不是世界書，糰糰不會「感知」到——固定附加在每次生成的 prompt 最前面，優先度最高，直到飼主自己刪除。
+// 不是世界書，糰糰不會「感知」到——只附加進下一次主世界 tick 的 prompt 最前面、優先度最高，
+// 讀過一次後就會被移到 ai_corrections_log 存檔（不再進prompt），讓飼主之後整理改回常駐prompt。
 function buildAiCorrectionsInput(world) {
   const list = (world && world.ai_corrections) || [];
   if (list.length === 0) return '';
@@ -531,12 +532,10 @@ function buildTvPrompt(channel, ctx) {
 
   const lengthRule = tv.lengthRule || '篇幅維持在約120字左右即可。';
   const settingRef = `${tv.settingNote || ''}${buildLoreSnippetForTv(ctx)}`;
-  let aiCorrections = '';
-  try { aiCorrections = buildAiCorrectionsInput(JSON.parse(fs.readFileSync(WORLD_FILE, 'utf8'))); } catch (e) {}
 
   // 角色人設當主指令放在最前面，世界設定只當補充參考放在中段，
   // 避免把整份主世界 SYSTEM_PROMPT 整段塞進去淹沒小模型、造成輸出跑題或亂碼。
-  return `${aiCorrections}${ch.persona}\n\n${stateLine}\n\n` +
+  return `${ch.persona}\n\n${stateLine}\n\n` +
     (settingRef.trim() ? `世界設定參考（請遵守，但不要逐字唸出）：${settingRef}\n\n` : '') +
     `${lengthRule}繁體中文，只輸出${ch.label}本身的播報內容，不要加標題、前言或角色標籤。`;
 }
@@ -573,10 +572,8 @@ function buildStereoPrompt(channel, ctx) {
 
   const lengthRule = stereo.lengthRule || '篇幅維持在約80字左右即可。';
   const settingRef = `${stereo.settingNote || ''}${buildLoreSnippetForTv(ctx)}`;
-  let aiCorrections = '';
-  try { aiCorrections = buildAiCorrectionsInput(JSON.parse(fs.readFileSync(WORLD_FILE, 'utf8'))); } catch (e) {}
 
-  return `${aiCorrections}${ch.persona}\n\n${stateLine}\n\n` +
+  return `${ch.persona}\n\n${stateLine}\n\n` +
     (settingRef.trim() ? `世界設定參考（請遵守，但不要逐字唸出）：${settingRef}\n\n` : '') +
     `${lengthRule}繁體中文，只輸出${ch.label}本身的播放內容描述，不要加標題、前言或角色標籤。`;
 }
@@ -633,9 +630,7 @@ async function ensureDailyDigest(dateKey) {
   const digestCfg = tv.digest || {};
   const settingRef = buildLoreInput(scenes.join(' '));
   const instruction = digestCfg.dailyInstruction || '請把這一天濃縮成2~3句話的摘要，抓住「真正發生變化、有意義」的部分，重複瑣碎的日常細節可以省略或合併成一句帶過，不要逐條複述。';
-  let aiCorrections = '';
-  try { aiCorrections = buildAiCorrectionsInput(JSON.parse(fs.readFileSync(WORLD_FILE, 'utf8'))); } catch (e) {}
-  const prompt = `${aiCorrections}${settingRef}以下是白糰糰這一天（${dateKey}）依時間順序發生的動態紀錄片段：\n` +
+  const prompt = `${settingRef}以下是白糰糰這一天（${dateKey}）依時間順序發生的動態紀錄片段：\n` +
     scenes.map((s, i) => `${i + 1}. ${s}`).join('\n') +
     `\n\n${instruction}繁體中文，只輸出摘要本身，不要加標題或前言。`;
   const result = await callGemini(prompt, 260);
@@ -669,9 +664,7 @@ async function ensureWeeklyDigest(weekStart) {
   const digestCfg = tv.digest || {};
   const settingRef = buildLoreInput(dayTexts.join(' '));
   const instruction = digestCfg.weeklyInstruction || '請把這一週濃縮成3~4句話的回顧，抓住這週真正的變化與重點（不是逐天複述），可以點出這週的主旋律或印象深刻的片段。';
-  let aiCorrections = '';
-  try { aiCorrections = buildAiCorrectionsInput(JSON.parse(fs.readFileSync(WORLD_FILE, 'utf8'))); } catch (e) {}
-  const prompt = `${aiCorrections}${settingRef}以下是白糰糰這一週（${weekStart} 起的7天）每天的摘要：\n${dayTexts.join('\n')}\n\n` +
+  const prompt = `${settingRef}以下是白糰糰這一週（${weekStart} 起的7天）每天的摘要：\n${dayTexts.join('\n')}\n\n` +
     `${instruction}繁體中文，只輸出摘要本身，不要加標題或前言。`;
   const result = await callGemini(prompt, 320);
   if (result.error || !result.text) return null;
@@ -1483,6 +1476,7 @@ const server = http.createServer((req, res) => {
         const data = JSON.parse(Buffer.concat(body).toString());
         const world = JSON.parse(fs.readFileSync(WORLD_FILE, 'utf8'));
         world.ai_corrections = (world.ai_corrections || []).filter(n => n.id !== data.id);
+        world.ai_corrections_log = (world.ai_corrections_log || []).filter(n => n.id !== data.id);
         writeWorldFile(world);
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ ok: true }));
@@ -1494,7 +1488,8 @@ const server = http.createServer((req, res) => {
 
   } else if (req.url.startsWith('/api/ai-note')) {
     // 給 AI 的暫時備忘錄：飼主發現設定被生成錯（例如糰糰長出骨頭、被寫成有小黑影特徵）時的緊急矯正，
-    // 不進世界敘事（糰糰不會「感知」到這張），會固定附加進每次生成的 prompt，直到飼主自己刪除為止。
+    // 不進世界敘事（糰糰不會「感知」到這張），只附加進下一次主世界 tick 的 prompt 一次，
+    // 讀過後就移進 ai_corrections_log 純記錄存檔，不再進prompt。
     try {
       const body = [];
       req.on('data', chunk => body.push(chunk));
@@ -1953,6 +1948,17 @@ async function tick() {
     // 未消化的系統紀錄已經被寫進這次的 prompt、融入 result.scene，消化完畢即清空。
     if (pendingNotes.length > 0) {
       newWorld.pending_notes = [];
+    }
+
+    // 給AI的矯正備忘只讀一次：這次 prompt 已經帶過了，讀完打上印記移進歷史存檔，
+    // 不再進入之後任何 prompt，純粹留給飼主自己回顧、之後改常駐prompt用。
+    if (world.ai_corrections && world.ai_corrections.length > 0) {
+      const readAt = getRealTime().display;
+      newWorld.ai_corrections_log = [
+        ...(newWorld.ai_corrections_log || []),
+        ...world.ai_corrections.map(n => ({ ...n, readAt }))
+      ];
+      newWorld.ai_corrections = [];
     }
 
     writeWorldFile(newWorld);

@@ -235,11 +235,14 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
 }
 
 .ai-corrections-section { margin-top: 4px; }
+.ai-correction-group-label { font-size: 10px; color: #a898c0; margin: 6px 2px 4px; letter-spacing: 0.05em; }
 .ai-correction-item {
   display: flex; align-items: flex-start; justify-content: space-between; gap: 8px;
   background: #efeafb; border: 1px solid #d8d0f0; border-radius: 8px;
   padding: 6px 8px; margin-bottom: 6px; font-size: 12px; color: #5a4a78;
 }
+.ai-correction-item.read { background: #f3f1f8; border-color: #e2dcef; color: #8a7fa0; }
+.ai-correction-mark { color: #8a7fa0; font-size: 13px; flex-shrink: 0; margin-top: 1px; }
 .ai-correction-text { flex: 1; word-break: break-word; }
 .ai-correction-del { cursor: pointer; color: #a090c0; padding: 2px; }
 .ai-correction-del:hover { color: #7a5fa8; }
