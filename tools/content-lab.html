@@ -195,8 +195,8 @@
 
 <header>
   <h1>糰糰文案實驗室</h1>
+  <button class="ghost" onclick="fetchAll()" title="把所有分頁都拉取一次線上最新版本，省得每頁各按一次">↻ 全部拉取最新</button>
   <button class="primary" onclick="uploadAll()" title="把所有分頁的變更一次推上 GitHub">⇪ 全部上傳</button>
-  <button class="danger" onclick="resetWorld()" title="封存目前進度，重新開始">↺ 重啟</button>
   <button onclick="toggleGhPanel()">⚙ 連線設定</button>
   <span class="status-line off" id="upload-all-status"></span>
 </header>
@@ -211,6 +211,11 @@
     <input type="text" id="gh-branch-input" placeholder="main">
     <button class="primary" onclick="saveGhConfig()">儲存</button>
     <span class="status-line off" id="gh-status">尚未設定</span>
+  </div>
+  <div class="gh-row gh-danger-row">
+    <label>危險操作</label>
+    <button class="danger" onclick="resetWorld()" title="封存目前進度，重新開始">↺ 重啟世界</button>
+    <span class="status-line off">會封存目前進度並重新開始，平常不會用到，移到這裡避免誤觸</span>
   </div>
 </div>
 
@@ -2009,6 +2014,36 @@ function loadFromServer(name, apply) {
     .then(r => r.json())
     .then(data => { apply(data); saveLocal(); })
     .catch(() => alert('拉取失敗，可能是還沒部署或不在遊戲網域下開啟。'));
+}
+
+function loadFromServerAsync(name, apply) {
+  return fetch(`/api/content/${name}`)
+    .then(r => r.json())
+    .then(data => { apply(data); saveLocal(); return true; })
+    .catch(() => false);
+}
+
+async function fetchAll() {
+  const jobs = [
+    ['system-prompt', applyPromptData],
+    ['balance', applyBalanceData],
+    ['fragments', applyFragData],
+    ['events', applyEventData],
+    ['hidden-stats', applyTraitData],
+    ['lorebook', applyLoreData],
+    ['actions', applyActionData],
+    ['tv', applyTvData],
+    ['stereo', applyStereoData],
+  ];
+  let done = 0, failed = 0;
+  setStatus('upload-all-status', 'busy', `全部拉取中… 0/${jobs.length}`);
+  for (const [name, apply] of jobs) {
+    const ok = await loadFromServerAsync(name, apply);
+    if (ok) done++; else failed++;
+    setStatus('upload-all-status', 'busy', `全部拉取中… ${done + failed}/${jobs.length}`);
+  }
+  setStatus('upload-all-status', failed ? 'fail' : 'ok',
+    failed ? `完成 ${done} 項，失敗 ${failed} 項` : `全部 ${done} 項已拉取最新線上版本`);
 }
 
 // ===================== 重啟（封存後重置）=====================
