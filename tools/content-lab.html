@@ -583,6 +583,12 @@
     </div>
 
     <div class="dev-section">
+      <h3>④.5 給AI的矯正備忘紀錄（便利貼貼「給AI」送出的內容，只在送出後的下一次tick生效一次，這裡純記錄查歷史）</h3>
+      <div class="actions" style="margin-bottom:8px"><button class="ghost" onclick="refreshAiCorrections()">↻ 重新載入</button></div>
+      <div id="ai-corrections-box"><div class="dev-note">按「↻ 重新載入」查看。</div></div>
+    </div>
+
+    <div class="dev-section">
       <h3>⑤ 匯出</h3>
       <div class="actions" style="display:flex;gap:8px;flex-wrap:wrap">
         <button class="primary" onclick="exportMarkdown()">⬇ 匯出全部設定（Markdown）</button>
@@ -1893,6 +1899,39 @@ function refreshLiveStats() {
         liveTile('小黑影/狀態', [['小黑影', sh.active ? '出沒中' : '潛伏'], ['暗影好感', fix(sh.affection)], ['暫停', world.paused ? '是' : '否'], ['外出', world.owner_away ? '是' : '否']]);
     })
     .catch(() => { box.innerHTML = '<div class="dev-note">抓取失敗，可能是還沒部署或不在遊戲網域下開啟。</div>'; });
+}
+
+function aiCorrectionRowHtml(n, read) {
+  const tag = read ? `已讀取 @ ${n.readAt || ''}` : `待讀取 @ ${n.time || ''}`;
+  return `<div class="dev-note" style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;border-bottom:1px solid #eee;padding:6px 0">
+    <span><b>${tag}</b>　${(n.text || '').replace(/</g, '&lt;')}</span>
+    <button class="ghost" onclick="deleteAiCorrection('${n.id}')">刪除</button>
+  </div>`;
+}
+function refreshAiCorrections() {
+  const box = document.getElementById('ai-corrections-box');
+  box.innerHTML = '<div class="dev-note">抓取中…</div>';
+  fetch('/api/world')
+    .then(r => r.json())
+    .then(({ world }) => {
+      const pending = world.ai_corrections || [];
+      const log = (world.ai_corrections_log || []).slice().reverse();
+      if (pending.length === 0 && log.length === 0) {
+        box.innerHTML = '<div class="dev-note">目前沒有任何紀錄。</div>';
+        return;
+      }
+      box.innerHTML = pending.map(n => aiCorrectionRowHtml(n, false)).join('') +
+        log.map(n => aiCorrectionRowHtml(n, true)).join('');
+    })
+    .catch(() => { box.innerHTML = '<div class="dev-note">抓取失敗，可能是還沒部署或不在遊戲網域下開啟。</div>'; });
+}
+async function deleteAiCorrection(id) {
+  await fetch('/api/ai-note/delete', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id })
+  });
+  refreshAiCorrections();
 }
 
 async function backfillDigests() {

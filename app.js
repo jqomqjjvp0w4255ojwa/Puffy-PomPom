@@ -43,7 +43,6 @@ async function openPanel() {
   document.getElementById('side-panel').classList.add('open');
   document.getElementById('overlay').classList.add('open');
   document.getElementById('room-action-input').placeholder = randomPlaceholder();
-  load();
 }
 
 // 「給AI」便利貼地點只在飼主面板驗證過密碼後才出現在選單裡。
@@ -52,48 +51,6 @@ function refreshNoteAiOption() {
   if (opt) opt.style.display = sessionStorage.getItem('ownerPanelAuthed') === '1' ? '' : 'none';
 }
 
-// 同居人面板裡列出「給AI矯正備忘」，密碼驗證過才看得到，可以逐條刪除。
-// 分兩段：尚未讀取（還沒被下一次tick消化掉）／已讀取歷史（純記錄，不再進prompt，給飼主自己回顧改常駐prompt用）。
-function aiCorrectionItemHtml(n, read) {
-  return `
-    <div class="ai-correction-item${read ? ' read' : ''}">
-      ${read ? '<i class="ti ti-check ai-correction-mark" title="已讀取，不再影響生成"></i>' : ''}
-      <span class="ai-correction-text">${escapeHtml(n.text)}</span>
-      <i class="ti ti-x ai-correction-del" onclick="deleteAiCorrection('${n.id}')" title="刪除"></i>
-    </div>
-  `;
-}
-function renderAiCorrections(pending, log) {
-  const section = document.getElementById('ai-corrections-section');
-  if (!section) return;
-  pending = pending || [];
-  log = log || [];
-  if (sessionStorage.getItem('ownerPanelAuthed') !== '1' || (pending.length === 0 && log.length === 0)) {
-    section.style.display = 'none';
-    return;
-  }
-  section.style.display = 'block';
-  const box = document.getElementById('ai-corrections-list');
-  let html = '';
-  if (pending.length > 0) {
-    html += '<div class="ai-correction-group-label">尚未讀取（下次生成會套用）</div>' +
-      pending.map(n => aiCorrectionItemHtml(n, false)).join('');
-  }
-  if (log.length > 0) {
-    html += '<div class="ai-correction-group-label">已讀取歷史</div>' +
-      log.slice().reverse().map(n => aiCorrectionItemHtml(n, true)).join('');
-  }
-  box.innerHTML = html;
-}
-
-async function deleteAiCorrection(id) {
-  await fetch('/api/ai-note/delete', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ id })
-  });
-  load();
-}
 function closePanel() {
   document.getElementById('side-panel').classList.remove('open');
   document.getElementById('overlay').classList.remove('open');
@@ -1141,7 +1098,6 @@ async function load() {
     // 糰糰對巨怪的稱呼（隨熟悉度/好感度變化）：顯示在「我的動態」卡片的名字位置，取代固定寫死的「巨怪」
     document.getElementById('profile-name').textContent = bt.nickname || '巨怪';
     document.getElementById('shadow-tag').textContent = world.characters.shadow.active ? '⚠ 小黑影出沒中' : '';
-    renderAiCorrections(world.ai_corrections, world.ai_corrections_log);
 
     const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Taipei' }));
     document.getElementById('cover-date').textContent = (now.getMonth()+1) + ' 月 ' + now.getDate() + ' 日';
