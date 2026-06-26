@@ -259,6 +259,13 @@ const DEFAULT_EXTERNAL_EVENT_POOL = [
   { type: 'fungal', action: '牆角悄悄冒出一小撮新的菌絲，顏色跟糰糰自己的毛有點像，卻不是他的' },
   { type: 'fungal', action: '空氣裡飄來一股遙遠的孢子訊號，像是別的菌種正在哪裡開會、串聯地盤' },
   { type: 'fungal', action: '某處傳來微弱的菌絲震動，像是江湖上有別的真菌幫派剛打完一場小衝突' },
+  { type: 'critter', action: '一隻蟑螂從牆角竄過，消失在家具底下的陰影裡' },
+  { type: 'critter', action: '一列螞蟻沿著牆邊排成一條細線，緩緩搬運著看不清的東西' },
+  { type: 'critter', action: '一隻壁虎貼在天花板邊緣一動也不動，過了一陣又無聲挪了個位置' },
+  { type: 'critter', action: '牆角不知何時織出一張細密的蜘蛛網，絲線在光線下隱約反光' },
+  { type: 'critter', action: '一隻飛蛾繞著燈撞了幾圈，最後停在牆上不動' },
+  { type: 'balcony', action: '陽台的植物葉片被風吹得輕輕晃動，葉緣還掛著一點水珠' },
+  { type: 'balcony', action: '一隻不知名的小鳥停在陽台欄杆上待了一會兒，又飛走了' },
 ];
 function loadExternalEventPool() {
   try {
