@@ -690,7 +690,6 @@ function refreshDevStatsWithWorld(est) {
   const MODEL_PRICES = {
     'claude-sonnet-4-6': { in: 3, out: 15 },
     'claude-sonnet-4-5': { in: 3, out: 15 },
-    'claude-3-7-sonnet-latest': { in: 3, out: 15 },
     'claude-3-5-sonnet-latest': { in: 3, out: 15 },
     'claude-haiku-4-5': { in: 1, out: 5 }
   };
@@ -990,12 +989,12 @@ const BALANCE_API_GROUPS = [
     title: '回覆頻率',
     desc: '每次更新的間隔分鐘',
     fields: [
-      { key: 'tickDayMinMin', label: '白天最短(分)', desc: '下限', step: 1 },
-      { key: 'tickDayMaxMin', label: '白天最長(分)', desc: '上限，建議搭配快取開關時設在60分以內，間隔超過60分快取會失效、反而多付寫入費', step: 1 },
-      { key: 'tickNightMinMin', label: '夜間最短(分)', desc: '下限', step: 1 },
-      { key: 'tickNightMaxMin', label: '夜間最長(分)', desc: '上限，夜間間隔通常遠超1小時，系統會自動不套用快取', step: 1 }
+      { key: 'tickDayMinMin', label: '白天最短(分)・06:00-22:00', desc: '下限', step: 1 },
+      { key: 'tickDayMaxMin', label: '白天最長(分)・06:00-22:00', desc: '上限，建議搭配快取開關時設在60分以內，間隔超過60分快取會失效、反而多付寫入費', step: 1 },
+      { key: 'tickNightMinMin', label: '夜間最短(分)・22:00-06:00', desc: '下限', step: 1 },
+      { key: 'tickNightMaxMin', label: '夜間最長(分)・22:00-06:00', desc: '上限，夜間間隔通常遠超1小時，系統會自動不套用快取', step: 1 }
     ],
-    note: '間隔均值越短，每天更新次數越多、發文量越多，但呼叫次數也越多。白天目前建議落在25-60分之間（一天約16-24次），可兼顧快取效益與發文量；夜間建議維持3-6小時（一天約1.5-2次），半夜沒人看，拉長間隔最省錢。'
+    note: '白天＝06:00-22:00，夜間＝22:00-06:00（系統依此判斷要不要套用快取）。間隔均值越短，每天更新次數越多、發文量越多，但呼叫次數也越多。白天目前建議落在25-60分之間（一天約16-24次），可兼顧快取效益與發文量；夜間建議維持3-6小時（一天約1.5-2次），半夜沒人看，拉長間隔最省錢。'
   },
   {
     title: 'API 設定',
@@ -1005,7 +1004,6 @@ const BALANCE_API_GROUPS = [
       { key: 'model', label: '模型', desc: '選擇呼叫的Claude模型，價格差異大，請依預算調整', type: 'select', options: [
         { value: 'claude-sonnet-4-6', label: 'Sonnet 4.6（預設，input $3/output $15 每M token）' },
         { value: 'claude-sonnet-4-5', label: 'Sonnet 4.5（同價位，較舊版本）' },
-        { value: 'claude-3-7-sonnet-latest', label: 'Sonnet 3.7（同價位，更舊）' },
         { value: 'claude-3-5-sonnet-latest', label: 'Sonnet 3.5（同價位，最舊）' },
         { value: 'claude-haiku-4-5', label: 'Haiku 4.5（input $1/output $5 每M token，約省70%，但敘事品質會明顯下降）' }
       ] }

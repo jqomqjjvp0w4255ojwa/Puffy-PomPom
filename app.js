@@ -1,7 +1,7 @@
 let roomState = {
   window_open: false,
   ac: { on: false, mode: 'cool', temp: 22, fan: 'auto', sleep: false, broken: false },
-  light_on: true, toilet_open: false, fridge_open: false, cleanliness: 78
+  light_on: true, toilet_open: false, fridge_open: false, balcony_open: false, cleanliness: 78
 };
 
 const ROOM_PLACEHOLDERS = [
@@ -104,7 +104,7 @@ function updateCleanUI() {
 }
 
 function updateAllToggles() {
-  const map = { light_on:'it-light', toilet_open:'it-toilet', window_open:'it-window', fridge_open:'it-fridge' };
+  const map = { light_on:'it-light', toilet_open:'it-toilet', window_open:'it-window', fridge_open:'it-fridge', balcony_open:'it-balcony' };
   for (const [key, id] of Object.entries(map)) {
     document.getElementById(id).classList.toggle('on', !!roomState[key]);
   }
@@ -179,8 +179,6 @@ function renderAcRemote() {
 let TV_CHANNEL_LABEL = {};
 let tvChannelsLoaded = false;
 let tvLoading = false;
-const TV_COOLDOWN_MS = 8000; // 轉台冷卻：免費層有每分鐘請求上限，連點容易撞到 429
-let tvCooldownUntil = 0;
 
 async function loadTvChannels() {
   if (tvChannelsLoaded) return;
@@ -245,11 +243,6 @@ async function toggleTvPower() {
 async function playChannel(channel) {
   if (tvLoading) return;
   const screen = document.getElementById('tv-screen');
-  const wait = Math.ceil((tvCooldownUntil - Date.now()) / 1000);
-  if (wait > 0) {
-    screen.innerHTML = `<div class="tv-screen-static">轉台太快了，再等 ${wait} 秒…</div>`;
-    return;
-  }
   tvLoading = true;
   document.querySelectorAll('.tv-channel-btn').forEach(b =>
     b.classList.toggle('active', b.dataset.channel === channel));
@@ -263,7 +256,8 @@ async function playChannel(channel) {
     });
     const data = await res.json();
     if (data.ok) {
-      screen.innerHTML = `<div class="tv-program">${data.text.replace(/</g, '&lt;')}</div>`;
+      const staleNote = data.stale ? '<div class="tv-screen-stale">訊號不太穩，先沿用上次的內容…</div>' : '';
+      screen.innerHTML = `${staleNote}<div class="tv-program">${data.text.replace(/</g, '&lt;')}</div>`;
       tvPowerOn = true;
       tvLastChannel = channel;
       updateTvPowerUI();
@@ -272,8 +266,6 @@ async function playChannel(channel) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ tv_on: true, tv_channel: channel })
       }).catch(() => {});
-      // 只有真的重新生成才上冷卻；抓快取的不限制，方便快速轉台。
-      if (!data.cached) tvCooldownUntil = Date.now() + TV_COOLDOWN_MS;
     } else {
       let msg = '訊號不穩，稍後再轉台看看…';
       if (data.error === 'no_key') msg = '訊號中斷（電視台還沒設定）';
@@ -292,8 +284,6 @@ async function playChannel(channel) {
 let STEREO_CHANNEL_LABEL = {};
 let stereoChannelsLoaded = false;
 let stereoLoading = false;
-const STEREO_COOLDOWN_MS = 8000;
-let stereoCooldownUntil = 0;
 
 async function loadStereoChannels() {
   if (stereoChannelsLoaded) return;
@@ -358,12 +348,6 @@ async function toggleStereoPower() {
 async function playStereoChannel(channel) {
   if (stereoLoading) return;
   const screen = document.getElementById('stereo-screen');
-  const wait = Math.ceil((stereoCooldownUntil - Date.now()) / 1000);
-  if (wait > 0) {
-    screen.innerHTML = `<div class="tv-screen-static">轉台太快了，再等 ${wait} 秒…</div>`;
-    return;
-  }
-
   stereoLoading = true;
   document.querySelectorAll('#stereo-channels .tv-channel-btn').forEach(b =>
     b.classList.toggle('active', b.dataset.channel === channel));
@@ -377,7 +361,8 @@ async function playStereoChannel(channel) {
     });
     const data = await res.json();
     if (data.ok) {
-      screen.innerHTML = `<div class="tv-program">${data.text.replace(/</g, '&lt;')}</div>`;
+      const staleNote = data.stale ? '<div class="tv-screen-stale">訊號不太穩，先沿用上次的內容…</div>' : '';
+      screen.innerHTML = `${staleNote}<div class="tv-program">${data.text.replace(/</g, '&lt;')}</div>`;
       stereoPowerOn = true;
       stereoLastChannel = channel;
       updateStereoPowerUI();
@@ -386,7 +371,6 @@ async function playStereoChannel(channel) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ stereo_on: true, stereo_channel: channel })
       }).catch(() => {});
-      if (!data.cached) stereoCooldownUntil = Date.now() + STEREO_COOLDOWN_MS;
     } else {
       let msg = '訊號不穩，稍後再轉台看看…';
       if (data.error === 'no_key') msg = '訊號中斷（音響台還沒設定）';
@@ -796,23 +780,27 @@ function renderNoteDraft() {
   document.getElementById('note-new-btn').style.display = 'none';
 }
 
+let noteDismissedRead = false; // 使用者主動按「換新便利貼」後，先別讓輪詢又把舊的已讀便條蓋回來
 function startNewNote() {
   localStorage.removeItem('lastReadNote');
+  noteDismissedRead = true;
   document.getElementById('sticky-note-textarea').value = '';
   renderNoteDraft();
 }
 
-function refreshNoteWidget(pending) {
+function refreshNoteWidget(pending, lastReadFromServer) {
   const latest = pending.length > 0 ? pending[pending.length - 1] : null;
   if (latest) {
+    noteDismissedRead = false;
     if (noteState.mode !== 'saved' || noteState.savedId !== latest.id) {
       renderNoteSaved(latest);
     }
     return;
   }
+  if (noteDismissedRead) return;
   // 沒有待讀留言
   if (noteState.mode === 'saved') {
-    // 剛被 tick 讀走 → 標記為已讀，留下腳印
+    // 剛被 tick 讀走 → 標記為已讀，留下印子
     const readNote = {
       message: document.getElementById('sticky-note-saved').textContent,
       color: document.getElementById('sticky-note').dataset.color,
@@ -822,10 +810,15 @@ function refreshNoteWidget(pending) {
     localStorage.setItem('lastReadNote', JSON.stringify(readNote));
     renderNoteRead(readNote);
   } else if (noteState.mode === 'draft') {
-    // 重新整理頁面時，把上一張被讀過的便利貼還原
-    const stored = localStorage.getItem('lastReadNote');
-    if (stored) {
-      try { renderNoteRead(JSON.parse(stored)); } catch (e) {}
+    // 重新整理頁面/換裝置時，把上一張被讀過的便利貼還原：優先用後端記的（不怕清快取或換裝置），
+    // 沒有才退回 localStorage。
+    if (lastReadFromServer && lastReadFromServer.message) {
+      renderNoteRead(lastReadFromServer);
+    } else {
+      const stored = localStorage.getItem('lastReadNote');
+      if (stored) {
+        try { renderNoteRead(JSON.parse(stored)); } catch (e) {}
+      }
     }
   }
 }
@@ -1035,7 +1028,7 @@ function renderActivityFeed(ownerAction, pendingNotes) {
 
 async function refreshTodayPanels(world) {
   renderActivityFeed(world.owner_action || '', world.pending_notes || []);
-  refreshNoteWidget(world.visitor_messages || []);
+  refreshNoteWidget(world.visitor_messages || [], world.last_visitor_note || null);
 }
 
 async function logPendingNote(text) {
@@ -1099,6 +1092,7 @@ async function load() {
     roomState.light_on = world.room.light_on !== false;
     roomState.toilet_open = world.room.toilet_open || false;
     roomState.fridge_open = world.room.fridge_open || false;
+    roomState.balcony_open = world.room.balcony_open || false;
     roomState.cleanliness = world.room.cleanliness;
     tvPowerOn = !!world.room.tv_on;
     tvLastChannel = world.room.tv_channel || tvLastChannel;
@@ -1281,15 +1275,16 @@ function weekStartKeyOf(dateKey) {
 }
 
 async function fetchWeekDigest(weekStart) {
-  if (weekSummaryCache[weekStart] !== undefined) return weekSummaryCache[weekStart];
+  // 只快取「已經生成」的摘要（不會再變）；還沒生成時不快取，下次展開才能抓到後來才補上的內容。
+  if (weekSummaryCache[weekStart]) return weekSummaryCache[weekStart];
   try {
     const res = await fetch('/api/week-summary?start=' + weekStart);
     const data = await res.json();
-    weekSummaryCache[weekStart] = data.digest || '';
+    if (data.digest) weekSummaryCache[weekStart] = data.digest;
+    return data.digest || '';
   } catch (e) {
-    weekSummaryCache[weekStart] = '';
+    return '';
   }
-  return weekSummaryCache[weekStart];
 }
 
 function weekCardHtml(weekStart) {
@@ -1359,6 +1354,15 @@ async function openSummariesTimeline(userTriggered) {
     <div class="sum-card-body">${escapeHtml(daySummaries[d].digest)}<button class="sum-card-goto" onclick="event.stopPropagation();selectReviewDay('${d}')">查看當天完整日記 ›</button></div>
   </div>`;
 
+  // 「第N週」要算的是這個月實際的第幾個週一，跟有沒有資料無關；
+  // 之前用「在篩選後清單裡的第幾個」算，缺資料的週會被跳過，導致第三週被標成第一週。
+  const weekNoInMonth = wk => {
+    const [y, m, d] = wk.split('-').map(Number);
+    const firstDow = new Date(y, m - 1, 1).getDay(); // 0=日...6=六
+    const firstMonOffset = firstDow === 0 ? 6 : firstDow - 1;
+    return Math.ceil((d + firstMonOffset) / 7);
+  };
+
   // 週幾號到幾號：週起始日（週一）加 6 天就是週末
   const weekRangeLabel = wk => {
     const [y, m, d] = wk.split('-').map(Number);
@@ -1387,11 +1391,10 @@ async function openSummariesTimeline(userTriggered) {
 
   const html = monthKeys.map(mk => {
     const [yy, mm] = mk.split('-');
-    const weeksAsc = monthGroups[mk].slice().sort();
-    const weeksDesc = weeksAsc.slice().reverse();
+    const weeksDesc = monthGroups[mk].slice().sort().reverse();
     return `<div class="sum-month-group">
       <div class="sum-month-label">${yy} 年 ${Number(mm)} 月</div>
-      ${weeksDesc.map(wk => weekBlockHtml(wk, weeksAsc.indexOf(wk) + 1)).join('')}
+      ${weeksDesc.map(wk => weekBlockHtml(wk, weekNoInMonth(wk))).join('')}
     </div>`;
   }).join('');
 
@@ -1427,10 +1430,11 @@ function dayRowHtml(d) {
     if (s.ownerCount) bits.push(`你留下了動態${s.ownerPreview ? '：' + escapeHtml(s.ownerPreview) : ''}`);
     if (bits.length) extra = `<div class="tree-day-preview">${bits.join('　·　')}</div>`;
   }
+  const countTag = s && s.diaryCount ? `<span class="tree-day-count">${s.diaryCount} 則</span>` : '';
   return `<div class="tree-day${cur}" data-date="${d}" onclick="selectReviewDay('${d}')">
     <div class="tree-day-dot"></div>
     <div class="tree-day-body">
-      <div class="tree-day-row"><span class="tree-day-date">${day} 日</span><span class="tree-day-weekday">週${weekday}</span></div>
+      <div class="tree-day-row"><span class="tree-day-date">${day} 日</span><span class="tree-day-weekday">週${weekday}</span>${countTag}</div>
       ${extra}
     </div>
   </div>`;
@@ -1772,9 +1776,10 @@ function renderNotesShelf() {
     if (notesFilter !== 'all' && !available.has(c.source)) return;
     shown++;
     const isActive = notesIndex !== 0 && c.source === active ? ' active' : '';
+    const isNew = chapterHasNew(c);
     const pct = c.total > 0 ? Math.round(c.got / c.total * 100) : 0;
     html += `<div class="shelf-book${isActive}" onclick="openChapterPage('${c.source.replace(/'/g, "\\'")}')">
-      <div class="shelf-book-title">${escapeHtml(c.source)}</div>
+      <div class="shelf-book-title${isNew ? ' shelf-book-title-new' : ''}">${escapeHtml(c.source)}</div>
       <div class="shelf-book-meta"><span>${c.got === c.total ? '已完成' : '蒐集中'}</span><span>${c.got}/${c.total}</span></div>
       <div class="shelf-book-bar"><div class="shelf-book-fill" style="width:${pct}%"></div></div>
     </div>`;
@@ -1783,6 +1788,12 @@ function renderNotesShelf() {
     html += '<div class="drawer-empty">還沒有收藏任何句子。<br>翻書時點句尾的星星就能收藏。</div>';
   }
   list.innerHTML = html;
+}
+// 篇章裡有任何「已收集但還沒看過」的句子，目錄／書櫃上的篇章名要高亮提醒。
+function chapterHasNew(c) {
+  if (!c.items) return false;
+  const seen = getSeenFragments();
+  return c.items.some(it => it.collected && !seen.has(it.id));
 }
 function pageInnerHtml(page) {
   if (page.type === 'toc') {
@@ -1794,9 +1805,10 @@ function pageInnerHtml(page) {
           <span class="toc-name">？？？　未發現的篇章</span><span class="toc-count">0/${c.total}</span><i class="ti ti-chevron-right toc-chevron"></i>
         </div>`;
       }
+      const isNew = chapterHasNew(c);
       return `<div class="toc-item" onclick="openChapterPage('${c.source.replace(/'/g, "\\'")}')">
         <span class="toc-num">${num}</span><i class="ti ti-circle-check toc-state done"></i>
-        <span class="toc-name">${escapeHtml(c.source)}</span><span class="toc-count">${c.got}/${c.total}</span><i class="ti ti-chevron-right toc-chevron"></i>
+        <span class="toc-name${isNew ? ' toc-name-new' : ''}">${escapeHtml(c.source)}</span><span class="toc-count">${c.got}/${c.total}</span><i class="ti ti-chevron-right toc-chevron"></i>
       </div>`;
     }).join('');
     return { running: '', body: `<div class="book-toc-title">黑影筆記・書櫃目錄</div>

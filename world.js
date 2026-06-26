@@ -1056,6 +1056,7 @@ const server = http.createServer((req, res) => {
           date: d,
           preview,
           digest: day.digest || '',
+          diaryCount: (day.diary || []).filter(e => e.scene).length,
           visitorCount: visitorLog.length,
           visitorPreview: visitorLog.length ? visitorLog[0].message.slice(0, 24) : '',
           ownerCount: ownerLog.length,
@@ -1197,7 +1198,13 @@ const server = http.createServer((req, res) => {
         const ctx = buildTvContext();
         const result = await callGemini(buildTvPrompt(channel, ctx), 280);
         if (result.error) {
-          res.end(JSON.stringify({ ok: false, error: result.error, detail: result.detail || '' }));
+          // Gemini 失敗時別讓畫面整個空掉：有舊內容（哪怕是上個時段/上一筆紀錄的）就先頂著用，
+          // 並標記 stale，前端可以提示「暫時沿用舊內容」而不是只看到錯誤訊息。
+          if (cached) {
+            res.end(JSON.stringify({ ok: true, channel, text: cached.text, cached: true, stale: true }));
+          } else {
+            res.end(JSON.stringify({ ok: false, error: result.error, detail: result.detail || '' }));
+          }
         } else {
           const text = cleanTvText(result.text);
           channelCache.tv[channel] = { stamp, text };
@@ -1243,7 +1250,11 @@ const server = http.createServer((req, res) => {
         const ctx = buildTvContext();
         const result = await callGemini(buildStereoPrompt(channel, ctx), 200);
         if (result.error) {
-          res.end(JSON.stringify({ ok: false, error: result.error, detail: result.detail || '' }));
+          if (cached) {
+            res.end(JSON.stringify({ ok: true, channel, text: cached.text, cached: true, stale: true }));
+          } else {
+            res.end(JSON.stringify({ ok: false, error: result.error, detail: result.detail || '' }));
+          }
         } else {
           const text = cleanTvText(result.text);
           channelCache.stereo[channel] = { stamp, text };
@@ -1731,7 +1742,7 @@ async function tick() {
 白糰糰目前狀態：${vitalLine} · 毛況:${bt.fur || '正常'} · 位置:${bt.location}
 小黑影：${shadowShouldAppear ? '活躍' : '潛伏'} 位置:${world.characters.shadow.location} 灰塵:${world.characters.shadow.dust_count}
 房間清潔度：${world.room.cleanliness}
-窗戶：${world.room.window_open ? '開' : '關'} 冷氣：${acLabel} 燈：${world.room.light_on ? '開' : '關'} 廁所門：${world.room.toilet_open ? '開' : '關'} 冰箱門：${world.room.fridge_open ? '開' : '關'}${world.room.fridge_power_cut ? '（剛跳電）' : ''}
+窗戶：${world.room.window_open ? '開' : '關'} 冷氣：${acLabel} 燈：${world.room.light_on ? '開' : '關'} 廁所門：${world.room.toilet_open ? '開' : '關'} 冰箱門：${world.room.fridge_open ? '開' : '關'}${world.room.fridge_power_cut ? '（剛跳電）' : ''} 陽台門：${world.room.balcony_open ? '開（白糰糰可能會探頭看看外面或往那邊去）' : '關'}
 電視：${tvOnLabel} 音響：${stereoOnLabel}${(world.room.tv_on || world.room.stereo_on) ? '（房間裡有聲音，白糰糰會聽到並做出反應）' : ''}
 巨怪對房間環境的描述：${world.room.env_desc || '無'}
 今天已發生：${world.room.events_today.join('，') || '無'}
@@ -1866,6 +1877,15 @@ async function tick() {
     if (visitorMessages.length > 0) {
       appendToDay(todayKey, 'visitorLog', visitorMessages);
       newWorld.visitor_messages = [];
+      // 記下最後一張被讀走的便條紙，前端才能在重新整理/換裝置後也補回「已讀＋留下印子」的畫面，
+      // 不再只靠瀏覽器 localStorage（換裝置或清快取就會看起來內容整個消失）。
+      const lastNote = visitorMessages[visitorMessages.length - 1];
+      newWorld.last_visitor_note = {
+        message: lastNote.message,
+        color: lastNote.color,
+        location: lastNote.location,
+        locationLabel: lastNote.locationLabel || ''
+      };
     }
 
     // 未消化的系統紀錄已經被寫進這次的 prompt、融入 result.scene，消化完畢即清空。
