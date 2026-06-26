@@ -1451,11 +1451,9 @@ body { background: #f5f0e8; min-height: 100vh; padding: 2rem 1rem 6rem; font-fam
 /* 回到目錄：手機固定在左上角漢堡選單鈕「右邊」（左上角被選單鈕佔住了，疊一起會被蓋掉看不到），
    桌面已經有上面那個接在篇名左邊的［<］了，這裡隱藏。 */
 .book-back-fixed {
-  position: fixed; left: 62px; top: 14px; z-index: 260;
-  width: 42px; height: 42px; border-radius: 50%;
-  background: #fff; box-shadow: 0 2px 8px rgba(120,100,80,0.18);
-  border: none; color: #b89878; display: flex; align-items: center; justify-content: center;
-  cursor: pointer; font-size: 22px; font-weight: 700; line-height: 1; padding: 0;
+  position: fixed; left: 68px; top: 24px; z-index: 260;
+  border: none; background: transparent; color: #b89878;
+  cursor: pointer; font-size: 22px; font-weight: 700; line-height: 1; padding: 4px 8px;
 }
 .book-back-fixed:hover { color: #c08050; }
 @media (min-width: 760px) {
