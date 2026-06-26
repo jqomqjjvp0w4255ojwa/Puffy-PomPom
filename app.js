@@ -1890,7 +1890,8 @@ function renderSinglePage(page, pageNum) {
   const { running, body } = pageInnerHtml(page);
   const numSide = pageNum != null ? (pageNum % 2 === 1 ? 'left' : 'right') : '';
   // 桌面：［<回到目錄］直接接在篇名左邊；手機另外固定在左上角（見 .book-back-fixed）。
-  const backArrow = running ? `<span class="book-back-arrow" onclick="event.stopPropagation();notesIndex=0;renderNotes()" title="回到目錄">&lt;</span>` : '';
+  // 電腦版偶數頁（右頁）不需要再放一次［<］，只在奇數頁（左頁）顯示；手機固定在左上角，不分頁碼單雙。
+  const backArrow = running ? `<span class="book-back-arrow ${numSide}" onclick="event.stopPropagation();notesIndex=0;renderNotes()" title="回到目錄">&lt;</span>` : '';
   return `<div class="book-page">
     ${running ? `<div class="book-running-title ${numSide}">${backArrow}${escapeHtml(running)}</div>` : ''}
     <div class="book-page-body">${body}</div>

@@ -377,19 +377,6 @@
     </div>
   </div>
   <textarea class="sticky-note-textarea" id="sticky-note-textarea" maxlength="50" placeholder="想跟他說的話，他聽不懂，但可能會有反應..."></textarea>
-  <div class="note-location-picker" id="note-location-picker">
-    <span class="note-loc-label">貼在</span>
-    <select class="note-loc-select" id="note-loc-select" onchange="onNoteLocSelect(this.value)">
-      <option value="floor">地板</option>
-      <option value="desk_leg">桌腳</option>
-      <option value="fridge_bottom">冰箱下方</option>
-      <option value="wall">牆上</option>
-      <option value="computer">電腦</option>
-      <option value="ai" id="note-loc-ai-option" style="display:none;">給AI</option>
-      <option value="__custom__">其他…</option>
-    </select>
-    <input type="text" class="note-loc-custom" id="note-loc-custom" maxlength="12" placeholder="貼在哪裡？" style="display:none;" oninput="onNoteLocCustomInput(this.value)">
-  </div>
   <div class="sticky-note-saved" id="sticky-note-saved" style="display:none;"></div>
   <div class="note-saved-loc" id="note-saved-loc" style="display:none;"></div>
   <div class="note-mark note-mark-footprint" id="note-mark-footprint" style="display:none;">
@@ -409,9 +396,24 @@
   </div>
   <div class="note-mark note-mark-fur" id="note-mark-fur" style="display:none;"></div>
   <div class="sticky-note-actions">
-    <i class="ti ti-check" id="note-confirm-btn" onclick="confirmNote()"></i>
-    <i class="ti ti-trash" id="note-delete-btn" onclick="deleteNote()" style="display:none;"></i>
-    <i class="ti ti-pencil" id="note-new-btn" onclick="startNewNote()" title="寫新的" style="display:none;"></i>
+    <div class="note-location-picker" id="note-location-picker">
+      <span class="note-loc-label">貼在</span>
+      <select class="note-loc-select" id="note-loc-select" onchange="onNoteLocSelect(this.value)">
+        <option value="floor">地板</option>
+        <option value="desk_leg">桌腳</option>
+        <option value="fridge_bottom">冰箱下方</option>
+        <option value="wall">牆上</option>
+        <option value="computer">電腦</option>
+        <option value="ai" id="note-loc-ai-option" style="display:none;">給AI</option>
+        <option value="__custom__">其他…</option>
+      </select>
+      <input type="text" class="note-loc-custom" id="note-loc-custom" maxlength="12" placeholder="貼在哪裡？" style="display:none;" oninput="onNoteLocCustomInput(this.value)">
+    </div>
+    <div class="sticky-note-actions-icons">
+      <i class="ti ti-check" id="note-confirm-btn" onclick="confirmNote()"></i>
+      <i class="ti ti-trash" id="note-delete-btn" onclick="deleteNote()" style="display:none;"></i>
+      <i class="ti ti-pencil" id="note-new-btn" onclick="startNewNote()" title="寫新的" style="display:none;"></i>
+    </div>
   </div>
 </div>
 
