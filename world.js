@@ -287,6 +287,62 @@ function pickExternalEvent(recentTypes, recentActions) {
   return pool[Math.floor(Math.random() * pool.length)];
 }
 
+// 小黑影互動籤庫：取代過去單一硬寫的「故意去招惹」指令，給多種互動基調（追逐／對峙／好奇／忽視／模仿…），
+// 不再每次都寫成打架。bored_leave 類型保留給「膩了想停下」的專用情境，平常 pick 時要排除。
+// 可在 /content-lab 編輯、上傳覆蓋 data/shadow-encounters.json。
+const DEFAULT_SHADOW_ENCOUNTER_POOL = [
+  { type: 'provoke', action: '牠是躲在影子裡的另一個主角，不是背景。白糰糰一見到牠就故意去招惹、找碴——撲牠、踩牠、跟牠搶地盤，鬧出一段有來有往的小衝突。' },
+  { type: 'chase', action: '白糰糰盯上牠晃動的輪廓，悄悄跟上去，想看牠到底要往哪鑽，一前一後追了一小段。' },
+  { type: 'standoff', action: '兩個影子在房間角落對峙了一陣，誰都沒先動手，只是互相打量、僵在那裡。' },
+  { type: 'curious', action: '白糰糰歪著頭觀察牠的動靜，像在研究這團影子今天的形狀跟平常有什麼不一樣。' },
+  { type: 'ignore', action: '白糰糰瞄了牠一眼，沒理會，自顧自做自己的事，只是視線偶爾飄過去確認牠還在。' },
+  { type: 'mimic', action: '白糰糰學著牠貼牆挪動的姿勢，慢慢爬了幾步，像在模仿牠、又像在跟牠較勁。' },
+  { type: 'territorial', action: '白糰糰在牠常出現的角落留下自己的痕跡，像是宣示這塊地盤還是自己的。' },
+  { type: 'play', action: '白糰糰朝牠的方向撲了一下又立刻縮回來，反覆幾次，分不清是挑釁還是逗著玩。' },
+  { type: 'wary', action: '白糰糰刻意跟牠保持一段距離，繞著走，眼神沒離開過那團影子。' },
+  { type: 'share', action: '白糰糰跟牠一起待在同一片陰影裡，沒打也沒鬧，只是各自安靜地待著。' },
+];
+const DEFAULT_SHADOW_BOREDOM_POOL = [
+  { type: 'bored_leave', action: '鬧了這麼久，白糰糰忽然顯得有點膩，打了個哈欠，轉身懶懶地走開，不想再理牠了。' },
+  { type: 'bored_leave', action: '小黑影似乎也玩累了，動作慢了下來，悄悄縮回最深的陰影裡，一時不再冒出來。' },
+  { type: 'bored_leave', action: '兩邊都安靜了下來，像是心照不宣地停戰，各自退開，誰都沒再往前一步。' },
+];
+function loadShadowEncounterFile() {
+  try {
+    const data = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'shadow-encounters.json'), 'utf8'));
+    return Array.isArray(data) ? data.filter(a => a && a.action && a.action.trim()) : [];
+  } catch (err) {
+    return [];
+  }
+}
+function loadShadowEncounterPool() {
+  const all = loadShadowEncounterFile();
+  const pool = all.filter(a => a.type !== 'bored_leave');
+  return pool.length > 0 ? pool : DEFAULT_SHADOW_ENCOUNTER_POOL;
+}
+function loadShadowBoredomPool() {
+  const all = loadShadowEncounterFile();
+  const pool = all.filter(a => a.type === 'bored_leave');
+  return pool.length > 0 ? pool : DEFAULT_SHADOW_BOREDOM_POOL;
+}
+// 跟 pickActionTag 同樣的雙重去重邏輯。
+function pickShadowEncounter(recentTypes, recentActions) {
+  const recentT = recentTypes || [];
+  const recentA = recentActions || [];
+  const all = loadShadowEncounterPool();
+  let pool = all.filter(a => !recentT.includes(a.type) && !recentA.includes(a.action));
+  if (pool.length === 0) pool = all.filter(a => !recentA.includes(a.action));
+  if (pool.length === 0) pool = all;
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+function pickShadowBoredom(recentActions) {
+  const recentA = recentActions || [];
+  const all = loadShadowBoredomPool();
+  let pool = all.filter(a => !recentA.includes(a.action));
+  if (pool.length === 0) pool = all;
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
 // 死亡（健康＋飽食歸零）改由 tick 內的死亡狀態機處理（要管重生倒數與小黑影好感），
 // 這裡只負責偵測飛升與觀察兩種即時事件。
 function detectTriggeredEvent(world, bt, combinedPlayerText) {
@@ -1056,7 +1112,12 @@ const BALANCE_BUILTIN = {
   quietHoursEnabled: true,
   quietStartHour: 22,
   quietEndHour: 8,
-  externalEventChance: 0.15
+  externalEventChance: 0.15,
+  // 小黑影出沒條件成立時，是否真的觸發一段互動敘述的機率（不是每次都演），剩下的機率就只是「潛伏在那」沒有著墨。
+  shadowEncounterChance: 0.5,
+  // 連續互動達這個次數後，強制演一段「膩了、停下/離開」，並進入幾個 tick 的冷靜期。
+  shadowEncounterStreakLimit: 4,
+  shadowEncounterCooldownTicks: 3
 };
 function loadBalance() {
   try {
@@ -1899,12 +1960,56 @@ async function tick() {
     : '關';
 
   // 小黑影出沒條件：房間髒（清潔度<40）或環境暗（關燈／深夜 22:00-06:00），或死亡復仇期間。
+  // 出沒條件成立不代表每次都演一段互動——機率roll決定要不要寫，且連續互動太多次會強制讓其中一邊膩了停下，
+  // 進入冷靜期後即使房間條件還成立也先潛伏一陣，避免同一套「打架」劇情每個 tick 重複洗版。
   const roomDirty = (world.room.cleanliness ?? 100) < 40;
   const isDark = world.room.light_on === false || getRealTime().hour >= 22 || getRealTime().hour < 6;
-  const shadowShouldAppear = !!world.death.active || roomDirty || isDark;
-  const shadowInput = shadowShouldAppear && !world.death.active
-    ? `\n小黑影現在從陰影裡出沒了（${roomDirty ? '房間髒亂' : ''}${roomDirty && isDark ? '又' : ''}${isDark ? '光線昏暗' : ''}，正是牠浮現的時機）。牠是躲在影子裡的另一個主角，不是背景。白糰糰一見到牠就會故意去招惹、找碴、跟牠摩擦——撲牠、踩牠、跟牠搶地盤或對峙，鬧出一段有來有往的小衝突。請把這段互動寫進敘述裡。`
-    : '';
+  const shadowConditionMet = !!world.death.active || roomDirty || isDark;
+  const shadowCooldown = world.characters.shadow.cooldownTicks || 0;
+  const shadowStreak = world.characters.shadow.encounterStreak || 0;
+  const shadowEncounterChance = typeof balance.shadowEncounterChance === 'number' ? balance.shadowEncounterChance : 0.5;
+  const shadowStreakLimit = typeof balance.shadowEncounterStreakLimit === 'number' ? balance.shadowEncounterStreakLimit : 4;
+  const shadowCooldownTicks = typeof balance.shadowEncounterCooldownTicks === 'number' ? balance.shadowEncounterCooldownTicks : 3;
+  const shadowShouldAppear = !!world.death.active || (shadowConditionMet && shadowCooldown <= 0);
+  let forceShadowBoredom = false;
+  let shadowInteracts = false;
+  if (!world.death.active && shadowCooldown <= 0 && shadowConditionMet) {
+    if (shadowStreak >= shadowStreakLimit) {
+      forceShadowBoredom = true;
+      shadowInteracts = true;
+    } else {
+      shadowInteracts = Math.random() < shadowEncounterChance;
+    }
+  }
+  let shadowEncounterTag = null;
+  let shadowInput = '';
+  if (!world.death.active && shadowInteracts) {
+    if (forceShadowBoredom) {
+      const recentBoredTexts = (world.characters.shadow.boredomTextLog || []).slice(-2);
+      shadowEncounterTag = pickShadowBoredom(recentBoredTexts);
+      shadowInput = `\n${shadowEncounterTag.action}`;
+    } else {
+      const recentShadowTypes = (world.characters.shadow.encounterLog || []).slice(-3);
+      const recentShadowTexts = (world.characters.shadow.encounterTextLog || []).slice(-7);
+      shadowEncounterTag = pickShadowEncounter(recentShadowTypes, recentShadowTexts);
+      shadowInput = `\n小黑影現在從陰影裡出沒了（${roomDirty ? '房間髒亂' : ''}${roomDirty && isDark ? '又' : ''}${isDark ? '光線昏暗' : ''}，正是牠浮現的時機）。牠是躲在影子裡的另一個主角，不是背景。${shadowEncounterTag.action}請把這段互動寫進敘述裡。`;
+    }
+  }
+  // 下一輪的連續次數／冷靜期：演了一般互動就累積次數；強制膩了那次歸零並進入冷靜期；
+  // 條件不成立或沒roll到就慢慢消耗冷靜期、歸零次數。
+  let nextShadowStreak = shadowStreak;
+  let nextShadowCooldown = shadowCooldown;
+  if (!world.death.active) {
+    if (forceShadowBoredom) {
+      nextShadowStreak = 0;
+      nextShadowCooldown = shadowCooldownTicks;
+    } else if (shadowInteracts) {
+      nextShadowStreak = shadowStreak + 1;
+    } else {
+      nextShadowStreak = 0;
+      if (nextShadowCooldown > 0) nextShadowCooldown = nextShadowCooldown - 1;
+    }
+  }
 
   const todayKey = getTodayKey();
   const yesterdayKey = dateKeyOf(new Date(getTaipeiNow().getTime() - 24 * 60 * 60 * 1000));
@@ -2018,7 +2123,20 @@ async function tick() {
         // 小黑影是躲在影子裡的另一個主角，出沒與否由環境決定，不交給 AI 自由設定：
         // 房間髒（清潔度低）或暗（關燈／深夜）牠就會從陰影裡浮現；死亡復仇期間必然活躍。
         // 這樣 active 才會真的對應敘述裡看得到的動靜，不會卡在 true 卻整段沒提到牠。
-        shadow: { ...world.characters.shadow, ...(result.shadow || {}), active: shadowShouldAppear }
+        shadow: {
+          ...world.characters.shadow,
+          ...(result.shadow || {}),
+          active: shadowShouldAppear,
+          encounterStreak: nextShadowStreak,
+          cooldownTicks: nextShadowCooldown,
+          ...(shadowEncounterTag && !forceShadowBoredom ? {
+            encounterLog: [...(world.characters.shadow.encounterLog || []).slice(-2), shadowEncounterTag.type],
+            encounterTextLog: [...(world.characters.shadow.encounterTextLog || []).slice(-6), shadowEncounterTag.action]
+          } : {}),
+          ...(shadowEncounterTag && forceShadowBoredom ? {
+            boredomTextLog: [...(world.characters.shadow.boredomTextLog || []).slice(-1), shadowEncounterTag.action]
+          } : {})
+        }
       },
       room: { ...world.room, ...result.room }
     };
