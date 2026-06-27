@@ -1479,6 +1479,7 @@ const server = http.createServer((req, res) => {
         if (data.type === 'status') {
           world.owner_status = data.input || '';
           world.owner_status_time = data.input ? getRealTime().display : '';
+          world.owner_status_read = !data.input;
         }
         if (data.type === 'action') {
           world.owner_action = data.input || '';
@@ -1791,9 +1792,16 @@ async function tick() {
   // 飽食加成的「有沒有吃」交給AI每輪判斷（result.fed），「加多少」固定由程式決定，
   // 套用時機放在拿到AI回應之後（見下方），避免巨怪持續餵食的多輪場景只在第一輪加到分。
 
+  // 巨怪狀態剛被設定/變更的那一輪（未讀），給一條好奇心提示：糰糰看得到情緒粒子，
+  // 對視野裡這個龐然大物的狀態變化會有基本好奇，過去看一下、留意一下方向，不用太誇張或太黏。
+  // 之後同一個狀態持續存在，就只當背景資訊，不再重複提示好奇，避免每個tick都硬演一次。
+  const ownerStatusUnread = !!world.owner_status && !world.owner_status_read;
   const ownerStatus = world.owner_status ? `巨怪狀態：${world.owner_status}` : '';
+  const ownerCuriosity = ownerStatusUnread
+    ? '\n巨怪身上的情緒粒子剛剛有了變化，糰糰天生看得見這些訊號——基本的好奇心會讓他多看一眼或過去留意一下巨怪的方向，不用太誇張。'
+    : '';
   const ownerAction = ownerActionUnread ? `巨怪對房間的行為：${world.owner_action}` : '';
-  const ownerInput = (ownerStatus || ownerAction) ? '\n' + [ownerStatus, ownerAction].filter(Boolean).join('\n') : '';
+  const ownerInput = (ownerStatus || ownerAction || ownerCuriosity) ? '\n' + [ownerStatus, ownerAction].filter(Boolean).join('\n') + ownerCuriosity : '';
   const awayInput = world.owner_away ? '\n巨怪現在外出不在房間（最棒的事正發生在沒人的時候）。' : '';
 
   const NOTE_LOCATION_DESC = {
@@ -2180,6 +2188,10 @@ async function tick() {
       }]);
       // 文字本身不清空，留著顯示在「我的動態」第 1 張；只標記已讀，下次 tick 不會再讀它。
       newWorld.owner_action_read = true;
+    }
+    if (ownerStatusUnread) {
+      // 好奇心提示只在狀態剛變的那輪用過一次，之後同個狀態持續存在就不再重複提示。
+      newWorld.owner_status_read = true;
     }
 
     if (visitorMessages.length > 0) {
