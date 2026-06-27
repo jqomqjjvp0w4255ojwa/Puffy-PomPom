@@ -1838,7 +1838,7 @@ async function tick() {
   const moodColor = getMoodColorFor(hidden.mood);
   const hiddenInput = [
     nickname ? `\n白糰糰此刻心裡如何看待巨怪：以「${nickname}」相稱（這是他熟悉與好感程度的體現，請讓動態自然流露這份態度；他不會說話，這只是敘述者的稱呼語氣）` : '',
-    moodColor ? `\n白糰糰當前心情：${moodColor.name}（心情值${hidden.mood}），請讓這段動態的氣氛與之相符` : '',
+    moodColor ? `\n白糰糰當前心情：${moodColor.name}（心情值${hidden.mood}）。這是氣氛定調用的造詞，只用來感受基調，不是房間裡真實存在的物件——不要把它寫成可以「靠近」「旁邊」「缺口」「外緣」的場景物品，也不要每次都重複同一個詞，自然帶出對應的氣氛就好` : '',
     texture ? `\n白糰糰對巨怪長期累積的觸感印象：${texture}（隱藏設定，可微妙影響他靠近或迴避的方式，不要直接把這幾個字寫進動態）` : ''
   ].join('');
 
