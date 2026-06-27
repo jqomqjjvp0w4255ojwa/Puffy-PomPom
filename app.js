@@ -1165,7 +1165,7 @@ async function load() {
     worldPaused = !!world.paused;
     setPauseUI(worldPaused);
 
-    updateDeathOverlay(world.death);
+    updateDeathOverlay(world.death, world.farewell);
     updateFarewellOverlay(world.farewell);
 
     maybeShowFragmentCard(world.fragments);
@@ -1181,7 +1181,7 @@ async function load() {
 // 死亡畫面：糰糰死亡（world.death.active）時蓋上暗色覆蓋，顯示重生倒數與兩顆按鈕。
 // 「等待糰糰歸來」只是把覆蓋收起來繼續看日記（本次工作階段內不再跳出）；倒數結束會自動再生。
 let deathDismissed = false;
-function updateDeathOverlay(death) {
+function updateDeathOverlay(death, farewell) {
   const overlay = document.getElementById('death-overlay');
   if (!overlay) return;
   if (!death || !death.active) {
@@ -1190,8 +1190,31 @@ function updateDeathOverlay(death) {
     return;
   }
   const cd = document.getElementById('death-countdown');
-  if (cd) cd.textContent = death.ticksLeft > 0 ? `小黑影的報復還會持續約 ${death.ticksLeft} 次更新，之後糰糰會自行再生。` : '糰糰即將再生…';
+  const farewellRequested = !!(farewell && farewell.requested);
+  if (cd) {
+    cd.textContent = farewellRequested
+      ? '已選擇永別，下一次更新會結束復仇、轉入永別事件…'
+      : (death.ticksLeft > 0 ? `小黑影的報復還會持續約 ${death.ticksLeft} 次更新，之後糰糰會自行再生。` : '糰糰即將再生…');
+  }
+  const farewellBtn = document.getElementById('death-farewell-btn');
+  if (farewellBtn) {
+    farewellBtn.disabled = farewellRequested;
+    farewellBtn.textContent = farewellRequested ? '已送出永別請求…' : '永別（不再回來）';
+  }
   overlay.style.display = deathDismissed ? 'none' : 'flex';
+}
+async function requestFarewell() {
+  if (!confirm('永別之後會結束這次的死亡復仇，直接走向「永別‧遺形留蕈」事件，是不可逆的選擇，確定嗎？')) return;
+  try {
+    await fetch('/api/owner', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: 'request_farewell' })
+    });
+    location.reload();
+  } catch (e) {
+    alert('選擇送出失敗，請再試一次。');
+  }
 }
 function closeDeathOverlay() {
   deathDismissed = true;
