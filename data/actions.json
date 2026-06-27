@@ -47,7 +47,7 @@
   {
     "id": "action-1782133909003",
     "type": "collect",
-    "action": "翻找垃圾桶邊緣，挑選了一顆大小剛好的彩色紙片"
+    "action": "翻找垃圾桶邊緣，挑選收藏品"
   },
   {
     "id": "action-1782133908839",
@@ -58,11 +58,6 @@
     "id": "action-1782133908667",
     "type": "collect",
     "action": "用小手捏住一根掉落的線頭，慢慢把它捲起來帶走"
-  },
-  {
-    "id": "action-1782133882112",
-    "type": "collect",
-    "action": "在地上四處巡視，把發現的散落屑屑一顆顆撿起來"
   },
   {
     "id": "action-1782133881717",
@@ -98,11 +93,6 @@
     "id": "action-1782133814500",
     "type": "study",
     "action": "湊近紙張或牆面，認真研究上面殘留的文字與紋路走向"
-  },
-  {
-    "id": "action-1782133732842",
-    "type": "study",
-    "action": "靜靜待在有光的地方，專注觀察地面光斑的形狀與移動"
   },
   {
     "id": "action-1782133732663",
@@ -187,12 +177,12 @@
   {
     "id": "action-seed-4b",
     "type": "weapon",
-    "action": "把竹籤舉起來對著光看了看，像在確認有沒有缺角"
+    "action": "把竹籤舉起來確認有沒有缺角"
   },
   {
     "id": "action-seed-4c",
     "type": "weapon",
-    "action": "練習幾次拔籤的速度，動作一次比一次更乾淨"
+    "action": "練習幾次拔籤的速度"
   },
   {
     "id": "action-seed-5",
@@ -277,12 +267,12 @@
   {
     "id": "action-seed-10b",
     "type": "water",
-    "action": "用小手點了點積水，觀察水面的波紋散開"
+    "action": "用小手點了點積水"
   },
   {
     "id": "action-seed-10c",
     "type": "water",
-    "action": "靠近水邊聞了聞，猶豫了一下還是沒有靠太近"
+    "action": "靠近水邊聞了聞"
   },
   {
     "id": "action-seed-11",
@@ -292,22 +282,22 @@
   {
     "id": "action-seed-11b",
     "type": "sun",
-    "action": "躺進一塊光斑裡攤平身體，曬了一會兒又翻了個面"
+    "action": "躺進光裡攤平身體，曬了一會兒"
   },
   {
     "id": "action-seed-11c",
     "type": "sun",
-    "action": "跟著光斑慢慢移動位置，一路挪到光斑邊緣才停下"
+    "action": "跟著光斑慢慢移動位置"
   },
   {
     "id": "action-seed-12",
     "type": "stare",
-    "action": "盯著一個固定的小東西不動，像在判斷它算不算數"
+    "action": "盯著一個固定的小東西像在判斷它算不算數"
   },
   {
     "id": "action-seed-12b",
     "type": "stare",
-    "action": "盯著天花板上的一個小污點看了很久，動也不動"
+    "action": "盯著天花板上的一個小污點看了很久"
   },
   {
     "id": "action-seed-12c",
