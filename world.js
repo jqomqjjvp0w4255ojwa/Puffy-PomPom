@@ -343,14 +343,12 @@ function pickShadowBoredom(recentActions) {
   return pool[Math.floor(Math.random() * pool.length)];
 }
 
-// 死亡（健康＋飽食歸零）改由 tick 內的死亡狀態機處理（要管重生倒數與小黑影好感），
+// 死亡（健康＋飽食歸零）改由 tick 內的死亡狀態機處理（要管重生倒數與小黑影好感）。
+// 永別（farewell）不再用關鍵字偵測——容易被無意間說出的話誤觸發、不可逆——改成只能在死亡復仇
+// 期間由飼主在畫面上明確選擇「永別」才會進入，由死亡狀態機那段邏輯接手判斷，這裡不處理。
 // 這裡只負責偵測飛升與觀察兩種即時事件。
 function detectTriggeredEvent(world, bt, combinedPlayerText) {
   if (bt.hp >= 100 && bt.food >= 100) return 'ascension';
-  const farewell = world.farewell;
-  if (!farewell || !farewell.pending) {
-    if (/放下|結束|祝福|告別|不會再回來/.test(combinedPlayerText)) return 'farewell';
-  }
   if (/📺|觀察日誌|研究|旁白啟動/.test(combinedPlayerText)) return 'observation';
   return null;
 }
@@ -1479,11 +1477,14 @@ const server = http.createServer((req, res) => {
         if (data.type === 'status') {
           world.owner_status = data.input || '';
           world.owner_status_time = data.input ? getRealTime().display : '';
-          world.owner_status_read = !data.input;
         }
         if (data.type === 'action') {
           world.owner_action = data.input || '';
           world.owner_action_read = !data.input;
+        }
+        if (data.type === 'request_farewell' && world.death && world.death.active) {
+          // 只能在死亡復仇期間選擇，下一次 tick 會結束復仇並轉入永別事件。
+          world.farewell = { ...(world.farewell || {}), requested: true };
         }
         if (data.type === 'away') world.owner_away = !!data.away;
         if (data.type === 'pause') world.paused = !!data.paused;
@@ -1792,16 +1793,11 @@ async function tick() {
   // 飽食加成的「有沒有吃」交給AI每輪判斷（result.fed），「加多少」固定由程式決定，
   // 套用時機放在拿到AI回應之後（見下方），避免巨怪持續餵食的多輪場景只在第一輪加到分。
 
-  // 巨怪狀態剛被設定/變更的那一輪（未讀），給一條好奇心提示：糰糰看得到情緒粒子，
-  // 對視野裡這個龐然大物的狀態變化會有基本好奇，過去看一下、留意一下方向，不用太誇張或太黏。
-  // 之後同一個狀態持續存在，就只當背景資訊，不再重複提示好奇，避免每個tick都硬演一次。
-  const ownerStatusUnread = !!world.owner_status && !world.owner_status_read;
+  // 糰糰會不會留意巨怪狀態變化，交給 system-prompt 裡的常駐人設（對環境中存在的好奇心），
+  // 不在這裡每輪動態插入提示文字，省下重複的 token。
   const ownerStatus = world.owner_status ? `巨怪狀態：${world.owner_status}` : '';
-  const ownerCuriosity = ownerStatusUnread
-    ? '\n巨怪身上的情緒粒子剛剛有了變化，糰糰天生看得見這些訊號——基本的好奇心會讓他多看一眼或過去留意一下巨怪的方向，不用太誇張。'
-    : '';
   const ownerAction = ownerActionUnread ? `巨怪對房間的行為：${world.owner_action}` : '';
-  const ownerInput = (ownerStatus || ownerAction || ownerCuriosity) ? '\n' + [ownerStatus, ownerAction].filter(Boolean).join('\n') + ownerCuriosity : '';
+  const ownerInput = (ownerStatus || ownerAction) ? '\n' + [ownerStatus, ownerAction].filter(Boolean).join('\n') : '';
   const awayInput = world.owner_away ? '\n巨怪現在外出不在房間（最棒的事正發生在沒人的時候）。' : '';
 
   const NOTE_LOCATION_DESC = {
@@ -1858,8 +1854,14 @@ async function tick() {
   // 死亡狀態機：{ active, ticksLeft }。死亡後每個 tick 都是暗影復仇，倒數歸零時自動再生。
   if (!world.death || typeof world.death !== 'object') world.death = { active: false, ticksLeft: 0 };
 
-  let triggeredEvent = detectTriggeredEvent(world, bt, combinedPlayerText); // ascension / observation / farewell / null
-  if (world.death.active) {
+  let triggeredEvent = detectTriggeredEvent(world, bt, combinedPlayerText); // ascension / observation / null
+  if (world.death.active && world.farewell && world.farewell.requested) {
+    // 死亡復仇期間，飼主在畫面上選了「永別」：提前結束復仇，直接走向永別事件。
+    world.death.ticksLeft = 0;
+    world.death.active = false;
+    world.characters.shadow.affection = 0;
+    triggeredEvent = 'farewell';
+  } else if (world.death.active) {
     // 復仇期間：還有倒數就繼續復仇，最後一格改成再生事件並結束死亡。
     if (world.death.ticksLeft > 1) {
       world.death.ticksLeft -= 1;
@@ -2159,7 +2161,7 @@ async function tick() {
     }
 
     if (triggeredEvent === 'farewell') {
-      newWorld.farewell = { ...(world.farewell || {}), pending: true };
+      newWorld.farewell = { ...(world.farewell || {}), requested: false, pending: true };
     }
 
     const fragState = ensureFragmentsState(world);
@@ -2188,10 +2190,6 @@ async function tick() {
       }]);
       // 文字本身不清空，留著顯示在「我的動態」第 1 張；只標記已讀，下次 tick 不會再讀它。
       newWorld.owner_action_read = true;
-    }
-    if (ownerStatusUnread) {
-      // 好奇心提示只在狀態剛變的那輪用過一次，之後同個狀態持續存在就不再重複提示。
-      newWorld.owner_status_read = true;
     }
 
     if (visitorMessages.length > 0) {
